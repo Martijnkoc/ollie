@@ -11,7 +11,7 @@ Cafe is niet verbonden aan de genoemde apps.
 
 ## Status
 
-Dit is een werkende applicatie met echte accounts, opslag en rechten. Die zijn met tests aangetoond, zie [Validatie](#validatie). Drie externe diensten zijn nog **niet** gekoppeld omdat daar sleutels voor nodig zijn: Stripe (betalen), Daily (video) en een e-maildienst. Zonder sleutel meldt de app dat eerlijk ("niet geconfigureerd") en doet hij niet alsof het werkt. Er is geen live of publieke versie.
+Dit is een werkende applicatie met echte accounts, opslag en rechten. Die zijn met tests aangetoond, zie [Validatie](#validatie). Drie externe diensten zijn nog **niet** gekoppeld omdat daar sleutels voor nodig zijn: Stripe (betalen), Daily (video) en een e-maildienst. Zonder sleutel meldt de app dat eerlijk ("niet geconfigureerd") en doet hij niet alsof het werkt. Er is een afgeschermde preview op Vercel, alleen te openen met een Vercel-login (zie [Deploy](#deploy)). Er is geen publieke versie.
 
 ## Wat er is
 
@@ -42,7 +42,8 @@ Dit is een werkende applicatie met echte accounts, opslag en rechten. Die zijn m
 
 - Next.js 16 (App Router, Server Actions), React 19, TypeScript (strict), eigen CSS, Zod.
 - Postgres via `DATABASE_URL`. Lokaal start zonder configuratie een ingebouwde Postgres (PGlite). Migraties draaien automatisch, met een advisory lock tegen gelijktijdige starts.
-- Live chat: Server-Sent Events. Elke verbinding controleert dezelfde rechten als de pagina's en vraagt elke 1,5 s nieuwe berichten op. EventSource herverbindt zelf zonder berichten te missen. Daardoor is er geen tweede rechtenlaag (zoals RLS) nodig.
+- Live chat: Server-Sent Events. Elke verbinding controleert dezelfde rechten als de pagina's en vraagt elke 1,5 s nieuwe berichten op. EventSource herverbindt zelf zonder berichten te missen.
+- Alleen de server praat met de database. Op Supabase staat row level security aan op elke tabel, zonder policies, en zijn de rechten van `anon` en `authenticated` ingetrokken (migratie `0002`). Zo is via de publieke REST-API van Supabase niets leesbaar. Een nieuwe tabel moet dat ook krijgen.
 - Video: Daily, via een kleine adapter in `src/lib/video/provider.ts`, met een eigen eenvoudige call-interface (`@daily-co/daily-js`, call object).
 - Betalen: Stripe (API-versie van SDK 23). De factureringsperiode wordt van de subscription items gelezen.
 
@@ -79,7 +80,7 @@ npm run admin:grant -- naam@voorbeeld.nl
 
 Alle namen staan in `.env.example`. Zet geen waarden in Git. Voorgestelde route, met aparte resources alleen voor Cafe:
 
-1. **Database:** een nieuw Supabase-project voor Cafe. `DATABASE_URL` is de pooler-URL (poort 6543). Optioneel ook `SUPABASE_URL` + `SUPABASE_ANON_KEY`, zodat Supabase Auth de inlogcodes verstuurt. Zet dan `{{ .Token }}` in de e-mailtemplate.
+1. **Database:** een nieuw Supabase-project voor Cafe. `DATABASE_URL` is de transaction-pooler-URL (poort 6543). Kopieer de host uit de Connect-dialoog van Supabase: het nummer in `aws-N-<regio>` is een cluster en is niet uit de regio af te leiden. Met een eigen databaserol is de gebruikersnaam `<rol>.<project-ref>`. Optioneel ook `SUPABASE_URL` + `SUPABASE_ANON_KEY`, zodat Supabase Auth de inlogcodes verstuurt. Zet dan `{{ .Token }}` in de e-mailtemplate.
 2. **E-mail:** Resend (`RESEND_API_KEY`, `MAIL_FROM`). Die is nodig voor meldingen, en ook voor inloggen als je Supabase Auth niet gebruikt.
 3. **Stripe, eerst in testmodus:**
    - Maak een product met een maandprijs en zet die in `STRIPE_PRICE_ID`.
@@ -135,8 +136,14 @@ Laatst uitgevoerd in een geïsoleerde container, met lokale Postgres 16 en Chrom
 - **Echte video tussen twee mensen** (zien én horen). De e2e-tests gebruiken de gelabelde testprovider. De Daily-adapter (rooms, tokens, presence, expiry, verwijderen) is gebouwd naar de documentatie, maar niet tegen een echt Daily-account gedraaid. De Daily-documentatiesite was vanuit deze omgeving niet bereikbaar.
 - **Live Stripe Checkout en klantportaal.** Alleen de webhookverwerking is als contracttest bewezen; een geslaagde testmock bewijst geen live integratie.
 - **E-mailbezorging** via Resend of Supabase Auth. Tests gebruiken een outbox-tabel.
-- **Een publieke of afgeschermde preview.** Er is niets gedeployed of aangemaakt bij Vercel of Supabase.
+- **De afgeschermde preview praat nog niet aantoonbaar met de database.** Zie [Deploy](#deploy).
 - **Volledige WCAG 2.2 AA-conformiteit.** Alleen de automatische checks en een deel van de toetsenbordbediening zijn getest; handmatige screenreadertests zijn niet gedaan. We claimen dus geen conformiteit.
+
+## Deploy
+
+- **Vercel**, project `ollie`: Next.js, Node 22, functies in `fra1`. De productie-build van deze branch staat op READY op `ollie-martijn-kocs-projects.vercel.app`. Vercel Authentication staat aan, dus alleen wie bij het Vercel-team hoort kan de site openen.
+- **Supabase**, een nieuw en apart project `cafe` (eu-central-1). Cafe gebruikt de eigen rol `cafe_app` en geen andere projecten. De tabellen worden bij de eerste aanvraag door de app zelf aangemaakt.
+- **Nog niet aangetoond:** dat de site echt met de database praat. Deze omgeving kan de afgeschermde site en Supabase niet rechtstreeks bereiken. Wel aangetoond, vanuit de database zelf: de juiste pooler-host voor dit project is `aws-1-eu-central-1.pooler.supabase.com`. Met `aws-0` antwoordt de pooler "tenant/user not found".
 
 ## Resterende beperkingen en besluiten vóór livegang
 
