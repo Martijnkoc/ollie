@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-/** Absolute base URL for links in e-mails and share texts. */
+/** Absolute base URL for e-mails and share links. */
 export async function baseUrl() {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
   const h = await headers();
@@ -9,10 +9,7 @@ export async function baseUrl() {
   return `${proto}://${host}`;
 }
 
-export const paths = {
-  invite: (code: string) => `/u/${code}`,
-  manage: (hostToken: string) => `/beheer/${hostToken}`,
-  date: (participantToken: string) => `/d/${participantToken}`,
-  room: (participantToken: string) => `/d/${participantToken}/kamer`,
-  profile: (memberToken: string) => `/profiel/${memberToken}`,
-};
+export async function clientIp() {
+  const h = await headers();
+  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "onbekend";
+}

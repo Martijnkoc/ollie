@@ -4,7 +4,6 @@ import { useState } from "react";
 
 export function CopyLink({ url, shareText }: { url: string; shareText?: string }) {
   const [copied, setCopied] = useState(false);
-  const text = shareText ? `${shareText} ${url}` : url;
 
   async function copy() {
     try {
@@ -31,19 +30,20 @@ export function CopyLink({ url, shareText }: { url: string; shareText?: string }
   return (
     <div className="stack">
       <div className="share">
-        <input type="text" readOnly value={url} aria-label="Uitnodigingslink" onFocus={(e) => e.currentTarget.select()} />
+        <label htmlFor="invite-link" className="visually-hidden">
+          Uitnodigingslink
+        </label>
+        <input id="invite-link" type="text" readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
         <button type="button" className="btn" onClick={copy}>
-          {copied ? "Gekopieerd ✓" : "Kopieer link"}
+          {copied ? "Gekopieerd" : "Kopieer link"}
         </button>
       </div>
-      <div className="row">
-        <button type="button" className="btn secondary" onClick={share}>
-          Delen…
-        </button>
-        <a className="btn secondary" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
-          Via WhatsApp
-        </a>
-      </div>
+      <p className="visually-hidden" aria-live="polite">
+        {copied ? "Link gekopieerd" : ""}
+      </p>
+      <button type="button" className="btn secondary" onClick={share} style={{ alignSelf: "flex-start" }}>
+        Delen via een app…
+      </button>
     </div>
   );
 }

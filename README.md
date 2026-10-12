@@ -1,100 +1,149 @@
-# Ollie — Eerst een klik. Dan een date.
+# cafe. — Eerst een klik. Dan een date.
 
-Een besloten videodate van twintig minuten vóór je afspreekt. Daarna kiest ieder rustig en privé of jullie verder willen.
+Cafe helpt mensen die datingmoe zijn. Je ziet en spreekt elkaar eerst twintig minuten op video, en daarna kiest ieder privé of je echt wilt afspreken. Een vriendelijke "nee" is ook een goed resultaat.
 
-```
-Uitnodigingslink → moment kiezen → besloten videodate → privé keuze → bij wederzijdse interesse een vervolg
-```
+Er zijn twee ingangen in één product:
 
-## Wat zit er in deze eerste versie
+1. **Ik heb al een match.** Een lid nodigt een match uit (van Tinder, Bumble, Hinge, Happn, Breeze of ergens anders) via een uitnodigingslink. De match doet gratis mee aan die ene videodate, zonder app en zonder lidmaatschap.
+2. **Ik wil iemand ontmoeten.** Een lid praat in de lounge of aan een tafel, stuurt iemand een contactverzoek en plant vanuit het privégesprek een videodate.
 
-**Twee ingangen op de homepage**
+Cafe is niet verbonden aan de genoemde apps.
 
-- **Ik heb al een match** (`/uitnodigen`): de uitnodigende persoon maakt de afspraak aan met maximaal drie momenten en krijgt een link om in de chat te plakken. De ontvanger doet gratis mee, zonder account, download of betaalgegevens, kiest een moment of stelt een ander moment voor.
-- **Ik wil iemand ontmoeten** (`/ontmoeten`): aanmelden voor kennismakingsavonden, georganiseerd rond beschikbaarheid ("donderdagavond 20:00"). We starten in één regio met vaste tijdstippen. Zichtbaarheid voor voorstellen is opt-in en altijd te pauzeren.
+## Status
 
-**De videodate** (`/d/<persoonlijke link>`)
+Dit is een werkende applicatie met echte accounts, opslag en rechten. Die zijn met tests aangetoond, zie [Validatie](#validatie). Drie externe diensten zijn nog **niet** gekoppeld omdat daar sleutels voor nodig zijn: Stripe (betalen), Daily (video) en een e-maildienst. Zonder sleutel meldt de app dat eerlijk ("niet geconfigureerd") en doet hij niet alsof het werkt. Er is geen live of publieke versie.
 
-- Precies twintig minuten. De ruimte gaat vijf minuten van tevoren open voor een camera-check en sluit daarna vanzelf: in de browser met een aftelklok, en bij Daily ook aan de serverkant (`exp` + `eject_at_room_exp`).
-- Na afloop kiest ieder privé: *Ja, graag* / *Nee, dank je*. Een "nee" wordt nooit getoond; de ander ziet alleen "deze keer geen vervolg".
-- Bij wederzijdse interesse blijven contactgegevens verborgen tot je ze zelf deelt (met expliciete toestemming, intrekbaar).
-- De hoofdvraag: *"Heeft dit gesprek je geholpen te bepalen of je in het echt wilt afspreken?"* (ja / een beetje / nee). Vertrouwelijk.
-- Blokkeren en melden kan altijd. Meldingen staan los van feedback. Blokkeren zegt een geplande date af en sluit het paar uit van toekomstige voorstellen.
-- Agenda-bestand (`.ics`) met herinnering.
-- Uitgenodigde gasten worden geen communitylid, tenzij ze daar na afloop zelf voor kiezen ("Iemand nieuw leren kennen").
+## Wat er is
 
-**Community** (`/profiel/<persoonlijke link>`)
+| Onderdeel | Wat het doet |
+| --- | --- |
+| Accounts | Inloggen met een e-mailcode van 6 cijfers, server-sessies (30 dagen), uitloggen. Codes zijn 10 minuten geldig en blokkeren na 5 pogingen; aanvragen zijn begrensd per e-mailadres en per IP. Optioneel beheerd door Supabase Auth. |
+| Onboarding | Voornaam of alias, geboortedatum (18+), regio, intentie, optionele interesses en introductie. Je kiest zelf of leeftijd en regio zichtbaar zijn en of je vindbaar bent. |
+| Lidmaatschap | Stripe Checkout (abonnement) en het klantportaal (opzeggen, betaalgegevens). **Toegang komt alleen uit geverifieerde webhooks**, nooit uit een redirect of een queryparameter. Events worden idempotent verwerkt, verouderde events worden genegeerd, en een mislukte betaling, opzegging en het einde van de periode worden ondersteund. |
+| Tegoed | 5 videodates per periode (instelbaar). Zie [Tegoedregels](#tegoedregels). |
+| Community | Lounge en tafels met opgeslagen berichten, paginering ("Oudere berichten laden") en live updates. Verder: leden zoeken, profielen met alleen gekozen velden, contactverzoeken, privégesprekken, en vanuit een gesprek een videodate voorstellen die pas vaststaat als beiden bevestigen. |
+| Uitnodigen | Uitnodigingslink met een token van 192 bits in het URL-fragment. Het fragment komt niet in serverlogs; wij bewaren alleen de hash. De link verloopt na het laatste voorgestelde moment en is in te trekken. De gast logt in met een eigen e-mailcode en accepteert. De organisator ziet wie er accepteerde en bevestigt ("Dit is niet mijn match" kan ook). Pas dan is het een afspraak. Een link geeft nooit zelf toegang tot video. |
+| Videodate | Lobby met camera-, microfoon- en niveaumeter en je weergavenaam. De twintig minuten starten **op de server, één keer, zodra beiden aanwezig zijn**: `started_at` en `ends_at` worden in één voorwaardelijke update gezet. Herladen, opnieuw verbinden, een tweede tab of een andere klok verlengen niets. De provider-room krijgt die eindtijd als expiry en wordt aan het eind verwijderd. Je wacht maximaal 15 minuten op de ander (no-show). Twee minuten voor het einde komt een waarschuwing. Vroeg stoppen kan altijd. Media worden altijd gestopt. |
+| Feedback | Drie vragen per persoon: comfort, "Heeft dit gesprek je geholpen te bepalen of je in het echt wilt afspreken?", en hoe je verder wilt (afspreken / nog eens bellen / liever niet). De antwoorden zijn alleen voor de auteur leesbaar. De ander hoort alleen "allebei verder" of "geen vervolg". Missende feedback is nooit toestemming. "Afspreken" plus "bellen" wordt een tweede videodate, dus niemand wordt een fysieke date in geduwd. |
+| Contact delen | Alleen bij wederzijdse interesse, per gegeven (telefoon / e-mail / social), met een vinkje voor toestemming. Toestemmingstekst, ontvanger en tijdstip worden vastgelegd. Intrekken verbergt het gegeven, en de uitleg zegt dat de ander het al kan hebben. |
+| Veiligheid | Blokkeren beëindigt verzoeken, berichten, voorstellen en geplande dates in beide richtingen, en jullie zien elkaar niet meer. Melden kan bij berichten, profielen en dates. Er zijn limieten op berichten, verzoeken, uitnodigingen en meldingen. |
+| Moderatie | `/beheer` is alleen voor de rollen moderator en beheerder. Een moderator beoordeelt meldingen, beperkt accounts met een verplichte reden en ziet een logboek van alle acties. Er is een bezwaarprocedure. Niets wordt automatisch gesanctioneerd. Medewerkers zien alleen totalen van feedback. |
+| Privacy | Account verwijderen: abonnement stoppen, geplande dates afzeggen, gegevens wissen. Bewaartermijnen worden afgedwongen door een dagelijkse taak. |
 
-- Voorstellen op basis van wederzijdse voorkeuren (geslacht, leeftijd), regio en intentie. Beiden accepteren vooraf; pas dan wordt de date ingepland.
-- Nooit twee keer hetzelfde paar, nooit na een blokkade.
-- Geen openbare feed of uitgebreide profielen: alleen voornaam, leeftijd, intentie en één zin.
-- Gegevens zelf verwijderen.
+## Tegoedregels
 
-**Organisator** (`/admin`, wachtwoord via `ADMIN_PASSWORD`)
-
-- Dashboard met de hoofdvraag voorop, plus uitnodigingen, gehouden dates, wederzijdse interesse, conversie van gast naar community en de Cafe-wachtlijst.
-- Kennismakingsavonden plannen, beschikbare mensen en voorgestelde paren bekijken (handmatig of in één keer voorstellen en mailen). Een avond wordt pas zichtbaar op de site als je hem opent: een lege community schaadt het vertrouwen.
-- Meldingen afhandelen, leden uit voorstellen halen.
-
-**Cafe** (`/cafe`): concept (lounge, tafels, privégesprekken, "Even samen zitten?", sluiting na twintig minuten), prijstabel (€4,99/maand met vijf videodates; gast gratis) en een wachtlijst. Cafe zelf is nog dicht (`CAFE_OPEN=false`), zoals bedoeld: eerst aanmeldingen en proefavonden.
-
-**Proefperiode**: uitnodigen is gratis, maximaal `MONTHLY_DATE_LIMIT` (standaard 5) uitnodigingen per e-mailadres per 30 dagen, gelijk aan wat het lidmaatschap straks bevat.
-
-## Lokaal draaien
-
-```bash
-npm install
-npm run dev        # http://localhost:3000
-```
-
-Zonder configuratie werkt alles:
-
-- **Database:** een ingebouwde Postgres (PGlite) in `.data/`.
-- **Video:** demomodus. Je ziet je eigen camera, maar er is geen verbinding met de ander.
-- **E-mail:** berichten verschijnen in de serverlog.
-
-Kopieer `.env.example` naar `.env.local` en vul aan wat je nodig hebt.
-
-## Productie
-
-| Onderdeel | Dienst | Variabelen |
-| --- | --- | --- |
-| Hosting | Vercel (of elke Node-host) | `APP_URL` |
-| Database | Postgres, bijv. Supabase (pooler-URL, poort 6543) | `DATABASE_URL` |
-| Video | [Daily](https://www.daily.co) | `DAILY_API_KEY` |
-| E-mail | [Resend](https://resend.com) | `RESEND_API_KEY`, `MAIL_FROM` |
-| Beheer | | `ADMIN_PASSWORD`, `SESSION_SECRET` |
-| Community | | `LAUNCH_REGIONS`, `MONTHLY_DATE_LIMIT` |
-| Cafe | | `CAFE_OPEN` |
-
-Migraties draaien automatisch bij de eerste databaseverbinding (met een advisory lock tegen gelijktijdige cold starts), of handmatig met `npm run db:migrate`.
-
-Videokosten: twintig minuten met twee deelnemers kost bij Daily tegen standaardtarief $0,16, dus vijf volledige gesprekken $0,80. Kamers worden pas aangemaakt als iemand binnenkomt, dus een date die niet doorgaat kost niets.
+- **Wie betaalt:** de organisator, dus wie uitnodigt of een videodate voorstelt. De ander betaalt nooit. Zijn beiden lid, dan betaalt alleen de organisator.
+- **Gereserveerd:** zodra beiden bevestigen, binnen dezelfde databasetransactie. Het lidmaatschap wordt daarbij vergrendeld, zodat het laatste tegoed niet twee keer wordt uitgegeven.
+- **Verbruikt:** wanneer het gesprek echt start (beiden aanwezig).
+- **Teruggegeven:** bij afzeggen, afwijzen, een no-show, een storing bij de provider vóór de start, een blokkade, een beperking door moderatie of het verwijderen van een account.
+- **Nooit dubbel:** elke overgang is een voorwaardelijke update, dus herhaalde heartbeats, herhaalde webhooks of dubbel klikken tellen niet twee keer.
 
 ## Techniek
 
-- Next.js 16 (App Router, Server Actions), React 19, TypeScript, Zod.
-- Geen accounts: iedereen gebruikt een persoonlijke, onraadbare link (144 bits). Ledenlinks worden alleen gehasht opgeslagen; elke e-mail bevat een nieuwe geldige link. `/link-kwijt` stuurt links opnieuw zonder te verraden welke adressen bekend zijn.
-- Tijden worden als Nederlandse tijd ingevoerd en getoond (`Europe/Amsterdam`, inclusief zomertijd).
+- Next.js 16 (App Router, Server Actions), React 19, TypeScript (strict), eigen CSS, Zod.
+- Postgres via `DATABASE_URL`. Lokaal start zonder configuratie een ingebouwde Postgres (PGlite). Migraties draaien automatisch, met een advisory lock tegen gelijktijdige starts.
+- Live chat: Server-Sent Events. Elke verbinding controleert dezelfde rechten als de pagina's en vraagt elke 1,5 s nieuwe berichten op. EventSource herverbindt zelf zonder berichten te missen. Daardoor is er geen tweede rechtenlaag (zoals RLS) nodig.
+- Video: Daily, via een kleine adapter in `src/lib/video/provider.ts`, met een eigen eenvoudige call-interface (`@daily-co/daily-js`, call object).
+- Betalen: Stripe (API-versie van SDK 23). De factureringsperiode wordt van de subscription items gelezen.
 
 ```
-src/lib/        domeinlogica: invites, dates, community, matching, video, mail, tijd
-src/app/        pagina's en server actions
-tests/          unit- en flowtests (Vitest, ingebouwde Postgres)
-e2e/            end-to-end (Playwright, echte Postgres)
+src/lib/            domeinlogica: access, auth, billing, community, dates, feedback, invites, moderation …
+src/app/            pagina's, server actions (src/app/actions) en API-routes (src/app/api)
+src/components/     UI-componenten (Dialog, ChatRoom, DateRoom, formulieren)
+tests/              Vitest: rechten, billing, tegoed, timer, privacy (ingebouwde Postgres)
+e2e/                Playwright: complete reis met twee testgebruikers en een onbevoegde derde (echte Postgres)
 ```
+
+## Lokaal draaien
+
+Vereist Node ≥ 22.
+
+```bash
+npm ci
+npm run dev            # http://localhost:3000
+```
+
+Zonder configuratie:
+
+- **Database:** ingebouwd.
+- **E-mail:** de inlogcodes verschijnen in de serverlog.
+- **Betalen en video:** melden "niet geconfigureerd".
+
+Een beheerder maken:
+
+```bash
+npm run admin:grant -- naam@voorbeeld.nl
+```
+
+## Configuratie en productie
+
+Alle namen staan in `.env.example`. Zet geen waarden in Git. Voorgestelde route, met aparte resources alleen voor Cafe:
+
+1. **Database:** een nieuw Supabase-project voor Cafe. `DATABASE_URL` is de pooler-URL (poort 6543). Optioneel ook `SUPABASE_URL` + `SUPABASE_ANON_KEY`, zodat Supabase Auth de inlogcodes verstuurt. Zet dan `{{ .Token }}` in de e-mailtemplate.
+2. **E-mail:** Resend (`RESEND_API_KEY`, `MAIL_FROM`). Die is nodig voor meldingen, en ook voor inloggen als je Supabase Auth niet gebruikt.
+3. **Stripe, eerst in testmodus:**
+   - Maak een product met een maandprijs en zet die in `STRIPE_PRICE_ID`.
+   - Zet je testsleutel in `STRIPE_SECRET_KEY` (`sk_test_…`).
+   - Maak een webhook naar `/api/stripe/webhook` voor `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, `.resumed` en `checkout.session.completed`. Het signing secret gaat in `STRIPE_WEBHOOK_SECRET`.
+   - Zet het klantportaal aan.
+4. **Daily:** `DAILY_API_KEY`. Controleer in het Daily-dashboard dat opnemen en transcriberen niet aanstaan op domeinniveau, voordat de site dat belooft.
+5. **Hosting:** Vercel (Next.js).
+   - Zet `APP_URL`, `SESSION_SECRET` en `CRON_SECRET`.
+   - `vercel.json` plant de dagelijkse onderhoudstaak.
+   - Zet een preview achter Deployment Protection.
+6. **Afgeschermde preview zonder echte diensten:** `ALLOW_TEST_TRANSPORTS=true`, `MAIL_TRANSPORT=outbox` en `VIDEO_PROVIDER=fake`. De interface labelt dit dan zichtbaar als testmodus. Gebruik dit nooit in productie.
 
 ## Controleren
 
 ```bash
-npm run typecheck
-npm test
-E2E_DATABASE_URL=postgres://… npm run test:e2e   # bouwt en start de app zelf
+npm run typecheck       # Next-routetypes + tsc --noEmit
+npm test                # Vitest
+npm run format:check    # Prettier
+npm run build
+E2E_DATABASE_URL=postgres://…/cafe_e2e npm run test:e2e   # bouwt en start de app zelf; de database-URL moet 'e2e' bevatten
 ```
 
-## Bewust nog niet gebouwd
+## Validatie
 
-- **Cafe zelf** (lounge, tafels, chat) en de betaalmuur. Pas als de eerste groep groot genoeg is.
-- **Herinneringen vlak voor de date.** Nu via het agenda-bestand. Een geplande job (bijv. Vercel Cron) is de volgende stap.
-- **Afstand** binnen een regio. Bij één startregio is de regio genoeg.
-- **E-mailverificatie** voor wie uitnodigt, en rate limiting per IP.
+Laatst uitgevoerd in een geïsoleerde container, met lokale Postgres 16 en Chromium.
+
+**Echt uitgevoerd en geslaagd**
+
+- `tsc` (strict), Prettier en `next build`: geen fouten.
+- **Vitest, 46 tests:**
+  - e-mailcode (verkeerd, hergebruikt, verlopen, lockout, limiet) en sessies (verlopen, uitloggen);
+  - Stripe-webhook met getekende testpayloads: verkeerde handtekening, ontbrekend secret, replay, verouderd event, opzegging aan het einde van de periode, unpaid, `checkout.session.completed` geeft géén toegang;
+  - tegoed (reserveren, verbruiken, teruggeven, quotum, nooit dubbel);
+  - de timer: start één keer, refresh en reconnect geven geen extra tijd, eindigt op exact 20 minuten, geen token na afloop, provider-expiry en het sluiten van de room;
+  - no-show en annulering, rechten van gast, verlopen lid en derde persoon, blokkeren, privacy van feedback en contact delen, moderatie en bezwaar, rollen.
+- **Playwright, 12 browsertests**, met twee testleden, een externe gast zonder lidmaatschap en een onbevoegde derde:
+  1. Registreren, profiel en testlidmaatschap. Toegang komt pas na de getekende webhook; een vervalste webhook wordt geweigerd; een replay wordt niet dubbel verwerkt.
+  2. Een lid stuurt een bericht in de lounge en het andere lid ziet het live, zonder te herladen. Een gast en een anonieme bezoeker krijgen 403 op de stream.
+  3. Contactverzoek → accepteren → live privéchat → videodate voorstellen en bevestigen (tegoed van de organisator gereserveerd). Een derde krijgt "Niet gevonden". Na een blokkade kan de ander geen berichten meer sturen, is de ander onvindbaar en zijn de date en het tegoed teruggedraaid.
+  4. Een externe match opent de link uitgelogd, logt in, accepteert, en de organisator bevestigt. Een derde met dezelfde link ziet "al beantwoord" en krijgt 403 op deelnemen en heartbeat.
+  5. De timer start pas als beiden binnen zijn. `ends_at − started_at` is precies 20 minuten. Na herladen blijft de eindtijd gelijk. De waarschuwing op twee minuten verschijnt en wordt aangekondigd. Na afloop gaan beiden naar de vragen en geeft deelnemen 403.
+  6. Feedback blijft privé, alleen wederzijdse interesse opent een vervolg, en contact delen vraagt een apart vinkje per gegeven.
+  7. Na uitloggen werkt de oude sessiecookie niet meer (401). Een aanroep van een ander domein wordt geweigerd (403).
+  8. Alleen medewerkers komen in `/beheer`. Beperken vraagt een reden, de gebruiker ziet die reden, bezwaar → toegekend → toegang terug, met een logboek.
+  9. Automatische toegankelijkheidscontrole met axe (WCAG 2.0, 2.1 en 2.2 A/AA) op 7 hoofdpagina's: geen ernstige of kritieke bevindingen.
+  10. Account verwijderen: de gegevens zijn weg, en de ander ziet "Verwijderd account".
+  11–12. Telefoon (Pixel 7) en desktop: geen horizontale scroll, skiplink met het toetsenbord bereikbaar, focus gaat naar het codeveld.
+- Visueel gecontroleerd met screenshots op telefoon, tablet en desktop, licht en donker. Gevonden en opgelost: overloop op telefoon, contrast van een knop.
+
+**Niet aangetoond (geblokkeerd door ontbrekende sleutels of omgeving)**
+
+- **Echte video tussen twee mensen** (zien én horen). De e2e-tests gebruiken de gelabelde testprovider. De Daily-adapter (rooms, tokens, presence, expiry, verwijderen) is gebouwd naar de documentatie, maar niet tegen een echt Daily-account gedraaid. De Daily-documentatiesite was vanuit deze omgeving niet bereikbaar.
+- **Live Stripe Checkout en klantportaal.** Alleen de webhookverwerking is als contracttest bewezen; een geslaagde testmock bewijst geen live integratie.
+- **E-mailbezorging** via Resend of Supabase Auth. Tests gebruiken een outbox-tabel.
+- **Een publieke of afgeschermde preview.** Er is niets gedeployed of aangemaakt bij Vercel of Supabase.
+- **Volledige WCAG 2.2 AA-conformiteit.** Alleen de automatische checks en een deel van de toetsenbordbediening zijn getest; handmatige screenreadertests zijn niet gedaan. We claimen dus geen conformiteit.
+
+## Resterende beperkingen en besluiten vóór livegang
+
+- **Prijs en btw:** €4,99 is een testprijs. Leg vast of de consumentenprijs inclusief btw is. De tekst staat in `MEMBERSHIP_PRICE_NOTE`.
+- **Juridische toets:** privacy, leeftijd (nu zelfverklaard, geen verificatie), betaling en video moeten getoetst worden met actuele bronnen en passende expertise. De privacypagina is als concept gemarkeerd.
+- **Terugbetalingen** worden handmatig in Stripe gedaan. Toegang volgt de status van de subscription.
+- **Live chat** werkt via korte SSE-verbindingen met polling. Prima voor een eerste groep; bij veel gelijktijdige gebruikers overstappen op een realtime dienst met dezelfde rechtenregels.
+- **Herinneringen** vlak voor een date: nu via het agendabestand; nog geen geplande e-mail.
+- **Profielfoto's** zijn er nog niet. Gebruik straks uitsluitend eigen, toegestane foto's van leden.
+- **Deze repository:** de Git-geschiedenis heette eerder "Ollie" (een eerdere versie met kennismakingsavonden); die is vervangen door deze Cafe-versie.

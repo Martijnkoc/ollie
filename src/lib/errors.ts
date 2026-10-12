@@ -6,11 +6,11 @@ export class UserError extends Error {
   }
 }
 
-export type FormState = { error?: string; fields?: Record<string, string> } | undefined;
+export type FormState = { error?: string; success?: string; fields?: Record<string, string> } | undefined;
 
 export function errorState(err: unknown, fields?: Record<string, string>): FormState {
   if (err instanceof UserError) return { error: err.message, fields };
-  console.error(err);
+  console.error(err instanceof Error ? `${err.name}: ${err.message}` : err);
   return { error: "Er ging iets mis aan onze kant. Probeer het zo nog eens.", fields };
 }
 
@@ -21,4 +21,14 @@ export function formFields(formData: FormData) {
     if (typeof value === "string" && !key.startsWith("$ACTION")) out[key] = value;
   }
   return out;
+}
+
+/** Runs a mutation and turns a UserError into form state; returns null on success. */
+export async function attempt(fn: () => Promise<unknown>): Promise<FormState | null> {
+  try {
+    await fn();
+    return null;
+  } catch (err) {
+    return errorState(err);
+  }
 }

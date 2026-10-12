@@ -1,108 +1,106 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  createEvening,
-  createProposal,
-  eveningPool,
-  type MemberInput,
-  memberDates,
-  memberProposals,
-  proposalState,
-  respondToProposal,
-  signUp,
-  getMemberByToken,
-  deleteMember,
-} from "@/lib/community";
-import { blockOther, getView } from "@/lib/dates";
+import type { Rights } from "@/lib/access";
+import { block } from "@/lib/blocks";
+import { channelMessages, getChannel, postMessage } from "@/lib/community/channels";
+import { getThread, postThreadMessage, respondToRequest, sendRequest, threadMessages } from "@/lib/community/contacts";
+import { memberProfile, searchMembers } from "@/lib/community/directory";
+import { proposeDate, respondToProposal, viewFor } from "@/lib/dates/core";
 import type { Db } from "@/lib/db";
-import { freshDb } from "./helpers";
+import { NOW, at, freshDb, makeUser } from "./helpers";
 
-const now = new Date("2026-10-12T10:00:00Z"); // a Monday
 let db: Db;
+let anna: Rights;
+let bram: Rights;
+let guest: Rights;
+let lapsed: Rights;
+let loungeId: string;
+
 beforeEach(async () => {
   db = await freshDb();
+  anna = await makeUser(db, "anna@x.nl", { member: true, alias: "Anna" });
+  bram = await makeUser(db, "bram@x.nl", { member: true, alias: "Bram" });
+  guest = await makeUser(db, "gast@x.nl");
+  lapsed = await makeUser(db, "oud@x.nl", { profile: true, alias: "Oud" });
+  loungeId = (await getChannel(db, "lounge"))!.id;
 });
 
-const base: MemberInput = {
-  firstName: "Anna",
-  email: "anna@x.nl",
-  birthDate: "1993-05-01",
-  gender: "vrouw",
-  lookingFor: ["man"],
-  ageMin: 28,
-  ageMax: 40,
-  region: "utrecht",
-  intent: "open",
-  about: "Wandelen en koffie",
-  slots: ["do-avond"],
-  visible: true,
-};
-
-async function member(over: Partial<MemberInput>) {
-  const { token } = await signUp(db, { ...base, ...over }, now);
-  return { token, member: (await getMemberByToken(db, token))! };
-}
-
-describe("community", () => {
-  it("only lets adults join and hands out a new link for a known e-mail", async () => {
-    await expect(signUp(db, { ...base, birthDate: "2010-01-01" }, now)).rejects.toThrow("18");
-    const first = await signUp(db, base, now);
-    const again = await signUp(db, { ...base, email: "ANNA@x.nl" }, now);
-    expect(again.status).toBe("exists");
-    expect((await getMemberByToken(db, first.token))!.first_name).toBe("Anna");
-    expect((await getMemberByToken(db, again.token))!.id).toBe((await getMemberByToken(db, first.token))!.id);
-    expect(await db.query(`select id from members`)).toHaveLength(1);
+describe("rights", () => {
+  it("members read and write; guests and lapsed users get nothing", async () => {
+    await postMessage(db, anna, loungeId, "Hoi allemaal", NOW);
+    expect((await channelMessages(db, bram, loungeId)).messages.map((m) => m.body)).toEqual(["Hoi allemaal"]);
+    for (const outsider of [guest, lapsed]) {
+      await expect(channelMessages(db, outsider, loungeId)).rejects.toThrow("lidmaatschap");
+      await expect(postMessage(db, outsider, loungeId, "x", NOW)).rejects.toThrow("lidmaatschap");
+      await expect(searchMembers(db, outsider, "")).rejects.toThrow("lidmaatschap");
+    }
+    expect((await searchMembers(db, anna, "")).map((p) => p.alias)).toEqual(["Bram"]);
+    expect(await memberProfile(db, anna, lapsed.user.id, NOW)).toBeUndefined();
   });
 
-  it("creates a date once both accept the proposal for a kennismakingsavond", async () => {
-    const anna = await member({});
-    const bram = await member({ firstName: "Bram", email: "bram@x.nl", gender: "man", lookingFor: ["vrouw"], birthDate: "1991-02-02" });
-    await member({ firstName: "Paul", email: "paul@x.nl", gender: "man", lookingFor: ["vrouw"], slots: ["di-avond"] });
-
-    await expect(createEvening(db, { region: "utrecht", slot: "do-avond", day: "2026-10-14" }, now)).rejects.toThrow("valt niet");
-    const evening = (await createEvening(db, { region: "utrecht", slot: "do-avond", day: "2026-10-15" }, now))!;
-    expect(evening.starts_at.toISOString()).toBe("2026-10-15T18:00:00.000Z");
-
-    const pool = await eveningPool(db, evening);
-    expect(pool.members.map((m) => m.first_name).sort()).toEqual(["Anna", "Bram"]);
-
-    const proposal = (await createProposal(db, evening.id, anna.member.id, bram.member.id, now))!;
-    await expect(createProposal(db, evening.id, anna.member.id, bram.member.id, now)).rejects.toThrow();
-
-    const [p] = await memberProposals(db, anna.member.id);
-    expect(p.other_first_name).toBe("Bram");
-    expect(proposalState(p, now)).toBe("open");
-
-    expect((await respondToProposal(db, anna.member.id, proposal.id, "accepted", now)).scheduled).toBe(false);
-    expect(proposalState((await memberProposals(db, anna.member.id))[0], now)).toBe("waiting");
-    const done = await respondToProposal(db, bram.member.id, proposal.id, "accepted", now);
-    expect(done.scheduled).toBe(true);
-
-    const [annaDate] = await memberDates(db, anna.member.id);
-    expect(annaDate.other_first_name).toBe("Bram");
-    const view = (await getView(db, annaDate.token, now))!;
-    expect(view.date.source).toBe("community");
-    expect(view.date.starts_at.toISOString()).toBe("2026-10-15T18:00:00.000Z");
+  it("pages back through history", async () => {
+    for (let i = 0; i < 45; i++)
+      await db.query(`insert into messages (channel_id, author_id, body) values ($1, $2, $3)`, [loungeId, anna.user.id, `m${i}`]);
+    const first = await channelMessages(db, bram, loungeId);
+    expect(first.messages).toHaveLength(40);
+    expect(first.more).toBe(true);
+    const older = await channelMessages(db, bram, loungeId, { before: first.messages[0].id });
+    expect(older.messages.map((m) => m.body)).toEqual(["m0", "m1", "m2", "m3", "m4"]);
   });
 
-  it("never proposes a pair again after a block", async () => {
-    const anna = await member({});
-    const bram = await member({ firstName: "Bram", email: "bram@x.nl", gender: "man", lookingFor: ["vrouw"], birthDate: "1991-02-02" });
-    const e1 = (await createEvening(db, { region: "utrecht", slot: "do-avond", day: "2026-10-15" }, now))!;
-    const p = (await createProposal(db, e1.id, anna.member.id, bram.member.id, now))!;
-    await respondToProposal(db, anna.member.id, p.id, "accepted", now);
-    await respondToProposal(db, bram.member.id, p.id, "accepted", now);
-    const [d] = await memberDates(db, anna.member.id);
-    await blockOther(db, d.token, now);
+  it("limits how fast someone can post", async () => {
+    for (let i = 0; i < 20; i++) await postMessage(db, anna, loungeId, `${i}`, NOW);
+    await expect(postMessage(db, anna, loungeId, "te veel", NOW)).rejects.toThrow("rustig");
+  });
+});
 
-    const e2 = (await createEvening(db, { region: "utrecht", slot: "do-avond", day: "2026-10-22" }, now))!;
-    const pool = await eveningPool(db, e2);
-    expect(pool.excluded.size).toBeGreaterThan(0);
-    await expect(createProposal(db, e2.id, anna.member.id, bram.member.id, now)).rejects.toThrow("eerder");
+describe("private contact", () => {
+  it("starts with a request; only the two can read the conversation", async () => {
+    await sendRequest(db, anna, bram.user.id, "Leuk wat je schreef!", NOW);
+    const [req] = await db.query<{ id: string }>(`select id from contact_requests`);
+    await expect(respondToRequest(db, anna, req.id, true, NOW)).rejects.toThrow("bestaat niet");
+    const threadId = (await respondToRequest(db, bram, req.id, true, NOW))!;
+    await postThreadMessage(db, bram, threadId, "Hoi Anna", NOW);
+    expect((await threadMessages(db, anna, threadId)).messages[0].body).toBe("Hoi Anna");
+    const third = await makeUser(db, "c@x.nl", { member: true });
+    expect(await getThread(db, third, threadId)).toBeUndefined();
+    await expect(threadMessages(db, third, threadId)).rejects.toThrow("bestaat niet");
+    await expect(threadMessages(db, guest, threadId)).rejects.toThrow("lidmaatschap");
   });
 
-  it("deletes a member and their contact data", async () => {
-    const anna = await member({});
-    await deleteMember(db, anna.member.id);
-    expect(await getMemberByToken(db, anna.token)).toBeUndefined();
+  it("lets two members plan a videodate that only exists once both confirm", async () => {
+    await sendRequest(db, anna, bram.user.id, "", NOW);
+    const [req] = await db.query<{ id: string }>(`select id from contact_requests`);
+    await respondToRequest(db, bram, req.id, true, NOW);
+    const dateId = await proposeDate(db, anna, { otherId: bram.user.id, scheduledAt: at(24 * 60), source: "community" }, NOW);
+    expect((await viewFor(db, bram.user.id, dateId, NOW))!.phase).toBe("proposed");
+    await expect(respondToProposal(db, anna.user.id, dateId, true, NOW)).rejects.toThrow();
+    await respondToProposal(db, bram.user.id, dateId, true, NOW);
+    const rows = await db.query<{ organizer_id: string; credit_status: string }>(`select organizer_id, credit_status from dates`);
+    expect(rows).toEqual([{ organizer_id: anna.user.id, credit_status: "reserved" }]);
+  });
+
+  it("cannot propose a videodate to someone without an accepted chat", async () => {
+    await expect(proposeDate(db, anna, { otherId: bram.user.id, scheduledAt: at(24 * 60), source: "community" }, NOW)).rejects.toThrow(
+      "privégesprek",
+    );
+  });
+
+  it("blocking stops requests, messages and proposals, and hides people from each other", async () => {
+    await sendRequest(db, anna, bram.user.id, "", NOW);
+    const [req] = await db.query<{ id: string }>(`select id from contact_requests`);
+    const threadId = (await respondToRequest(db, bram, req.id, true, NOW))!;
+    const dateId = await proposeDate(db, anna, { otherId: bram.user.id, scheduledAt: at(24 * 60), source: "community" }, NOW);
+    await block(db, bram.user.id, anna.user.id, NOW);
+
+    await expect(postThreadMessage(db, anna, threadId, "hallo?", NOW)).rejects.toThrow("geen berichten");
+    await expect(sendRequest(db, anna, bram.user.id, "", NOW)).rejects.toThrow("niet mogelijk");
+    await expect(proposeDate(db, anna, { otherId: bram.user.id, scheduledAt: at(48 * 60), source: "community" }, NOW)).rejects.toThrow(
+      "niet mogelijk",
+    );
+    expect((await viewFor(db, anna.user.id, dateId, NOW))!.phase).toBe("declined");
+    expect(await searchMembers(db, anna, "")).toEqual([]);
+    expect(await memberProfile(db, anna, bram.user.id, NOW)).toBeUndefined();
+    await postMessage(db, anna, loungeId, "zie je dit?", NOW);
+    expect((await channelMessages(db, bram, loungeId)).messages).toEqual([]);
   });
 });

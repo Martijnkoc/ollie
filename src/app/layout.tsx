@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { BRAND, TAGLINE } from "@/lib/config";
+import { SiteHeader } from "@/components/SiteHeader";
+import { TAGLINE } from "@/lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: `${BRAND} · ${TAGLINE}`, template: `%s · ${BRAND}` },
+  title: { default: `Cafe · ${TAGLINE}`, template: "%s · Cafe" },
   description:
-    "Spreek je match twintig minuten op video voordat je afspreekt. Daarna kies je rustig en privé of je verder wilt. Gratis voor wie wordt uitgenodigd, zonder download.",
-  // Personal links live in the URL; never send them to other sites.
+    "Een korte, besloten videodate van twintig minuten voordat je afspreekt. Neem je match van een andere app mee, of leer mensen kennen in de Cafe-community.",
+  // Personal pages carry ids in the URL; never send them to other sites.
   referrer: "same-origin",
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf6ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#17110e" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f1e8" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1019" },
   ],
 };
 
@@ -22,34 +23,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="nl">
       <body>
-        <header className="site-header">
-          <div className="container">
-            <Link href="/" className="brand" aria-label={`${BRAND}, naar de homepage`}>
-              <span className="brand-mark" aria-hidden>
-                ◐
-              </span>
-              {BRAND}
-            </Link>
-            <nav className="site-nav" aria-label="Hoofdmenu">
-              <Link href="/#hoe-het-werkt" className="hide-sm">
-                Hoe het werkt
-              </Link>
-              <Link href="/uitnodigen">Uitnodigen</Link>
-              <Link href="/ontmoeten">Ontmoeten</Link>
-              <Link href="/cafe">Cafe</Link>
-            </nav>
-          </div>
-        </header>
-        <main>{children}</main>
+        <a href="#inhoud" className="skip-link">
+          Naar de inhoud
+        </a>
+        <SiteHeader />
+        <main id="inhoud" tabIndex={-1}>
+          {children}
+        </main>
         <footer className="site-footer">
           <div className="container">
-            <span>
-              {BRAND} · {TAGLINE}
-            </span>
+            <span>cafe. · {TAGLINE}</span>
             <span className="row">
               <Link href="/huisregels">Huisregels &amp; veiligheid</Link>
               <Link href="/privacy">Privacy</Link>
-              <Link href="/link-kwijt">Link kwijt?</Link>
             </span>
           </div>
         </footer>

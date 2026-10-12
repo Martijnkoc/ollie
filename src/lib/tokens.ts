@@ -1,13 +1,8 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 
-/** Unguessable secret for a personal link (144 bits). */
-export function newToken() {
-  return randomBytes(18).toString("base64url");
-}
-
-/** Shorter code for the shareable invite link (96 bits). */
-export function newInviteCode() {
-  return randomBytes(12).toString("base64url");
+/** Bearer secret with `bytes` of cryptographic randomness, URL-safe. */
+export function newToken(bytes = 24) {
+  return randomBytes(bytes).toString("base64url");
 }
 
 export function hashToken(token: string) {
@@ -24,7 +19,14 @@ export function safeEqual(a: string, b: string) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-/** Tokens only ever contain base64url characters; reject anything else before it reaches SQL. */
-export function isTokenShaped(value: string) {
-  return /^[A-Za-z0-9_-]{12,64}$/.test(value);
+export function isTokenShaped(value: string | undefined | null): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{22,86}$/.test(value);
+}
+
+export function isUuid(value: string | undefined | null): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value);
+}
+
+export function sixDigitCode() {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }

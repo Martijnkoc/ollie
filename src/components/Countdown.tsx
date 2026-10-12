@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-function format(ms: number) {
+export function formatLeft(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const days = Math.floor(total / 86_400);
   if (days > 0) {
@@ -11,38 +11,37 @@ function format(ms: number) {
     return `${days} ${days === 1 ? "dag" : "dagen"}${hours ? ` en ${hours} uur` : ""}`;
   }
   const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const mm = String(m).padStart(2, "0");
-  const ss = String(s).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
 }
 
-/** Live countdown; when it reaches zero it refreshes the page or navigates. */
-export function Countdown({ to, className, doneHref }: { to: string; className?: string; doneHref?: string }) {
+/**
+ * Counts down to `to`, corrected by the difference between server and device clock,
+ * and refreshes the page at zero so the server decides what comes next.
+ */
+export function Countdown({ to, serverNow, className }: { to: string; serverNow: string; className?: string }) {
   const router = useRouter();
-  const target = new Date(to).getTime();
   const [left, setLeft] = useState<number | null>(null);
-
   useEffect(() => {
-    let fired = false;
+    const offset = new Date(serverNow).getTime() - Date.now();
+    const target = new Date(to).getTime();
+    let done = false;
     const tick = () => {
-      const ms = target - Date.now();
+      const ms = target - (Date.now() + offset);
       setLeft(ms);
-      if (ms <= 0 && !fired) {
-        fired = true;
-        if (doneHref) router.push(doneHref);
-        else router.refresh();
+      if (ms <= 0 && !done) {
+        done = true;
+        router.refresh();
       }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [target, doneHref, router]);
-
+  }, [to, serverNow, router]);
   return (
     <span className={className} suppressHydrationWarning>
-      {left === null ? "··:··" : format(left)}
+      {left === null ? "··:··" : formatLeft(left)}
     </span>
   );
 }

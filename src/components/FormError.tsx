@@ -1,8 +1,16 @@
-export function FormError({ error }: { error?: string }) {
-  if (!error) return null;
+export function FormError({ error, success }: { error?: string; success?: string }) {
   return (
-    <div className="notice error" role="alert">
-      {error}
+    <div aria-live="polite">
+      {error && (
+        <div className="notice error" role="alert">
+          {error}
+        </div>
+      )}
+      {!error && success && (
+        <div className="notice good" role="status">
+          {success}
+        </div>
+      )}
     </div>
   );
 }

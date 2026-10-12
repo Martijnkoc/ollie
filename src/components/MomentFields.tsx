@@ -10,13 +10,21 @@ export function MomentFields({ max, min, defaults = [] }: { max: number; min: st
       <legend>Wanneer schikt het jou?</legend>
       <div className="stack">
         {Array.from({ length: count }, (_, i) => (
-          <label key={i} className="field">
-            <span className="hint" style={{ marginTop: 0, marginBottom: 4 }}>
+          <div key={i} className="field">
+            <label className="hint" htmlFor={`moment-${i}`} style={{ marginTop: 0, marginBottom: 4 }}>
               Moment {i + 1}
               {i === 0 ? "" : " (optioneel)"}
-            </span>
-            <input type="datetime-local" name="moment" min={min} step={900} required={i === 0} defaultValue={defaults[i]} />
-          </label>
+            </label>
+            <input
+              id={`moment-${i}`}
+              type="datetime-local"
+              name="moment"
+              min={min}
+              step={900}
+              required={i === 0}
+              defaultValue={defaults[i]}
+            />
+          </div>
         ))}
       </div>
       {count < max && (
@@ -24,7 +32,7 @@ export function MomentFields({ max, min, defaults = [] }: { max: number; min: st
           + Nog een moment voorstellen
         </button>
       )}
-      <span className="hint">Stel tot {max} momenten voor. Je match kiest er één. Tijden zijn Nederlandse tijd.</span>
+      <span className="hint">Tot {max} momenten; je match kiest er één. Tijdzone: Europe/Amsterdam.</span>
     </fieldset>
   );
 }

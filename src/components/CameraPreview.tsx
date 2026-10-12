@@ -1,40 +1,69 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { mediaErrorText, useLocalMedia } from "@/hooks/useLocalMedia";
 
-/** Lets people check camera and microphone before the date. Nothing is recorded or sent. */
-export function CameraPreview({ autoStart = false, label = "Jij" }: { autoStart?: boolean; label?: string }) {
+/** Camera and microphone check. Nothing is recorded or sent anywhere. */
+export function CameraPreview({ name }: { name: string }) {
+  const { stream, error, level, start, stop } = useLocalMedia();
   const video = useRef<HTMLVideoElement>(null);
-  const [state, setState] = useState<"idle" | "on" | "denied">("idle");
-  const stream = useRef<MediaStream | null>(null);
-
-  async function start() {
-    try {
-      stream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (video.current) video.current.srcObject = stream.current;
-      setState("on");
-    } catch {
-      setState("denied");
-    }
-  }
 
   useEffect(() => {
-    if (autoStart) void start();
-    return () => stream.current?.getTracks().forEach((t) => t.stop());
-  }, [autoStart]);
+    if (video.current) video.current.srcObject = stream;
+  }, [stream]);
 
   return (
-    <div className="camera-preview">
-      <video ref={video} autoPlay muted playsInline hidden={state !== "on"} />
-      {state === "on" && <span className="name">{label}</span>}
-      {state === "idle" && (
-        <button type="button" className="btn secondary" onClick={start}>
-          Test je camera
-        </button>
+    <div className="stack">
+      <div className="camera-preview">
+        {stream ? (
+          <>
+            <video ref={video} autoPlay muted playsInline aria-label="Voorbeeld van je eigen camerabeeld" />
+            <span
+              className="name"
+              style={{
+                position: "absolute",
+                left: 12,
+                bottom: 10,
+                background: "rgb(0 0 0 / 60%)",
+                color: "#fff",
+                padding: "2px 10px",
+                borderRadius: 999,
+              }}
+            >
+              {name}
+            </span>
+          </>
+        ) : (
+          <button type="button" className="btn secondary" onClick={start}>
+            Test camera en microfoon
+          </button>
+        )}
+      </div>
+      {stream && (
+        <>
+          <div>
+            <span className="small muted" id="mic-label">
+              Microfoon: praat even, dan beweegt de balk
+            </span>
+            <div
+              className="meter"
+              role="meter"
+              aria-labelledby="mic-label"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(level * 100)}
+            >
+              <span style={{ width: `${Math.round(level * 100)}%` }} />
+            </div>
+          </div>
+          <button type="button" className="btn ghost small" onClick={stop}>
+            Test stoppen
+          </button>
+        </>
       )}
-      {state === "denied" && (
-        <p className="small" style={{ padding: 16, textAlign: "center" }}>
-          Geen toegang tot je camera. Sta camera en microfoon toe in je browser en probeer opnieuw.
+      {error && (
+        <p className="notice error" role="alert">
+          {mediaErrorText(error)}
         </p>
       )}
     </div>

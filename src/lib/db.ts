@@ -38,7 +38,7 @@ async function connectPostgres(url: string): Promise<Db> {
   const sql = postgres(url, { prepare: false, max: Number(process.env.DATABASE_POOL_SIZE ?? 5), onnotice: () => {} });
   type Runner = Pick<typeof sql, "unsafe">;
   const wrap = (s: Runner, inTransaction: boolean): Db => ({
-    query: async <T,>(text: string, params: unknown[] = []) => (await s.unsafe(text, params as never[])) as unknown as T[],
+    query: async <T>(text: string, params: unknown[] = []) => (await s.unsafe(text, params as never[])) as unknown as T[],
     transaction: async (fn) => {
       if (inTransaction) return fn(wrap(s, true));
       return (await sql.begin((tx) => fn(wrap(tx, true)))) as never;
@@ -57,7 +57,7 @@ export async function connectPglite(dataDir?: string): Promise<Db> {
   await pg.waitReady;
   type Tx = Parameters<Parameters<typeof pg.transaction>[0]>[0];
   const wrap = (s: typeof pg | Tx, nested: boolean): Db => ({
-    query: async <T,>(text: string, params: unknown[] = []) => (await s.query<T>(text, params)).rows,
+    query: async <T>(text: string, params: unknown[] = []) => (await s.query<T>(text, params)).rows,
     transaction: async (fn) => {
       if (nested) return fn(wrap(s, true));
       return (s as typeof pg).transaction((tx) => fn(wrap(tx, true)));

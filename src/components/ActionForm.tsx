@@ -18,7 +18,7 @@ export function ActionForm({
   return (
     <form action={formAction} className={className}>
       {children}
-      <FormError error={state?.error} />
+      <FormError error={state?.error} success={state?.success} />
     </form>
   );
 }
