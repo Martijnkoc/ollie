@@ -287,4 +287,39 @@ insert into channels (slug, name, description, kind, sort) values
   ('cultuur', 'Tafel Cultuur', 'Boeken, films, musea en muziek.', 'table', 50);
 `,
   },
+  {
+    // Only the server talks to the database, as the table owner. On Supabase the public schema is
+    // also reachable through its REST API with the public anon key: row level security without
+    // policies, plus revoked grants, makes sure nothing is readable that way.
+    // Every later migration that adds a table must enable row level security on it too.
+    name: "0002_lock_down_public_api",
+    sql: `
+alter table users enable row level security;
+alter table login_codes enable row level security;
+alter table sessions enable row level security;
+alter table roles enable row level security;
+alter table profiles enable row level security;
+alter table memberships enable row level security;
+alter table stripe_events enable row level security;
+alter table blocks enable row level security;
+alter table channels enable row level security;
+alter table messages enable row level security;
+alter table contact_requests enable row level security;
+alter table threads enable row level security;
+alter table thread_messages enable row level security;
+alter table invites enable row level security;
+alter table invite_moments enable row level security;
+alter table dates enable row level security;
+alter table date_participants enable row level security;
+alter table feedback enable row level security;
+alter table contact_shares enable row level security;
+alter table reports enable row level security;
+alter table moderation_actions enable row level security;
+alter table appeals enable row level security;
+alter table rate_events enable row level security;
+alter table mail_outbox enable row level security;
+alter table schema_migrations enable row level security;
+do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then revoke all on all tables in schema public from anon, authenticated; revoke all on all sequences in schema public from anon, authenticated; revoke all on all functions in schema public from anon, authenticated; alter default privileges in schema public revoke all on tables from anon, authenticated; alter default privileges in schema public revoke all on sequences from anon, authenticated; alter default privileges in schema public revoke all on functions from anon, authenticated; end if; end $$;
+`,
+  },
 ];

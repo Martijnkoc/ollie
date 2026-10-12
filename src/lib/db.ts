@@ -27,6 +27,10 @@ export function getDb(): Promise<Db> {
 
 async function connect(): Promise<Db> {
   const url = process.env.DATABASE_URL;
+  if (!url && process.env.NODE_ENV === "production" && !process.env.PGLITE_DIR) {
+    // Serverless hosts have no lasting disk; an embedded database would lose everything.
+    throw new Error("DATABASE_URL is not configured");
+  }
   const db = url ? await connectPostgres(url) : await connectPglite(process.env.PGLITE_DIR ?? ".data/pglite");
   await migrate(db);
   return db;
