@@ -1,266 +1,273 @@
 // Migrations are embedded so they ship inside every serverless bundle.
 // Append new entries; never edit one that has been applied to a shared database.
+// Names carry a "vr_" prefix so they can never be confused with another app's history.
+
+const TABLES = [
+  "competitions",
+  "seasons",
+  "teams",
+  "season_teams",
+  "matches",
+  "match_events",
+  "match_lineups",
+  "match_lineup_players",
+  "match_statistics",
+  "standings",
+  "ai_analyses",
+  "sync_state",
+  "sync_runs",
+  "provider_usage",
+  "rate_events",
+  "schema_migrations",
+];
+
 export const MIGRATIONS: { name: string; sql: string }[] = [
   {
-    name: "0001_init",
+    name: "vr_0001_core",
     sql: `
-create table users (
-  id uuid primary key default gen_random_uuid(),
-  email text not null unique,
-  created_at timestamptz not null default now(),
-  last_login_at timestamptz,
-  restricted_at timestamptz,
-  restricted_reason text
-);
+do $$ begin if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'memberships') then raise exception 'Deze database bevat tabellen van een andere applicatie (Cafe). Gebruik een aparte database voor Voetbalradar.'; end if; end $$;
 
-create table login_codes (
-  id uuid primary key default gen_random_uuid(),
-  email text not null,
-  code_hash text not null,
-  attempts int not null default 0,
-  expires_at timestamptz not null,
-  used_at timestamptz,
-  created_at timestamptz not null default now()
-);
-create index login_codes_email_idx on login_codes (email, created_at desc);
+-- Every football row belongs to one provider ("sportmonks", or "demo" for the labelled demo
+-- environment). Queries always filter on the active provider, so demo rows can never appear
+-- next to real data, and a later provider switch starts from a clean slate.
 
-create table sessions (
-  token_hash text primary key,
-  user_id uuid not null references users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  expires_at timestamptz not null,
-  last_seen_at timestamptz not null default now()
-);
-create index sessions_user_idx on sessions (user_id);
-
-create table roles (
-  user_id uuid not null references users(id) on delete cascade,
-  role text not null check (role in ('admin', 'moderator')),
-  granted_by uuid references users(id) on delete set null,
-  granted_at timestamptz not null default now(),
-  primary key (user_id, role)
-);
-
--- Community profile. Only what the member chose to show is visible to other members.
-create table profiles (
-  user_id uuid primary key references users(id) on delete cascade,
-  alias text not null,
-  birth_date date not null,
-  region text not null,
-  intent text not null,
-  interests text[] not null default '{}',
-  bio text not null default '',
-  show_age boolean not null default true,
-  show_region boolean not null default true,
-  listed boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- Paid access comes only from verified Stripe webhooks.
-create table memberships (
-  user_id uuid primary key references users(id) on delete cascade,
-  stripe_customer_id text unique,
-  stripe_subscription_id text unique,
-  status text not null,
-  current_period_start timestamptz,
-  current_period_end timestamptz,
-  cancel_at_period_end boolean not null default false,
-  last_event_at timestamptz,
-  updated_at timestamptz not null default now()
-);
-
-create table stripe_events (
-  id text primary key,
-  type text not null,
-  received_at timestamptz not null default now()
-);
-
-create table blocks (
-  blocker_id uuid not null references users(id) on delete cascade,
-  blocked_id uuid not null references users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (blocker_id, blocked_id)
-);
-
-create table channels (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
+create table competitions (
+  id serial primary key,
+  provider text not null,
+  external_id text not null,
+  slug text not null,
   name text not null,
-  description text not null default '',
-  kind text not null check (kind in ('lounge', 'table')),
-  sort int not null default 0,
-  archived_at timestamptz,
-  created_at timestamptz not null default now()
+  country text not null,
+  country_code text,
+  kind text not null check (kind in ('league', 'cup')),
+  logo_url text,
+  sort_order int not null default 100,
+  availability text not null default 'unknown' check (availability in ('unknown', 'available', 'unavailable', 'mismatch', 'error')),
+  availability_note text,
+  availability_checked_at timestamptz,
+  current_season_id int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, external_id),
+  unique (provider, slug)
 );
 
-create table messages (
+create table seasons (
+  id serial primary key,
+  provider text not null,
+  external_id text not null,
+  competition_id int not null references competitions(id) on delete cascade,
+  name text not null,
+  slug text not null,
+  start_year int not null,
+  starts_on date,
+  ends_on date,
+  is_current boolean not null default false,
+  standings_available boolean,
+  standings_synced_at timestamptz,
+  standings_hash text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, external_id),
+  unique (competition_id, slug)
+);
+create index seasons_competition_idx on seasons (competition_id, start_year desc);
+
+alter table competitions add constraint competitions_current_season_fk foreign key (current_season_id) references seasons(id) on delete set null;
+
+create table teams (
+  id serial primary key,
+  provider text not null,
+  external_id text not null,
+  name text not null,
+  short_name text,
+  code text,
+  slug text not null,
+  country text,
+  founded int,
+  logo_url text,
+  venue_name text,
+  venue_city text,
+  -- "Winner match 3" style entries for knock-out draws that are not decided yet.
+  is_placeholder boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (provider, external_id)
+);
+create index teams_provider_name_idx on teams (provider, lower(name));
+
+create table season_teams (
+  season_id int not null references seasons(id) on delete cascade,
+  team_id int not null references teams(id) on delete cascade,
+  primary key (season_id, team_id)
+);
+create index season_teams_team_idx on season_teams (team_id);
+
+create table matches (
+  id serial primary key,
+  provider text not null,
+  external_id text not null,
+  competition_id int not null references competitions(id) on delete cascade,
+  season_id int not null references seasons(id) on delete cascade,
+  stage_name text,
+  round_name text,
+  kickoff_at timestamptz not null,
+  status text not null,
+  provider_status text,
+  minute int,
+  minute_extra int,
+  home_team_id int not null references teams(id),
+  away_team_id int not null references teams(id),
+  home_score int,
+  away_score int,
+  ht_home int,
+  ht_away int,
+  et_home int,
+  et_away int,
+  pen_home int,
+  pen_away int,
+  venue_name text,
+  venue_city text,
+  referee text,
+  core_hash text not null,
+  events_hash text,
+  lineups_hash text,
+  stats_hash text,
+  details_synced_at timestamptz,
+  synced_at timestamptz not null,
+  changed_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  unique (provider, external_id)
+);
+create index matches_provider_kickoff_idx on matches (provider, kickoff_at);
+create index matches_season_kickoff_idx on matches (season_id, kickoff_at);
+create index matches_home_idx on matches (home_team_id, kickoff_at desc);
+create index matches_away_idx on matches (away_team_id, kickoff_at desc);
+create index matches_status_idx on matches (provider, status);
+
+-- Detail tables are replaced as a whole per match inside one transaction when the provider's
+-- version changes (hash), so a re-run never duplicates events and corrections (VAR) are honoured.
+create table match_events (
+  match_id int not null references matches(id) on delete cascade,
+  seq int not null,
+  minute int,
+  minute_extra int,
+  side text check (side in ('home', 'away')),
+  type text not null,
+  player_name text,
+  player_external_id text,
+  related_name text,
+  related_external_id text,
+  detail text,
+  score_after text,
+  primary key (match_id, seq)
+);
+
+create table match_lineups (
+  match_id int not null references matches(id) on delete cascade,
+  side text not null check (side in ('home', 'away')),
+  formation text,
+  coach_name text,
+  primary key (match_id, side)
+);
+
+create table match_lineup_players (
+  match_id int not null references matches(id) on delete cascade,
+  side text not null check (side in ('home', 'away')),
+  sort int not null,
+  is_starter boolean not null,
+  player_external_id text,
+  name text not null,
+  number int,
+  position text,
+  grid text,
+  primary key (match_id, side, sort)
+);
+
+-- value null = the source sent the statistic without a value; a missing row = not supplied.
+create table match_statistics (
+  match_id int not null references matches(id) on delete cascade,
+  side text not null check (side in ('home', 'away')),
+  key text not null,
+  value numeric,
+  primary key (match_id, side, key)
+);
+
+create table standings (
+  season_id int not null references seasons(id) on delete cascade,
+  group_name text not null default '',
+  team_id int not null references teams(id) on delete cascade,
+  rank int not null,
+  points int,
+  played int,
+  won int,
+  drawn int,
+  lost int,
+  goals_for int,
+  goals_against int,
+  goal_diff int,
+  form text,
+  description text,
+  primary key (season_id, group_name, team_id)
+);
+create index standings_team_idx on standings (team_id);
+
+create table ai_analyses (
+  id serial primary key,
+  match_id int not null references matches(id) on delete cascade,
+  kind text not null check (kind in ('preview', 'review')),
+  input_hash text not null,
+  status text not null check (status in ('ok', 'rejected', 'failed')),
+  ai_provider text not null,
+  model text not null,
+  content jsonb,
+  note text,
+  data_as_of timestamptz not null,
+  input_tokens int,
+  output_tokens int,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz,
+  unique (match_id, kind, input_hash)
+);
+create index ai_analyses_match_idx on ai_analyses (match_id, kind, created_at desc);
+create index ai_analyses_created_idx on ai_analyses (created_at);
+
+-- Scheduling and leases: one row per job scope ("live", "fixtures:eredivisie", ...).
+create table sync_state (
+  key text primary key,
+  last_attempt_at timestamptz,
+  last_success_at timestamptz,
+  last_error text,
+  consecutive_failures int not null default 0,
+  next_due_at timestamptz,
+  lock_owner text,
+  lock_until timestamptz
+);
+
+create table sync_runs (
   id bigserial primary key,
-  channel_id uuid not null references channels(id) on delete cascade,
-  author_id uuid not null references users(id) on delete cascade,
-  body text not null,
-  created_at timestamptz not null default now(),
-  deleted_at timestamptz,
-  deleted_by uuid references users(id) on delete set null
+  provider text not null,
+  job text not null,
+  trigger text not null,
+  started_at timestamptz not null,
+  finished_at timestamptz,
+  status text not null check (status in ('running', 'success', 'failed', 'skipped')),
+  requests int not null default 0,
+  items int not null default 0,
+  message text
 );
-create index messages_channel_idx on messages (channel_id, id desc);
+create index sync_runs_started_idx on sync_runs (started_at desc);
+create index sync_runs_job_idx on sync_runs (job, started_at desc);
 
-create table contact_requests (
-  id uuid primary key default gen_random_uuid(),
-  from_id uuid not null references users(id) on delete cascade,
-  to_id uuid not null references users(id) on delete cascade,
-  message text not null default '',
-  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'withdrawn')),
-  created_at timestamptz not null default now(),
-  responded_at timestamptz,
-  check (from_id <> to_id)
-);
-create unique index contact_requests_open_idx on contact_requests (from_id, to_id) where status = 'pending';
-
-create table threads (
-  id uuid primary key default gen_random_uuid(),
-  user_a uuid not null references users(id) on delete cascade,
-  user_b uuid not null references users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  check (user_a < user_b),
-  unique (user_a, user_b)
-);
-
-create table thread_messages (
-  id bigserial primary key,
-  thread_id uuid not null references threads(id) on delete cascade,
-  author_id uuid not null references users(id) on delete cascade,
-  body text not null,
-  created_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
-create index thread_messages_thread_idx on thread_messages (thread_id, id desc);
-
--- An invitation for someone outside Cafe. The bearer token itself is never stored.
-create table invites (
-  id uuid primary key default gen_random_uuid(),
-  token_hash text not null unique,
-  organizer_id uuid not null references users(id) on delete cascade,
-  organizer_name text not null,
-  match_name text not null default '',
-  origin text not null default '',
-  message text not null default '',
-  status text not null default 'open' check (status in ('open', 'accepted', 'scheduled', 'declined', 'rejected', 'cancelled')),
-  expires_at timestamptz not null,
-  guest_id uuid references users(id) on delete set null,
-  guest_name text,
-  guest_note text,
-  chosen_at timestamptz,
-  accepted_at timestamptz,
-  date_id uuid,
-  created_at timestamptz not null default now()
-);
-create index invites_organizer_idx on invites (organizer_id, created_at desc);
-
-create table invite_moments (
-  invite_id uuid not null references invites(id) on delete cascade,
-  starts_at timestamptz not null,
-  primary key (invite_id, starts_at)
-);
-
-create table dates (
-  id uuid primary key default gen_random_uuid(),
-  source text not null check (source in ('invite', 'community', 'followup')),
-  invite_id uuid references invites(id) on delete set null,
-  parent_date_id uuid references dates(id) on delete set null,
-  organizer_id uuid references users(id) on delete set null,
-  proposed_by uuid references users(id) on delete set null,
-  scheduled_at timestamptz not null,
-  duration_minutes int not null,
-  status text not null check (status in ('proposed', 'scheduled', 'live', 'ended', 'cancelled', 'declined', 'no_show', 'failed')),
-  started_at timestamptz,
-  ends_at timestamptz,
-  ended_at timestamptz,
-  cancelled_by uuid references users(id) on delete set null,
-  credit_status text not null default 'none' check (credit_status in ('none', 'reserved', 'consumed', 'released')),
-  credit_period_start timestamptz,
-  video_room text,
-  video_url text,
-  room_closed_at timestamptz,
-  presence_checked_at timestamptz,
-  created_at timestamptz not null default now(),
-  check ((started_at is null) = (ends_at is null))
-);
-create index dates_organizer_idx on dates (organizer_id, credit_period_start);
-create index dates_status_idx on dates (status, scheduled_at);
-
-create table date_participants (
-  id uuid primary key default gen_random_uuid(),
-  date_id uuid not null references dates(id) on delete cascade,
-  user_id uuid references users(id) on delete set null,
-  role text not null check (role in ('organizer', 'guest', 'member')),
-  display_name text not null,
-  present_until timestamptz,
-  first_joined_at timestamptz,
-  unique (date_id, user_id)
-);
-create index date_participants_user_idx on date_participants (user_id);
-
--- Confidential: readable by the author and, for aggregate figures, by authorised staff only.
-create table feedback (
-  date_id uuid not null references dates(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
-  comfort text not null check (comfort in ('yes', 'somewhat', 'no')),
-  helped text not null check (helped in ('yes', 'somewhat', 'no')),
-  next text not null check (next in ('meet', 'call', 'no')),
-  created_at timestamptz not null default now(),
-  primary key (date_id, user_id)
-);
-
--- Each shared contact detail is a separate, recorded consent.
-create table contact_shares (
-  id uuid primary key default gen_random_uuid(),
-  date_id uuid not null references dates(id) on delete cascade,
-  from_id uuid not null references users(id) on delete cascade,
-  to_id uuid not null references users(id) on delete cascade,
-  field text not null,
-  value text not null,
-  consent_text text not null,
-  shared_at timestamptz not null default now(),
-  withdrawn_at timestamptz
-);
-create index contact_shares_date_idx on contact_shares (date_id);
-
-create table reports (
-  id uuid primary key default gen_random_uuid(),
-  reporter_id uuid references users(id) on delete set null,
-  target_id uuid references users(id) on delete set null,
-  context text not null check (context in ('message', 'thread_message', 'date', 'profile', 'invite')),
-  context_id text not null,
-  excerpt text not null default '',
-  reason text not null,
-  details text not null default '',
-  status text not null default 'open' check (status in ('open', 'actioned', 'dismissed')),
-  created_at timestamptz not null default now(),
-  handled_by uuid references users(id) on delete set null,
-  handled_at timestamptz,
-  resolution text
-);
-
-create table moderation_actions (
-  id uuid primary key default gen_random_uuid(),
-  actor_id uuid references users(id) on delete set null,
-  target_id uuid references users(id) on delete set null,
-  action text not null,
-  reason text not null,
-  report_id uuid references reports(id) on delete set null,
-  created_at timestamptz not null default now()
-);
-
-create table appeals (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references users(id) on delete cascade,
-  body text not null,
-  status text not null default 'open' check (status in ('open', 'granted', 'rejected')),
-  response text,
-  handled_by uuid references users(id) on delete set null,
-  handled_at timestamptz,
-  created_at timestamptz not null default now()
+create table provider_usage (
+  provider text not null,
+  day date not null,
+  requests int not null default 0,
+  failures int not null default 0,
+  last_status int,
+  rate_remaining int,
+  updated_at timestamptz not null default now(),
+  primary key (provider, day)
 );
 
 create table rate_events (
@@ -268,57 +275,14 @@ create table rate_events (
   created_at timestamptz not null default now()
 );
 create index rate_events_key_idx on rate_events (key, created_at);
-
--- Only used when MAIL_TRANSPORT=outbox (tests and closed previews).
-create table mail_outbox (
-  id bigserial primary key,
-  recipient text not null,
-  subject text not null,
-  body text not null,
-  created_at timestamptz not null default now()
-);
-
-insert into channels (slug, name, description, kind, sort) values
-  ('lounge', 'De lounge', 'Het gezamenlijke gesprek. Schuif aan, zeg hoi.', 'lounge', 0),
-  ('randstad', 'Tafel Randstad', 'Voor wie in of rond de Randstad woont.', 'table', 10),
-  ('noord-oost', 'Tafel Noord & Oost', 'Groningen tot Twente en alles ertussen.', 'table', 20),
-  ('zuid', 'Tafel Zuid', 'Brabant, Limburg, Zeeland en België.', 'table', 30),
-  ('buiten', 'Tafel Buiten & sport', 'Wandelen, fietsen, zwemmen, klimmen.', 'table', 40),
-  ('cultuur', 'Tafel Cultuur', 'Boeken, films, musea en muziek.', 'table', 50);
 `,
   },
   {
-    // Only the server talks to the database, as the table owner. On Supabase the public schema is
-    // also reachable through its REST API with the public anon key: row level security without
-    // policies, plus revoked grants, makes sure nothing is readable that way.
-    // Every later migration that adds a table must enable row level security on it too.
-    name: "0002_lock_down_public_api",
+    // Only the server talks to the database. On Supabase, row level security without policies and
+    // revoked grants make sure nothing is readable through the public REST API.
+    name: "vr_0002_lock_down_public_api",
     sql: `
-alter table users enable row level security;
-alter table login_codes enable row level security;
-alter table sessions enable row level security;
-alter table roles enable row level security;
-alter table profiles enable row level security;
-alter table memberships enable row level security;
-alter table stripe_events enable row level security;
-alter table blocks enable row level security;
-alter table channels enable row level security;
-alter table messages enable row level security;
-alter table contact_requests enable row level security;
-alter table threads enable row level security;
-alter table thread_messages enable row level security;
-alter table invites enable row level security;
-alter table invite_moments enable row level security;
-alter table dates enable row level security;
-alter table date_participants enable row level security;
-alter table feedback enable row level security;
-alter table contact_shares enable row level security;
-alter table reports enable row level security;
-alter table moderation_actions enable row level security;
-alter table appeals enable row level security;
-alter table rate_events enable row level security;
-alter table mail_outbox enable row level security;
-alter table schema_migrations enable row level security;
+${TABLES.map((t) => `alter table ${t} enable row level security;`).join("\n")}
 do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then revoke all on all tables in schema public from anon, authenticated; revoke all on all sequences in schema public from anon, authenticated; revoke all on all functions in schema public from anon, authenticated; alter default privileges in schema public revoke all on tables from anon, authenticated; alter default privileges in schema public revoke all on sequences from anon, authenticated; alter default privileges in schema public revoke all on functions from anon, authenticated; end if; end $$;
 `,
   },

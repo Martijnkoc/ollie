@@ -1,8 +1,11 @@
-import { DATE_MINUTES, LOBBY_MINUTES, TIME_ZONE } from "./config";
+/**
+ * Everything is stored in UTC. Calendar days ("wedstrijden van vandaag") and displayed times are
+ * Dutch wall-clock time, including the switch to and from summer time.
+ */
+export const TIME_ZONE = "Europe/Amsterdam";
 
 const MINUTE = 60_000;
-
-type Parts = { year: number; month: number; day: number; hour: number; minute: number; weekday: number };
+const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const partsFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: TIME_ZONE,
@@ -12,124 +15,115 @@ const partsFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
-  weekday: "short",
+  second: "2-digit",
 });
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function zonedParts(date: Date): Parts {
+function zonedParts(date: Date) {
   const parts = partsFormatter.formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)!.value;
-  return {
-    year: Number(get("year")),
-    month: Number(get("month")),
-    day: Number(get("day")),
-    hour: Number(get("hour")),
-    minute: Number(get("minute")),
-    weekday: WEEKDAYS.indexOf(get("weekday")),
-  };
+  const get = (type: string) => Number(parts.find((p) => p.type === type)!.value);
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute"), second: get("second") };
 }
 
+/** Offset of Dutch time from UTC at instant `ts`, in milliseconds. */
 function offsetAt(ts: number) {
   const p = zonedParts(new Date(ts));
-  const wall = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute);
-  return wall - Math.floor(ts / MINUTE) * MINUTE;
-}
-
-/** Interpret "2026-10-15T20:00" (what <input type="datetime-local"> sends) as Dutch wall-clock time. */
-export function parseLocal(value: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
-  if (!m) return null;
-  const [year, month, day, hour, minute] = m.slice(1).map(Number);
-  const wall = Date.UTC(year, month - 1, day, hour, minute);
-  let ts = wall - offsetAt(wall);
-  ts = wall - offsetAt(ts);
-  const result = new Date(ts);
-  const check = zonedParts(result);
-  // Times that don't exist (the hour skipped when clocks go forward) are rejected.
-  if (check.day !== day || check.hour !== hour || check.minute !== minute) return null;
-  return result;
+  const wall = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return wall - Math.floor(ts / 1000) * 1000;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export function toLocalInput(date: Date) {
+/** "2026-10-17" for the Dutch calendar day that contains `date`. */
+export function localDay(date: Date): string {
   const p = zonedParts(date);
-  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
 }
 
-export function localDay(date: Date) {
-  return toLocalInput(date).slice(0, 10);
+export function isValidDay(value: string): boolean {
+  const m = DAY_RE.exec(value);
+  if (!m) return false;
+  const [y, mo, d] = m.slice(1).map(Number);
+  const probe = new Date(Date.UTC(y, mo - 1, d));
+  return probe.getUTCFullYear() === y && probe.getUTCMonth() === mo - 1 && probe.getUTCDate() === d && y >= 2000 && y <= 2100;
 }
 
-const dayFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
-const shortFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
-const timeFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" });
-
-export function formatTime(date: Date) {
-  return timeFormatter.format(date);
+/** The UTC instant at which Dutch local midnight of `day` begins. */
+export function startOfLocalDay(day: string): Date {
+  const m = DAY_RE.exec(day);
+  if (!m) throw new Error(`Invalid day: ${day}`);
+  const [y, mo, d] = m.slice(1).map(Number);
+  const wall = Date.UTC(y, mo - 1, d, 0, 0, 0);
+  let ts = wall - offsetAt(wall);
+  ts = wall - offsetAt(ts);
+  return new Date(ts);
 }
 
-/** "donderdag 15 oktober om 20:00" */
-export function formatMoment(date: Date) {
-  return `${dayFormatter.format(date)} om ${formatTime(date)}`;
+/** [start, end) of a Dutch calendar day in UTC. Days are 23 or 25 hours long around DST changes. */
+export function localDayRange(day: string): { start: Date; end: Date } {
+  return { start: startOfLocalDay(day), end: startOfLocalDay(addDays(day, 1)) };
 }
 
-/** "do 15 okt, 20:00" */
-export function formatShort(date: Date) {
-  return `${shortFormatter.format(date)}, ${formatTime(date)}`;
-}
-
-const relative = new Intl.RelativeTimeFormat("nl-NL", { numeric: "auto" });
-
-export function formatRelative(date: Date, now = new Date()) {
-  const diff = date.getTime() - now.getTime();
-  const abs = Math.abs(diff);
-  if (abs < 60 * MINUTE) return relative.format(Math.round(diff / MINUTE), "minute");
-  if (abs < 36 * 60 * MINUTE) return relative.format(Math.round(diff / (60 * MINUTE)), "hour");
-  return relative.format(Math.round(diff / (24 * 60 * MINUTE)), "day");
-}
-
-export type Phase = "upcoming" | "lobby" | "live" | "ended";
-
-export function endsAt(startsAt: Date, minutes = DATE_MINUTES) {
-  return new Date(startsAt.getTime() + minutes * MINUTE);
-}
-
-export function opensAt(startsAt: Date) {
-  return new Date(startsAt.getTime() - LOBBY_MINUTES * MINUTE);
-}
-
-export function datePhase(startsAt: Date, now = new Date(), minutes = DATE_MINUTES): Phase {
-  const t = now.getTime();
-  if (t < opensAt(startsAt).getTime()) return "upcoming";
-  if (t < startsAt.getTime()) return "lobby";
-  if (t < endsAt(startsAt, minutes).getTime()) return "live";
-  return "ended";
+export function addDays(day: string, n: number): string {
+  const m = DAY_RE.exec(day);
+  if (!m) throw new Error(`Invalid day: ${day}`);
+  const [y, mo, d] = m.slice(1).map(Number);
+  const t = new Date(Date.UTC(y, mo - 1, d + n));
+  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
 }
 
 export function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * MINUTE);
 }
 
-export function ageOn(birthDate: string | Date, now = new Date()) {
-  const b = typeof birthDate === "string" ? birthDate : localDay(birthDate);
-  const [by, bm, bd] = b.slice(0, 10).split("-").map(Number);
-  const p = zonedParts(now);
-  let age = p.year - by;
-  if (p.month < bm || (p.month === bm && p.day < bd)) age -= 1;
-  return age;
+const timeFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" });
+const timeSecondsFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const longDayFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
+const longDayYearFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const shortDayFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
+const dateFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
+
+/** "20:45" in Dutch time. */
+export function formatTime(date: Date | string) {
+  return timeFormatter.format(new Date(date));
 }
 
-/** Combine a calendar day ("2026-10-15") with a wall-clock time ("20:00") in Dutch time. */
-export function atLocalTime(day: string, time: string) {
-  return parseLocal(`${day}T${time}`);
+export function formatTimeSeconds(date: Date | string) {
+  return timeSecondsFormatter.format(new Date(date));
 }
 
-/**
- * Earliest value for a datetime-local picker with step=900. Browsers count steps
- * from `min`, so it must sit on a quarter hour or 20:00 would be rejected.
- */
-export function earliestMomentInput(leadMinutes: number, now = new Date()) {
-  const quarter = 15 * MINUTE;
-  return toLocalInput(new Date(Math.ceil((now.getTime() + leadMinutes * MINUTE) / quarter) * quarter));
+/** "zaterdag 17 oktober" for a calendar day string. */
+export function formatDayLong(day: string, withYear = false) {
+  // Noon avoids any DST edge when formatting a calendar day.
+  const noon = new Date(startOfLocalDay(day).getTime() + 12 * 60 * MINUTE);
+  return (withYear ? longDayYearFormatter : longDayFormatter).format(noon);
+}
+
+/** "za 17 okt" */
+export function formatDayShort(day: string) {
+  const noon = new Date(startOfLocalDay(day).getTime() + 12 * 60 * MINUTE);
+  return shortDayFormatter.format(noon);
+}
+
+/** "17 okt 2026" */
+export function formatDate(date: Date | string) {
+  return dateFormatter.format(new Date(date));
+}
+
+const relative = new Intl.RelativeTimeFormat("nl-NL", { numeric: "auto" });
+
+/** "12 seconden geleden", "over 3 uur". */
+export function formatRelative(date: Date | string, now = new Date()) {
+  const diff = new Date(date).getTime() - now.getTime();
+  const abs = Math.abs(diff);
+  if (abs < MINUTE) return relative.format(Math.round(diff / 1000), "second");
+  if (abs < 60 * MINUTE) return relative.format(Math.round(diff / MINUTE), "minute");
+  if (abs < 36 * 60 * MINUTE) return relative.format(Math.round(diff / (60 * MINUTE)), "hour");
+  return relative.format(Math.round(diff / (24 * 60 * MINUTE)), "day");
+}
+
+/** Season label "2026/27" from a provider name such as "2026/2027". */
+export function shortSeasonName(name: string) {
+  const m = /^(\d{4})\s*[/-]\s*(\d{2,4})$/.exec(name.trim());
+  if (!m) return name;
+  return `${m[1]}/${m[2].slice(-2)}`;
 }

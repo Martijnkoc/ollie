@@ -1,5 +1,5 @@
 {
-  "name": "ollie",
+  "name": "voetbalradar",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,19 +11,18 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:migrate": "node --experimental-strip-types scripts/migrate.ts",
-    "admin:grant": "node --experimental-strip-types scripts/grant-admin.ts",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.ts\""
+    "sync": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/sync.ts",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.ts\""
   },
   "dependencies": {
-    "@daily-co/daily-js": "^0.93.0",
+    "@anthropic-ai/sdk": "^0.135.0",
     "@electric-sql/pglite": "^0.5.9",
     "next": "^16.4.0",
     "postgres": "^3.4.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1",
-    "stripe": "^23.0.0",
     "zod": "^4.6.6"
   },
   "devDependencies": {
@@ -33,7 +32,11 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

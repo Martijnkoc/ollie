@@ -7,7 +7,7 @@ export interface Db {
   transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>;
 }
 
-type Global = typeof globalThis & { __ollieDb?: Promise<Db> };
+type Global = typeof globalThis & { __voetbalradarDb?: Promise<Db> };
 const g = globalThis as Global;
 
 /**
@@ -16,13 +16,13 @@ const g = globalThis as Global;
  * `npm run dev` works with zero setup.
  */
 export function getDb(): Promise<Db> {
-  if (!g.__ollieDb) {
-    g.__ollieDb = connect().catch((err) => {
-      g.__ollieDb = undefined;
+  if (!g.__voetbalradarDb) {
+    g.__voetbalradarDb = connect().catch((err) => {
+      g.__voetbalradarDb = undefined;
       throw err;
     });
   }
-  return g.__ollieDb;
+  return g.__voetbalradarDb;
 }
 
 async function connect(): Promise<Db> {
@@ -74,7 +74,7 @@ export async function migrate(db: Db) {
   await db.query(`create table if not exists schema_migrations (name text primary key, applied_at timestamptz not null default now())`);
   await db.transaction(async (tx) => {
     // Serialise concurrent cold starts.
-    await tx.query(`select pg_advisory_xact_lock(4242001)`);
+    await tx.query(`select pg_advisory_xact_lock(7007001)`);
     const done = new Set((await tx.query<{ name: string }>(`select name from schema_migrations`)).map((r) => r.name));
     for (const m of MIGRATIONS) {
       if (done.has(m.name)) continue;
