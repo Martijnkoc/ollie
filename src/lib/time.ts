@@ -76,9 +76,20 @@ export function addMinutes(date: Date, minutes: number) {
 }
 
 const timeFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" });
-const timeSecondsFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const timeSecondsFormatter = new Intl.DateTimeFormat("nl-NL", {
+  timeZone: TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
 const longDayFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
-const longDayYearFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const longDayYearFormatter = new Intl.DateTimeFormat("nl-NL", {
+  timeZone: TIME_ZONE,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 const shortDayFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
 const dateFormatter = new Intl.DateTimeFormat("nl-NL", { timeZone: TIME_ZONE, day: "numeric", month: "short", year: "numeric" });
 

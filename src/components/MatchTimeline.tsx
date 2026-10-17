@@ -70,7 +70,8 @@ export function MatchTimeline({ events, homeName, awayName }: { events: MatchEve
   return (
     <ol className="timeline" aria-label={`Gebeurtenissen: ${homeName} links, ${awayName} rechts`}>
       {events.map((e, i) => {
-        const showBreak = i > 0 && (events[i - 1].minute ?? 0) <= 45 && (e.minute ?? 0) > 45 && !(events[i - 1].minute === 45 && events[i - 1].minuteExtra);
+        const showBreak =
+          i > 0 && (events[i - 1].minute ?? 0) <= 45 && (e.minute ?? 0) > 45 && !(events[i - 1].minute === 45 && events[i - 1].minuteExtra);
         return [
           showBreak ? (
             <li key={`b${i}`} style={{ display: "block", padding: 0 }}>

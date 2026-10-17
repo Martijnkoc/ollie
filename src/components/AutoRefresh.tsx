@@ -47,7 +47,17 @@ export function AutoRefresh({ matchId, version, seconds }: { matchId: number; ve
     };
   }, [matchId, seconds, router, failed]);
 
-  if (offline) return <p className="notice notice-warn small" role="status">Je bent offline; deze stand wordt niet bijgewerkt.</p>;
-  if (failed > 1) return <p className="notice notice-warn small" role="status">Verversen lukt even niet; wat je ziet is mogelijk niet actueel.</p>;
+  if (offline)
+    return (
+      <p className="notice notice-warn small" role="status">
+        Je bent offline; deze stand wordt niet bijgewerkt.
+      </p>
+    );
+  if (failed > 1)
+    return (
+      <p className="notice notice-warn small" role="status">
+        Verversen lukt even niet; wat je ziet is mogelijk niet actueel.
+      </p>
+    );
   return null;
 }

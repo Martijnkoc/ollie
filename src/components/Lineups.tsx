@@ -41,14 +41,28 @@ function Column({ title, lineup }: { title: string; lineup: LineupView | null })
               </ol>
             </>
           )}
-          {lineup.coachName && <p className="tiny dim" style={{ marginTop: 10 }}>Trainer: {lineup.coachName}</p>}
+          {lineup.coachName && (
+            <p className="tiny dim" style={{ marginTop: 10 }}>
+              Trainer: {lineup.coachName}
+            </p>
+          )}
         </>
       )}
     </div>
   );
 }
 
-export function Lineups({ home, away, homeName, awayName }: { home: LineupView | null; away: LineupView | null; homeName: string; awayName: string }) {
+export function Lineups({
+  home,
+  away,
+  homeName,
+  awayName,
+}: {
+  home: LineupView | null;
+  away: LineupView | null;
+  homeName: string;
+  awayName: string;
+}) {
   return (
     <div className="lineups">
       <Column title={homeName} lineup={home} />

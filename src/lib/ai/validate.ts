@@ -6,6 +6,7 @@ export type Validation = { ok: true; analysis: Analysis } | { ok: false; reason:
 const ALWAYS_ALLOWED = new Set(["0", "1", "2", "3", "11", "45", "90"]);
 
 const NUMBER_RE = /\d+(?:[.,]\d+)?/g;
+const ISO_DATE_RE = /^(\d{4})-\d{2}-\d{2}(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 
 /** Every number found anywhere in the input (values, strings, array lengths). */
 export function numbersIn(value: unknown, out = new Set<string>()): Set<string> {
@@ -17,11 +18,16 @@ export function numbersIn(value: unknown, out = new Set<string>()): Set<string> 
     return out;
   }
   if (typeof value === "string") {
+    // Dates and times only contribute their year: otherwise every number from 1 to 31 would
+    // count as "in the data" and the check would mean little.
+    const date = ISO_DATE_RE.exec(value);
+    if (date) {
+      out.add(date[1]);
+      return out;
+    }
     for (const m of value.match(NUMBER_RE) ?? []) {
       out.add(m);
       out.add(m.replace(",", "."));
-      // Dates such as 2026-10-17 also allow "17" and "10".
-      for (const part of m.split(/[.,]/)) out.add(String(Number(part)));
     }
     return out;
   }
@@ -59,7 +65,8 @@ export function validateAnalysis(raw: unknown, input: unknown, kind: AnalysisKin
   ];
   for (const { text, where } of checked) {
     for (const n of text.match(NUMBER_RE) ?? []) {
-      if (!allowed.has(n) && !allowed.has(n.replace(",", "."))) return { ok: false, reason: `Getal "${n}" in "${where}" komt niet voor in de gegevens` };
+      if (!allowed.has(n) && !allowed.has(n.replace(",", ".")))
+        return { ok: false, reason: `Getal "${n}" in "${where}" komt niet voor in de gegevens` };
     }
   }
 
@@ -72,6 +79,7 @@ export function validateAnalysis(raw: unknown, input: unknown, kind: AnalysisKin
   if (BETTING.test(everything)) return { ok: false, reason: "Bevat gok- of weddenschaptaal" };
   if (PROBABILITY.test(everything)) return { ok: false, reason: "Bevat een kanspercentage" };
   if (kind === "preview" && CERTAINTY.test(everything)) return { ok: false, reason: "Presenteert een voorspelling als zekerheid" };
-  if (kind === "preview" && analysis.uncertainties.length === 0) return { ok: false, reason: "Een voorbeschouwing moet onzekerheden benoemen" };
+  if (kind === "preview" && analysis.uncertainties.length === 0)
+    return { ok: false, reason: "Een voorbeschouwing moet onzekerheden benoemen" };
   return { ok: true, analysis };
 }

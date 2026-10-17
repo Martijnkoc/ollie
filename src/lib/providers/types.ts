@@ -2,9 +2,7 @@ import type { CatalogCompetition } from "@/lib/football/catalog";
 import type { ProviderCompetition, ProviderMatch, ProviderStanding, ProviderTeam } from "@/lib/football/model";
 import type { RequestRecord } from "./http";
 
-export type CompetitionLookup =
-  | { status: "available"; competition: ProviderCompetition }
-  | { status: "unavailable"; note: string };
+export type CompetitionLookup = { status: "available"; competition: ProviderCompetition } | { status: "unavailable"; note: string };
 
 /**
  * What the synchronisation needs from a football data source. Implementations translate their

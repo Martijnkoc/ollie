@@ -28,7 +28,11 @@ export function MatchRow({ match, showDate = false }: { match: MatchSummary; sho
         </span>
         {showDate && <span className="state">{showDate}</span>}
         {!showDate && category === "finished" && clock !== kickoff && <span className="state">{kickoff}</span>}
-        {match.freshness === "stale" && <span className="stale-flag" title="Deze gegevens zijn mogelijk niet actueel">verouderd?</span>}
+        {match.freshness === "stale" && (
+          <span className="stale-flag" title="Deze gegevens zijn mogelijk niet actueel">
+            verouderd?
+          </span>
+        )}
       </div>
       <div className={`team home${winner > 0 ? " winner" : winner < 0 ? " loser" : ""}`}>
         <span className="team-name">{match.home.name}</span>

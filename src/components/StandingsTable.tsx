@@ -3,13 +3,21 @@ import type { StandingRow } from "@/lib/football/queries";
 import { teamPath } from "@/lib/slug";
 import { TeamCrest } from "./TeamCrest";
 
-const na = (v: number | null) => (v === null ? <span className="na" title="Niet geleverd door de databron">–</span> : v);
+const na = (v: number | null) =>
+  v === null ? (
+    <span className="na" title="Niet geleverd door de databron">
+      –
+    </span>
+  ) : (
+    v
+  );
 
 export function FormBadges({ form }: { form: string | null }) {
   if (!form) return <span className="na">–</span>;
   const words: Record<string, string> = { W: "winst", G: "gelijk", V: "verlies" };
   return (
-    <span className="form" aria-label={`Vorm: ${[...form].map((c) => words[c] ?? c).join(", ")}`}>
+    <span className="form">
+      <span className="visually-hidden">Vorm: {[...form].map((c) => words[c] ?? c).join(", ")}</span>
       {[...form].map((c, i) => (
         <span key={i} className={c} aria-hidden="true">
           {c}
@@ -23,7 +31,17 @@ export function FormBadges({ form }: { form: string | null }) {
  * Standings as supplied by the data source. We do not compute or reorder them ourselves;
  * a value the source did not send is shown as "–", never as 0.
  */
-export function StandingsTable({ rows, highlight = [], caption, compact = false }: { rows: StandingRow[]; highlight?: number[]; caption?: string; compact?: boolean }) {
+export function StandingsTable({
+  rows,
+  highlight = [],
+  caption,
+  compact = false,
+}: {
+  rows: StandingRow[];
+  highlight?: number[];
+  caption?: string;
+  compact?: boolean;
+}) {
   const groups = [...new Set(rows.map((r) => r.group))];
   return (
     <div className="stack-sm">

@@ -7,15 +7,7 @@
  */
 
 export type ProviderErrorKind =
-  | "auth"
-  | "forbidden"
-  | "not_found"
-  | "bad_request"
-  | "rate_limited"
-  | "server"
-  | "timeout"
-  | "network"
-  | "invalid_response";
+  "auth" | "forbidden" | "not_found" | "bad_request" | "rate_limited" | "server" | "timeout" | "network" | "invalid_response";
 
 export class ProviderError extends Error {
   constructor(
@@ -82,7 +74,11 @@ function safeMessage(body: unknown): string | undefined {
   return raw?.replace(/[A-Za-z0-9]{32,}/g, "[…]").slice(0, 200);
 }
 
-export async function getJson(url: URL, headers: Record<string, string>, options: HttpOptions = {}): Promise<{ status: number; body: unknown }> {
+export async function getJson(
+  url: URL,
+  headers: Record<string, string>,
+  options: HttpOptions = {},
+): Promise<{ status: number; body: unknown }> {
   const { timeoutMs = 10_000, retries = 2, baseDelayMs = 400, maxRetryAfterMs = 8_000, fetchImpl = fetch, sleep = defaultSleep } = options;
   const path = url.pathname;
   let lastError: ProviderError | undefined;
@@ -102,7 +98,10 @@ export async function getJson(url: URL, headers: Record<string, string>, options
       });
     } catch (err) {
       const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
-      lastError = new ProviderError(timedOut ? `Time-out na ${timeoutMs} ms` : "Netwerkfout bij de databron", timedOut ? "timeout" : "network");
+      lastError = new ProviderError(
+        timedOut ? `Time-out na ${timeoutMs} ms` : "Netwerkfout bij de databron",
+        timedOut ? "timeout" : "network",
+      );
       options.onRequest?.({ path, status: null, ok: false, durationMs: Date.now() - started, rateRemaining: null });
       continue;
     }

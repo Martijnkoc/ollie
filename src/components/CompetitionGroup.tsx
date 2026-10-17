@@ -4,7 +4,15 @@ import { competitionPath } from "@/lib/slug";
 import { FavoriteToggle } from "./FavoriteToggle";
 import { MatchRow } from "./MatchRow";
 
-export function CompetitionGroup({ competition, matches, headingLevel = 2 }: { competition: CompetitionRef; matches: MatchSummary[]; headingLevel?: 2 | 3 }) {
+export function CompetitionGroup({
+  competition,
+  matches,
+  headingLevel = 2,
+}: {
+  competition: CompetitionRef;
+  matches: MatchSummary[];
+  headingLevel?: 2 | 3;
+}) {
   const H = headingLevel === 2 ? "h2" : "h3";
   return (
     <section className="group" aria-labelledby={`grp-${competition.id}`}>

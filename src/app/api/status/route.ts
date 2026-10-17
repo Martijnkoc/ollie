@@ -18,5 +18,15 @@ export async function GET() {
     }
   }
   const healthy = cfg.dataMode !== "unconfigured" && database === "ok" && !status.degraded;
-  return privateJson({ healthy, mode: cfg.dataMode, database, lastSync: status.lastSync, lastLiveSync: status.lastLiveSync, failingJobs: status.failingJobs }, healthy ? 200 : 503);
+  return privateJson(
+    {
+      healthy,
+      mode: cfg.dataMode,
+      database,
+      lastSync: status.lastSync,
+      lastLiveSync: status.lastLiveSync,
+      failingJobs: status.failingJobs,
+    },
+    healthy ? 200 : 503,
+  );
 }

@@ -28,7 +28,14 @@ export async function POST(req: Request) {
     }
     const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return privateJson({ error: "Ongeldige invoer" }, 400);
-    const report = await runDueJobs({ db, cfg, trigger: "admin", only: parsed.data.only, force: parsed.data.force ?? false, deadlineMs: 50_000 });
+    const report = await runDueJobs({
+      db,
+      cfg,
+      trigger: "admin",
+      only: parsed.data.only,
+      force: parsed.data.force ?? false,
+      deadlineMs: 50_000,
+    });
     return privateJson(report);
   } catch (err) {
     return serverError(err, "admin/sync");

@@ -8,7 +8,8 @@ import { localDay } from "@/lib/time";
 
 export const metadata: Metadata = {
   title: { absolute: "Voetbalradar · Livescores en wedstrijden van vandaag" },
-  description: "Alle wedstrijden van vandaag: live scores, uitslagen en het programma van de Eredivisie, Europese topcompetities, Champions League en Europa League.",
+  description:
+    "Alle wedstrijden van vandaag: live scores, uitslagen en het programma van de Eredivisie, Europese topcompetities, Champions League en Europa League.",
   alternates: { canonical: "/" },
 };
 
@@ -18,7 +19,17 @@ export default async function HomePage() {
   const cfg = config();
   return (
     <>
-      {isIndexable(cfg) && <JsonLd data={{ "@context": "https://schema.org", "@type": "WebSite", name: "Voetbalradar", url: absoluteUrl(cfg, "/"), inLanguage: "nl-NL" }} />}
+      {isIndexable(cfg) && (
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Voetbalradar",
+            url: absoluteUrl(cfg, "/"),
+            inLanguage: "nl-NL",
+          }}
+        />
+      )}
       <DayView read={read} day={today} today={today} />
     </>
   );

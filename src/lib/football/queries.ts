@@ -198,12 +198,27 @@ export interface CompetitionPage {
 
 /** A competition with one of its seasons: the requested one, or the current one. */
 export async function getCompetitionPage(ctx: ReadContext, slug: string, seasonSlug?: string): Promise<CompetitionPage | null> {
-  const [c] = await ctx.db.query<{ id: number; slug: string; name: string; country: string; country_code: string | null; kind: "league" | "cup"; current_season_id: number | null }>(
+  const [c] = await ctx.db.query<{
+    id: number;
+    slug: string;
+    name: string;
+    country: string;
+    country_code: string | null;
+    kind: "league" | "cup";
+    current_season_id: number | null;
+  }>(
     `select id, slug, name, country, country_code, kind, current_season_id from competitions where provider = $1 and slug = $2 and availability = 'available'`,
     [ctx.provider, slug],
   );
   if (!c) return null;
-  const seasonRows = await ctx.db.query<{ id: number; name: string; slug: string; is_current: boolean; standings_available: boolean | null; standings_synced_at: Date | null }>(
+  const seasonRows = await ctx.db.query<{
+    id: number;
+    name: string;
+    slug: string;
+    is_current: boolean;
+    standings_available: boolean | null;
+    standings_synced_at: Date | null;
+  }>(
     `select id, name, slug, is_current, standings_available, standings_synced_at from seasons s
      where competition_id = $1 and exists (select 1 from matches m where m.season_id = s.id)
      order by start_year desc`,
@@ -219,19 +234,38 @@ export async function getCompetitionPage(ctx: ReadContext, slug: string, seasonS
   }));
   const season = seasonSlug ? seasons.find((s) => s.slug === seasonSlug) : (seasons.find((s) => s.isCurrent) ?? seasons[0]);
   if (!season) return null;
-  return { competition: { id: c.id, slug: c.slug, name: c.name, country: c.country, countryCode: c.country_code, kind: c.kind }, seasons, season };
+  return {
+    competition: { id: c.id, slug: c.slug, name: c.name, country: c.country, countryCode: c.country_code, kind: c.kind },
+    seasons,
+    season,
+  };
 }
 
 export async function getSeasonMatches(ctx: ReadContext, seasonId: number, which: "results" | "fixtures" | "all") {
-  if (which === "results") return matches(ctx, `m.season_id = $2 and (m.status = any($3::text[]) or m.status in ('abandoned', 'suspended'))`, [seasonId, FINISHED], "m.kickoff_at desc, m.id", 1000);
+  if (which === "results")
+    return matches(
+      ctx,
+      `m.season_id = $2 and (m.status = any($3::text[]) or m.status in ('abandoned', 'suspended'))`,
+      [seasonId, FINISHED],
+      "m.kickoff_at desc, m.id",
+      1000,
+    );
   if (which === "fixtures")
-    return matches(ctx, `m.season_id = $2 and (m.status = any($3::text[]) or m.status = any($4::text[]) or m.status in ('postponed', 'cancelled'))`, [seasonId, UPCOMING, LIVE], "m.kickoff_at, m.id", 1000);
+    return matches(
+      ctx,
+      `m.season_id = $2 and (m.status = any($3::text[]) or m.status = any($4::text[]) or m.status in ('postponed', 'cancelled'))`,
+      [seasonId, UPCOMING, LIVE],
+      "m.kickoff_at, m.id",
+      1000,
+    );
   return matches(ctx, `m.season_id = $2`, [seasonId], "m.kickoff_at, m.id", 1000);
 }
 
 /** The round in play: the round of the next unfinished match, or of the last match. */
 export function currentRound(list: MatchSummary[], now: Date): string | null {
-  const next = list.find((m) => (isUpcoming(m.status) || isLive(m.status)) && new Date(m.kickoffAt).getTime() > now.getTime() - 3 * 3600_000);
+  const next = list.find(
+    (m) => (isUpcoming(m.status) || isLive(m.status)) && new Date(m.kickoffAt).getTime() > now.getTime() - 3 * 3600_000,
+  );
   return (next ?? list[list.length - 1])?.roundName ?? null;
 }
 
@@ -296,7 +330,14 @@ export async function getStandings(ctx: ReadContext, seasonId: number): Promise<
 /* ----------------------------------------------------------------------------------------- */
 
 export interface TeamPage {
-  team: TeamRef & { code: string | null; country: string | null; founded: number | null; venueName: string | null; venueCity: string | null; isPlaceholder: boolean };
+  team: TeamRef & {
+    code: string | null;
+    country: string | null;
+    founded: number | null;
+    venueName: string | null;
+    venueCity: string | null;
+    isPlaceholder: boolean;
+  };
   competitions: (CompetitionRef & { seasonId: number; seasonName: string })[];
   recent: MatchSummary[];
   upcoming: MatchSummary[];
@@ -317,9 +358,20 @@ export async function getTeamPage(ctx: ReadContext, id: number): Promise<TeamPag
     venue_name: string | null;
     venue_city: string | null;
     is_placeholder: boolean;
-  }>(`select id, name, short_name, slug, logo_url, code, country, founded, venue_name, venue_city, is_placeholder from teams where provider = $1 and id = $2`, [ctx.provider, id]);
+  }>(
+    `select id, name, short_name, slug, logo_url, code, country, founded, venue_name, venue_city, is_placeholder from teams where provider = $1 and id = $2`,
+    [ctx.provider, id],
+  );
   if (!t) return null;
-  const comps = await ctx.db.query<{ id: number; slug: string; name: string; country: string; country_code: string | null; season_id: number; season_name: string }>(
+  const comps = await ctx.db.query<{
+    id: number;
+    slug: string;
+    name: string;
+    country: string;
+    country_code: string | null;
+    season_id: number;
+    season_name: string;
+  }>(
     `select distinct c.id, c.slug, c.name, c.country, c.country_code, c.sort_order, s.id as season_id, s.name as season_name
      from matches m join competitions c on c.id = m.competition_id join seasons s on s.id = m.season_id
      where m.provider = $1 and (m.home_team_id = $2 or m.away_team_id = $2) and s.is_current and c.availability = 'available'
@@ -328,14 +380,24 @@ export async function getTeamPage(ctx: ReadContext, id: number): Promise<TeamPag
   );
   const own = `(m.home_team_id = $2 or m.away_team_id = $2)`;
   const recent = await matches(ctx, `${own} and m.status = any($3::text[])`, [id, [...FINISHED, "abandoned"]], "m.kickoff_at desc", 10);
-  const upcoming = await matches(ctx, `${own} and (m.status = any($3::text[]) or m.status = 'postponed') and m.kickoff_at > $4`, [id, UPCOMING, new Date(ctx.now.getTime() - 3 * 3600_000)], "m.kickoff_at", 10);
+  const upcoming = await matches(
+    ctx,
+    `${own} and (m.status = any($3::text[]) or m.status = 'postponed') and m.kickoff_at > $4`,
+    [id, UPCOMING, new Date(ctx.now.getTime() - 3 * 3600_000)],
+    "m.kickoff_at",
+    10,
+  );
   const live = await matches(ctx, `${own} and m.status = any($3::text[])`, [id, LIVE], "m.kickoff_at", 5);
   const standings = [];
   for (const c of comps) {
     const rows = await getStandings(ctx, c.season_id);
     const groups = new Set(rows.filter((r) => r.team.id === id).map((r) => r.group));
     if (groups.size > 0) {
-      standings.push({ competition: { id: c.id, slug: c.slug, name: c.name, country: c.country, countryCode: c.country_code }, seasonName: c.season_name, rows: rows.filter((r) => groups.has(r.group)) });
+      standings.push({
+        competition: { id: c.id, slug: c.slug, name: c.name, country: c.country, countryCode: c.country_code },
+        seasonName: c.season_name,
+        rows: rows.filter((r) => groups.has(r.group)),
+      });
     }
   }
   return {
@@ -352,7 +414,15 @@ export async function getTeamPage(ctx: ReadContext, id: number): Promise<TeamPag
       venueCity: t.venue_city,
       isPlaceholder: t.is_placeholder,
     },
-    competitions: comps.map((c) => ({ id: c.id, slug: c.slug, name: c.name, country: c.country, countryCode: c.country_code, seasonId: c.season_id, seasonName: c.season_name })),
+    competitions: comps.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.name,
+      country: c.country,
+      countryCode: c.country_code,
+      seasonId: c.season_id,
+      seasonName: c.season_name,
+    })),
     recent,
     upcoming,
     live,
@@ -407,7 +477,19 @@ export interface MatchDetail {
 }
 
 export async function getMatchDetail(ctx: ReadContext, id: number): Promise<MatchDetail | null> {
-  const [row] = await ctx.db.query<MatchRow & { season_name: string; season_slug: string; is_current: boolean; venue_name: string | null; venue_city: string | null; referee: string | null; et_home: number | null; et_away: number | null; details_synced_at: Date | null }>(
+  const [row] = await ctx.db.query<
+    MatchRow & {
+      season_name: string;
+      season_slug: string;
+      is_current: boolean;
+      venue_name: string | null;
+      venue_city: string | null;
+      referee: string | null;
+      et_home: number | null;
+      et_away: number | null;
+      details_synced_at: Date | null;
+    }
+  >(
     `${MATCH_SELECT.replace("from matches m", ", s.name as season_name, s.slug as season_slug, s.is_current, m.venue_name, m.venue_city, m.referee, m.et_home, m.et_away, m.details_synced_at\n  from matches m")}
      join seasons s on s.id = m.season_id
      where m.provider = $1 and m.id = $2 and c.availability = 'available'`,
@@ -416,23 +498,46 @@ export async function getMatchDetail(ctx: ReadContext, id: number): Promise<Matc
   if (!row) return null;
   const match = toSummary(row, ctx);
 
-  const events = await ctx.db.query<{ minute: number | null; minute_extra: number | null; side: "home" | "away" | null; type: EventType; player_name: string | null; related_name: string | null; detail: string | null; score_after: string | null }>(
+  const events = await ctx.db.query<{
+    minute: number | null;
+    minute_extra: number | null;
+    side: "home" | "away" | null;
+    type: EventType;
+    player_name: string | null;
+    related_name: string | null;
+    detail: string | null;
+    score_after: string | null;
+  }>(
     `select minute, minute_extra, side, type, player_name, related_name, detail, score_after from match_events where match_id = $1 order by seq`,
     [id],
   );
-  const lineupRows = await ctx.db.query<{ side: "home" | "away"; formation: string | null; coach_name: string | null }>(`select side, formation, coach_name from match_lineups where match_id = $1`, [id]);
-  const players = await ctx.db.query<{ side: "home" | "away"; is_starter: boolean; name: string; number: number | null; position: string | null }>(
-    `select side, is_starter, name, number, position from match_lineup_players where match_id = $1 order by side, sort`,
+  const lineupRows = await ctx.db.query<{ side: "home" | "away"; formation: string | null; coach_name: string | null }>(
+    `select side, formation, coach_name from match_lineups where match_id = $1`,
     [id],
   );
+  const players = await ctx.db.query<{
+    side: "home" | "away";
+    is_starter: boolean;
+    name: string;
+    number: number | null;
+    position: string | null;
+  }>(`select side, is_starter, name, number, position from match_lineup_players where match_id = $1 order by side, sort`, [id]);
   const lineup = (side: "home" | "away"): LineupView | null => {
     const l = lineupRows.find((x) => x.side === side);
     if (!l) return null;
     const mine = players.filter((p) => p.side === side);
     const strip = (p: (typeof mine)[number]) => ({ name: p.name, number: p.number, position: p.position });
-    return { formation: l.formation, coachName: l.coach_name, starters: mine.filter((p) => p.is_starter).map(strip), substitutes: mine.filter((p) => !p.is_starter).map(strip) };
+    return {
+      formation: l.formation,
+      coachName: l.coach_name,
+      starters: mine.filter((p) => p.is_starter).map(strip),
+      substitutes: mine.filter((p) => !p.is_starter).map(strip),
+    };
   };
-  const statRows = await ctx.db.query<{ side: "home" | "away"; key: string; value: string | number | null }>(`select side, key, value from match_statistics where match_id = $1`, [id]);
+  const statRows = await ctx.db.query<{ side: "home" | "away"; key: string; value: string | number | null }>(
+    `select side, key, value from match_statistics where match_id = $1`,
+    [id],
+  );
   let statistics: StatView[] | null = null;
   if (statRows.length > 0) {
     statistics = STAT_KEYS.filter((k) => statRows.some((r) => r.key === k)).map((key) => {
@@ -446,7 +551,8 @@ export async function getMatchDetail(ctx: ReadContext, id: number): Promise<Matc
 
   const kickoff = new Date(row.kickoff_at);
   const before = `m.kickoff_at < $3 and m.status = any($4::text[])`;
-  const recentOf = (teamId: number) => matches(ctx, `(m.home_team_id = $2 or m.away_team_id = $2) and ${before}`, [teamId, kickoff, FINISHED], "m.kickoff_at desc", 5);
+  const recentOf = (teamId: number) =>
+    matches(ctx, `(m.home_team_id = $2 or m.away_team_id = $2) and ${before}`, [teamId, kickoff, FINISHED], "m.kickoff_at desc", 5);
   const headToHead = await matches(
     ctx,
     `((m.home_team_id = $2 and m.away_team_id = $5) or (m.home_team_id = $5 and m.away_team_id = $2)) and ${before}`,
@@ -521,10 +627,20 @@ export async function getSearchIndex(ctx: ReadContext): Promise<SearchEntry[]> {
 /** Upcoming, live and recent matches of a visitor's favourite teams and competitions. */
 export async function getFavoritesMatches(ctx: ReadContext, teamIds: number[], competitionIds: number[]) {
   const teams = teamIds.length
-    ? (await ctx.db.query<{ id: number; name: string; slug: string }>(`select id, name, slug from teams where provider = $1 and id = any($2::int[]) order by name`, [ctx.provider, teamIds])).map((t) => ({ id: t.id, name: t.name, path: teamPath(t) }))
+    ? (
+        await ctx.db.query<{ id: number; name: string; slug: string }>(
+          `select id, name, slug from teams where provider = $1 and id = any($2::int[]) order by name`,
+          [ctx.provider, teamIds],
+        )
+      ).map((t) => ({ id: t.id, name: t.name, path: teamPath(t) }))
     : [];
   const competitions = competitionIds.length
-    ? (await ctx.db.query<{ id: number; name: string; slug: string }>(`select id, name, slug from competitions where provider = $1 and id = any($2::int[]) order by sort_order`, [ctx.provider, competitionIds])).map((c) => ({ id: c.id, name: c.name, path: competitionPath(c.slug) }))
+    ? (
+        await ctx.db.query<{ id: number; name: string; slug: string }>(
+          `select id, name, slug from competitions where provider = $1 and id = any($2::int[]) order by sort_order`,
+          [ctx.provider, competitionIds],
+        )
+      ).map((c) => ({ id: c.id, name: c.name, path: competitionPath(c.slug) }))
     : [];
   if (teamIds.length === 0 && competitionIds.length === 0) return { teams, competitions, live: [], upcoming: [], recent: [] };
   const who = `(m.home_team_id = any($2::int[]) or m.away_team_id = any($2::int[]) or m.competition_id = any($3::int[]))`;
@@ -536,7 +652,10 @@ export async function getFavoritesMatches(ctx: ReadContext, teamIds: number[], c
     competitions,
     live: list.filter((m) => isLive(m.status)),
     upcoming: list.filter((m) => isUpcoming(m.status) && new Date(m.kickoffAt) >= new Date(ctx.now.getTime() - 3 * 3600_000)).slice(0, 30),
-    recent: list.filter((m) => isFinished(m.status) || m.status === "postponed" || m.status === "cancelled" || m.status === "abandoned").reverse().slice(0, 30),
+    recent: list
+      .filter((m) => isFinished(m.status) || m.status === "postponed" || m.status === "cancelled" || m.status === "abandoned")
+      .reverse()
+      .slice(0, 30),
   };
 }
 

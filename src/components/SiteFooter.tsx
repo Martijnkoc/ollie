@@ -12,7 +12,8 @@ export function SiteFooter({ status }: { status: SiteStatus }) {
           </span>
           <span>
             {status.providerLabel ? `Databron: ${status.providerLabel}. ` : "Geen databron gekoppeld. "}
-            {status.lastSync ? `Laatste synchronisatie ${formatDate(status.lastSync)} ${formatTime(status.lastSync)}.` : ""} Alle tijden in Nederlandse tijd.
+            {status.lastSync ? `Laatste synchronisatie ${formatDate(status.lastSync)} ${formatTime(status.lastSync)}.` : ""} Alle tijden in
+            Nederlandse tijd.
           </span>
         </div>
         <nav aria-label="Voettekst">

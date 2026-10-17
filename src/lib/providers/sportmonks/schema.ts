@@ -7,7 +7,10 @@ import { z } from "zod";
  */
 
 const id = z.union([z.number().int(), z.string().regex(/^\d+$/)]).transform((v) => String(v));
-const nullableString = z.string().nullish().transform((v) => v ?? null);
+const nullableString = z
+  .string()
+  .nullish()
+  .transform((v) => v ?? null);
 const nullableInt = z
   .union([z.number(), z.string(), z.null(), z.undefined()])
   .transform((v) => (v === null || v === undefined || v === "" ? null : Number(v)))

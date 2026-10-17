@@ -18,7 +18,9 @@ export function FavoritesSide({ competitions }: { competitions: { id: number; na
         ))}
         <li>
           <Link href="/favorieten">
-            <span className="dim">{favorites.teams.length + mine.length > 0 ? `Alle favorieten (${favorites.teams.length} clubs)` : "Nog geen favorieten"}</span>
+            <span className="dim">
+              {favorites.teams.length + mine.length > 0 ? `Alle favorieten (${favorites.teams.length} clubs)` : "Nog geen favorieten"}
+            </span>
           </Link>
         </li>
       </ul>

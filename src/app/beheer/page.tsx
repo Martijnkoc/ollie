@@ -17,7 +17,21 @@ export default async function AdminPage() {
     return <div className="container page">Geen toegang.</div>;
   }
   const overview = cfg.provider ? await syncOverview(await getDb(), cfg.provider) : null;
-  const jobKeys = overview ? [...new Set(["competitions", "fixtures:near", "live", "standings", "teams", "details:backfill", "analyses", "maintenance", ...overview.jobs.map((j) => j.key)])] : [];
+  const jobKeys = overview
+    ? [
+        ...new Set([
+          "competitions",
+          "fixtures:near",
+          "live",
+          "standings",
+          "teams",
+          "details:backfill",
+          "analyses",
+          "maintenance",
+          ...overview.jobs.map((j) => j.key),
+        ]),
+      ]
+    : [];
   return (
     <div className="container page stack">
       <div className="page-head">
@@ -45,7 +59,11 @@ export default async function AdminPage() {
             <dt>Synchronisatie bij verkeer</dt>
             <dd>{cfg.syncOnTraffic ? "aan" : "uit"}</dd>
             <dt>AI</dt>
-            <dd>{cfg.ai.apiKey ? `aan · ${cfg.ai.model} · effort ${cfg.ai.effort} · max ${cfg.ai.dailyLimit}/dag` : "uit (geen ANTHROPIC_API_KEY)"}</dd>
+            <dd>
+              {cfg.ai.apiKey
+                ? `aan · ${cfg.ai.model} · effort ${cfg.ai.effort} · max ${cfg.ai.dailyLimit}/dag`
+                : "uit (geen ANTHROPIC_API_KEY)"}
+            </dd>
             <dt>Clublogo&apos;s</dt>
             <dd>{cfg.showProviderLogos ? "aan" : "uit (typografische badges)"}</dd>
           </dl>
@@ -85,7 +103,8 @@ export default async function AdminPage() {
             <div className="card-head">
               <h2>Laatste runs</h2>
               <span className="small dim">
-                AI afgelopen week: {overview.aiLastWeek.ok} getoond, {overview.aiLastWeek.rejected} afgekeurd, {overview.aiLastWeek.failed} mislukt
+                AI afgelopen week: {overview.aiLastWeek.ok} getoond, {overview.aiLastWeek.rejected} afgekeurd, {overview.aiLastWeek.failed}{" "}
+                mislukt
               </span>
             </div>
             <div className="table-wrap">
@@ -111,7 +130,9 @@ export default async function AdminPage() {
                       </td>
                       <td className="small">{r.trigger}</td>
                       <td className="small">
-                        <span className={`badge ${r.status === "success" ? "badge-ok" : r.status === "failed" ? "badge-error" : ""}`}>{r.status}</span>
+                        <span className={`badge ${r.status === "success" ? "badge-ok" : r.status === "failed" ? "badge-error" : ""}`}>
+                          {r.status}
+                        </span>
                       </td>
                       <td className="small">{r.requests}</td>
                       <td className="tiny muted">{r.message}</td>

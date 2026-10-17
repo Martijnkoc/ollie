@@ -18,7 +18,19 @@ import {
   type JobContext,
   type JobResult,
 } from "./jobs";
-import { acquireLease, finishRun, isDue, lastSuccess, recordFailure, recordSuccess, recordUsage, releaseLease, requestsToday, startRun, type Trigger } from "./state";
+import {
+  acquireLease,
+  finishRun,
+  isDue,
+  lastSuccess,
+  recordFailure,
+  recordSuccess,
+  recordUsage,
+  releaseLease,
+  requestsToday,
+  startRun,
+  type Trigger,
+} from "./state";
 import { syncAnalyses } from "@/lib/ai/job";
 
 interface JobDef {
@@ -137,7 +149,8 @@ export async function runDueJobs(options: TickOptions): Promise<TickReport> {
       await finishRun(db, runId, "success", now(), current.requests, result.items, result.message);
       outcomes.push({ key: job.key, status: "success", message: result.message, requests: current.requests });
     } catch (err) {
-      const message = err instanceof ProviderError ? `${err.kind}: ${err.message}` : err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      const message =
+        err instanceof ProviderError ? `${err.kind}: ${err.message}` : err instanceof Error ? `${err.name}: ${err.message}` : String(err);
       const wait = await recordFailure(db, job.key, now(), message, err instanceof ProviderError ? err.retryAfterSeconds : undefined);
       await finishRun(db, runId, "failed", now(), current.requests, 0, `${message} (opnieuw over ${Math.round(wait / 60)} min)`);
       outcomes.push({ key: job.key, status: "failed", message, requests: current.requests });

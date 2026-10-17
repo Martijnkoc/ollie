@@ -27,10 +27,28 @@ export interface RunRow {
 const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
 
 export async function syncOverview(db: Db, provider: string, now = new Date()) {
-  const states = await db.query<{ key: string; last_success_at: Date | null; last_attempt_at: Date | null; last_error: string | null; consecutive_failures: number; next_due_at: Date | null; lock_until: Date | null }>(
+  const states = await db.query<{
+    key: string;
+    last_success_at: Date | null;
+    last_attempt_at: Date | null;
+    last_error: string | null;
+    consecutive_failures: number;
+    next_due_at: Date | null;
+    lock_until: Date | null;
+  }>(
     `select key, last_success_at, last_attempt_at, last_error, consecutive_failures, next_due_at, lock_until from sync_state order by key`,
   );
-  const runs = await db.query<{ id: number; job: string; trigger: string; status: string; started_at: Date; finished_at: Date | null; requests: number; items: number; message: string | null }>(
+  const runs = await db.query<{
+    id: number;
+    job: string;
+    trigger: string;
+    status: string;
+    started_at: Date;
+    finished_at: Date | null;
+    requests: number;
+    items: number;
+    message: string | null;
+  }>(
     `select id, job, trigger, status, started_at, finished_at, requests, items, message from sync_runs where provider = $1 order by started_at desc limit 40`,
     [provider],
   );
@@ -44,30 +62,26 @@ export async function syncOverview(db: Db, provider: string, now = new Date()) {
     [new Date(now.getTime() - 7 * 86_400_000)],
   );
   return {
-    jobs: states.map(
-      (s): JobState => ({
-        key: s.key,
-        lastSuccessAt: iso(s.last_success_at),
-        lastAttemptAt: iso(s.last_attempt_at),
-        lastError: s.last_error,
-        failures: s.consecutive_failures,
-        nextDueAt: iso(s.next_due_at),
-        running: s.lock_until !== null && new Date(s.lock_until) > now,
-      }),
-    ),
-    runs: runs.map(
-      (r): RunRow => ({
-        id: Number(r.id),
-        job: r.job,
-        trigger: r.trigger,
-        status: r.status,
-        startedAt: new Date(r.started_at).toISOString(),
-        durationMs: r.finished_at ? new Date(r.finished_at).getTime() - new Date(r.started_at).getTime() : null,
-        requests: r.requests,
-        items: r.items,
-        message: r.message,
-      }),
-    ),
+    jobs: states.map((s): JobState => ({
+      key: s.key,
+      lastSuccessAt: iso(s.last_success_at),
+      lastAttemptAt: iso(s.last_attempt_at),
+      lastError: s.last_error,
+      failures: s.consecutive_failures,
+      nextDueAt: iso(s.next_due_at),
+      running: s.lock_until !== null && new Date(s.lock_until) > now,
+    })),
+    runs: runs.map((r): RunRow => ({
+      id: Number(r.id),
+      job: r.job,
+      trigger: r.trigger,
+      status: r.status,
+      startedAt: new Date(r.started_at).toISOString(),
+      durationMs: r.finished_at ? new Date(r.finished_at).getTime() - new Date(r.started_at).getTime() : null,
+      requests: r.requests,
+      items: r.items,
+      message: r.message,
+    })),
     usageToday: usage ?? { requests: 0, failures: 0, last_status: null, rate_remaining: null },
     aiLastWeek: ai ?? { ok: 0, rejected: 0, failed: 0 },
   };

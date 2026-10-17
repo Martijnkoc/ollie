@@ -93,19 +93,33 @@ export default async function CompetitionRoute(props: PageProps<"/competitie/[sl
         <StandingsTable rows={rows} caption={`Stand ${page.competition.name}`} />
         <p className="tiny dim card-body">
           Stand zoals geleverd door de databron
-          {page.season.standingsSyncedAt ? `, gecontroleerd ${formatDate(page.season.standingsSyncedAt)} ${formatTime(page.season.standingsSyncedAt)}` : ""}. Bij gelijke
-          punten gelden de officiële competitieregels.
+          {page.season.standingsSyncedAt
+            ? `, gecontroleerd ${formatDate(page.season.standingsSyncedAt)} ${formatTime(page.season.standingsSyncedAt)}`
+            : ""}
+          . Bij gelijke punten gelden de officiële competitieregels.
         </p>
       </section>
     ) : (
       <div className="card empty">
-        {page.season.standingsAvailable === false ? "De databron levert voor dit seizoen geen stand (bijvoorbeeld bij een knock-outtoernooi)." : "De stand is nog niet beschikbaar."}
+        {page.season.standingsAvailable === false
+          ? "De databron levert voor dit seizoen geen stand (bijvoorbeeld bij een knock-outtoernooi)."
+          : "De stand is nog niet beschikbaar."}
       </div>
     );
   } else if (tab === "uitslagen") {
-    body = <MatchesByRound matches={await getSeasonMatches(read, page.season.id, "results")} emptyText="Nog geen gespeelde wedstrijden in dit seizoen." />;
+    body = (
+      <MatchesByRound
+        matches={await getSeasonMatches(read, page.season.id, "results")}
+        emptyText="Nog geen gespeelde wedstrijden in dit seizoen."
+      />
+    );
   } else if (tab === "programma") {
-    body = <MatchesByRound matches={await getSeasonMatches(read, page.season.id, "fixtures")} emptyText="Geen wedstrijden meer gepland in dit seizoen." />;
+    body = (
+      <MatchesByRound
+        matches={await getSeasonMatches(read, page.season.id, "fixtures")}
+        emptyText="Geen wedstrijden meer gepland in dit seizoen."
+      />
+    );
   } else {
     const all = await getSeasonMatches(read, page.season.id, "all");
     const round = currentRound(all, read.now);
@@ -188,7 +202,10 @@ export default async function CompetitionRoute(props: PageProps<"/competitie/[sl
         <section className="card">
           <div className="card-body small muted stack-sm">
             <h2 style={{ fontSize: "0.9rem", color: "var(--text)" }}>Bron en actualiteit</h2>
-            <p>Wedstrijden, uitslagen en stand komen van de databron en worden automatisch bijgewerkt. Live-scores verversen tijdens wedstrijden elke {cfg.livePollSeconds} seconden.</p>
+            <p>
+              Wedstrijden, uitslagen en stand komen van de databron en worden automatisch bijgewerkt. Live-scores verversen tijdens
+              wedstrijden elke {cfg.livePollSeconds} seconden.
+            </p>
           </div>
         </section>
       </aside>

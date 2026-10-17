@@ -21,14 +21,18 @@ export default function PrivacyPage() {
         <h2>Wat technisch wel gebeurt</h2>
         <ul>
           <li>
-            Onze hostingprovider verwerkt, zoals elke webserver, technische gegevens zoals IP-adres en opgevraagde pagina in serverlogs, voor beveiliging en storingsonderzoek.
+            Onze hostingprovider verwerkt, zoals elke webserver, technische gegevens zoals IP-adres en opgevraagde pagina in serverlogs,
+            voor beveiliging en storingsonderzoek.
           </li>
-          <li>Om de wedstrijden van je favorieten te tonen, vraagt je browser die op met de nummers van de clubs en competities, zonder te weten wie je bent.</li>
+          <li>
+            Om de wedstrijden van je favorieten te tonen, vraagt je browser die op met de nummers van de clubs en competities, zonder te
+            weten wie je bent.
+          </li>
         </ul>
         <h2>Later</h2>
         <p>
-          Als we advertenties of accounts toevoegen, passen we deze pagina eerst aan en vragen we toestemming waar de AVG en de cookieregels dat vereisen. Zonder die
-          toestemming worden geen advertentie- of trackingscripts geladen.
+          Als we advertenties of accounts toevoegen, passen we deze pagina eerst aan en vragen we toestemming waar de AVG en de cookieregels
+          dat vereisen. Zonder die toestemming worden geen advertentie- of trackingscripts geladen.
         </p>
       </div>
     </div>

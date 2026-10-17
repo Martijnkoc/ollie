@@ -23,7 +23,15 @@ export interface AnalysisInput {
     score: { home: number | null; away: number | null } | null;
     halftime: { home: number | null; away: number | null } | null;
   };
-  standings: { team: string; group: string; rank: number; points: number | null; played: number | null; goal_diff: number | null; form: string | null }[];
+  standings: {
+    team: string;
+    group: string;
+    rank: number;
+    points: number | null;
+    played: number | null;
+    goal_diff: number | null;
+    form: string | null;
+  }[];
   recent_form: { home: RecentMatch[]; away: RecentMatch[] };
   head_to_head: RecentMatch[];
   events: { minute: string; team: string | null; type: string; player: string | null; related: string | null }[] | null;
@@ -68,7 +76,15 @@ export function buildAnalysisInput(detail: MatchDetail, kind: AnalysisKind, data
 
   const standings = detail.standings
     .filter((r) => r.team.id === m.home.id || r.team.id === m.away.id)
-    .map((r) => ({ team: r.team.name, group: r.group, rank: r.rank, points: r.points, played: r.played, goal_diff: r.goalDiff, form: r.form }));
+    .map((r) => ({
+      team: r.team.name,
+      group: r.group,
+      rank: r.rank,
+      points: r.points,
+      played: r.played,
+      goal_diff: r.goalDiff,
+      form: r.form,
+    }));
   if (standings.length === 0) missing.push("competitiestand");
   if (detail.homeRecent.length === 0 && detail.awayRecent.length === 0) missing.push("recente resultaten");
   if (detail.headToHead.length === 0) missing.push("onderlinge resultaten in de opgeslagen seizoenen");
@@ -90,7 +106,9 @@ export function buildAnalysisInput(detail: MatchDetail, kind: AnalysisKind, data
     if (!statistics) missing.push("wedstrijdstatistieken");
   }
   const lineups =
-    detail.lineups.home || detail.lineups.away ? { home_formation: detail.lineups.home?.formation ?? null, away_formation: detail.lineups.away?.formation ?? null } : null;
+    detail.lineups.home || detail.lineups.away
+      ? { home_formation: detail.lineups.home?.formation ?? null, away_formation: detail.lineups.away?.formation ?? null }
+      : null;
   if (!lineups) missing.push("opstellingen");
 
   return {

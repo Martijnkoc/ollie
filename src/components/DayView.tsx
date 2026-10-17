@@ -19,14 +19,18 @@ export async function DayView({ read, day, today }: { read: ReadContext | null; 
         <div className="notice notice-warn">
           <strong>Er is nog geen voetbaldatabron gekoppeld.</strong>
           <p className="small">
-            Voetbalradar toont alleen echte gegevens van een gelicentieerde databron en vult niets aan met voorbeeldscores. Zolang de koppeling ontbreekt, blijft dit
-            overzicht leeg. Beheerders vinden de stappen in de README onder &ldquo;Databron koppelen&rdquo;.
+            Voetbalradar toont alleen echte gegevens van een gelicentieerde databron en vult niets aan met voorbeeldscores. Zolang de
+            koppeling ontbreekt, blijft dit overzicht leeg. Beheerders vinden de stappen in de README onder &ldquo;Databron koppelen&rdquo;.
           </p>
         </div>
       </div>
     );
   }
-  const [board, competitions, status] = await Promise.all([getDayBoard(read, day), getCompetitions(read), siteStatus(read.db, read.cfg, read.now)]);
+  const [board, competitions, status] = await Promise.all([
+    getDayBoard(read, day),
+    getCompetitions(read),
+    siteStatus(read.db, read.cfg, read.now),
+  ]);
   const recentDay = day >= addDays(today, -1);
 
   return (
@@ -42,7 +46,13 @@ export async function DayView({ read, day, today }: { read: ReadContext | null; 
             <p className="small">Zodra de databron is uitgelezen verschijnen hier de wedstrijden.</p>
           </div>
         )}
-        <LiveBoard day={day} initial={board.matches} lastSync={status.lastSync} pollSeconds={Math.max(15, cfg.livePollSeconds)} pollable={recentDay} />
+        <LiveBoard
+          day={day}
+          initial={board.matches}
+          lastSync={status.lastSync}
+          pollSeconds={Math.max(15, cfg.livePollSeconds)}
+          pollable={recentDay}
+        />
       </div>
       <aside className="aside-context stack">
         <section className="card" aria-labelledby="data-status">
@@ -54,7 +64,8 @@ export async function DayView({ read, day, today }: { read: ReadContext | null; 
             <SyncTime iso={status.lastLiveSync} prefix="Live-gegevens" />
             <SyncTime iso={status.lastSync} prefix="Programma" />
             <p className="dim">
-              Bron: {status.providerLabel}. Scores die langer dan een paar minuten niet zijn bevestigd, krijgen het label &ldquo;verouderd?&rdquo;.
+              Bron: {status.providerLabel}. Scores die langer dan een paar minuten niet zijn bevestigd, krijgen het label
+              &ldquo;verouderd?&rdquo;.
             </p>
             <Link href="/status" className="link small">
               Synchronisatiestatus
@@ -65,7 +76,10 @@ export async function DayView({ read, day, today }: { read: ReadContext | null; 
         <section className="card">
           <div className="card-body stack-sm small muted">
             <h2 style={{ fontSize: "0.9rem", color: "var(--text)" }}>Over deze gegevens</h2>
-            <p>Statistieken die de databron niet levert, tonen we als &ldquo;niet beschikbaar&rdquo; en nooit als nul. Uitgestelde en afgelaste wedstrijden krijgen geen score.</p>
+            <p>
+              Statistieken die de databron niet levert, tonen we als &ldquo;niet beschikbaar&rdquo; en nooit als nul. Uitgestelde en
+              afgelaste wedstrijden krijgen geen score.
+            </p>
             <Link href="/over" className="link">
               Meer over Voetbalradar
             </Link>

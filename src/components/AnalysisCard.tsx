@@ -23,8 +23,8 @@ export function AnalysisCard({ view, demo }: { view: AnalysisView; demo: boolean
         )}
         {view.state === "outdated" && (
           <p className="small muted">
-            Er zijn nieuwere gegevens dan waarop de vorige analyse was gebaseerd ({formatDate(view.createdAt)} {formatTime(view.createdAt)}). Die tonen we daarom niet meer;
-            een nieuwe volgt.
+            Er zijn nieuwere gegevens dan waarop de vorige analyse was gebaseerd ({formatDate(view.createdAt)} {formatTime(view.createdAt)}
+            ). Die tonen we daarom niet meer; een nieuwe volgt.
           </p>
         )}
         {view.state === "current" && (
@@ -56,10 +56,13 @@ export function AnalysisCard({ view, demo }: { view: AnalysisView; demo: boolean
                 </ul>
               </div>
             )}
-            {view.analysis.missing_data.length > 0 && <p className="small dim">Ontbrekende gegevens: {view.analysis.missing_data.join("; ")}.</p>}
+            {view.analysis.missing_data.length > 0 && (
+              <p className="small dim">Ontbrekende gegevens: {view.analysis.missing_data.join("; ")}.</p>
+            )}
             <p className="tiny dim">
               Gemaakt op {formatDate(view.createdAt)} om {formatTime(view.createdAt)} met gegevens tot {formatTime(view.dataAsOf)}
-              {demo ? " (fictieve demo-gegevens)" : ""}. Automatisch gecontroleerd op getallen die niet in de gegevens staan. Interpretaties zijn geen zekerheden.
+              {demo ? " (fictieve demo-gegevens)" : ""}. Automatisch gecontroleerd op getallen die niet in de gegevens staan. Interpretaties
+              zijn geen zekerheden.
             </p>
           </>
         )}

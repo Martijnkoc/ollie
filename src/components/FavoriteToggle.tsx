@@ -3,7 +3,17 @@
 import { useFavorites, type FavoriteKind } from "@/lib/favorites";
 import { StarIcon } from "./Icons";
 
-export function FavoriteToggle({ kind, id, name, withLabel = false }: { kind: FavoriteKind; id: number; name: string; withLabel?: boolean }) {
+export function FavoriteToggle({
+  kind,
+  id,
+  name,
+  withLabel = false,
+}: {
+  kind: FavoriteKind;
+  id: number;
+  name: string;
+  withLabel?: boolean;
+}) {
   const { favorites, toggle } = useFavorites();
   const on = favorites[kind].includes(id);
   const label = on ? `${name} verwijderen uit favorieten` : `${name} toevoegen aan favorieten`;

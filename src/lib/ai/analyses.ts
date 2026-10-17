@@ -6,7 +6,6 @@ import { PROVIDER_LABEL } from "@/lib/providers/labels";
 import { buildAnalysisInput, type AnalysisInput } from "./input";
 import { analysisSchema, type Analysis, type AnalysisKind } from "./schema";
 
-
 export function analysisKindFor(detail: MatchDetail): AnalysisKind | null {
   if (isUpcoming(detail.match.status)) return "preview";
   if (isFinished(detail.match.status)) return "review";

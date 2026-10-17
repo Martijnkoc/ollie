@@ -98,6 +98,8 @@ export function LiveBoard({ day, initial, lastSync: initialSync, pollSeconds, po
   }, [shouldPoll, anyLive, pollSeconds, failed, refresh, matches]);
 
   useEffect(() => {
+    // The connection may have dropped before this component hydrated.
+    if (!navigator.onLine) setOffline(true);
     const goOffline = () => setOffline(true);
     const goOnline = () => {
       setOffline(false);
@@ -117,12 +119,17 @@ export function LiveBoard({ day, initial, lastSync: initialSync, pollSeconds, po
       matches.filter((m) => {
         if (onlyCompetitions.length > 0 && !onlyCompetitions.includes(m.competition.id)) return false;
         if (tab === "favorites")
-          return favorites.teams.includes(m.home.id) || favorites.teams.includes(m.away.id) || favorites.competitions.includes(m.competition.id);
+          return (
+            favorites.teams.includes(m.home.id) || favorites.teams.includes(m.away.id) || favorites.competitions.includes(m.competition.id)
+          );
         return inTab(m, tab);
       }),
     [matches, tab, onlyCompetitions, favorites],
   );
-  const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.key, t.key === "favorites" ? null : matches.filter((m) => inTab(m, t.key)).length])), [matches]);
+  const counts = useMemo(
+    () => Object.fromEntries(TABS.map((t) => [t.key, t.key === "favorites" ? null : matches.filter((m) => inTab(m, t.key)).length])),
+    [matches],
+  );
   const groups = groupByCompetition(visible);
 
   return (
@@ -157,12 +164,17 @@ export function LiveBoard({ day, initial, lastSync: initialSync, pollSeconds, po
         )}
         <div className="board-meta">
           <SyncTime iso={lastSync} prefix="Laatste synchronisatie met de databron" />
-          {shouldPoll ? <span>Ververst automatisch{anyLive ? ` elke ${pollSeconds} s` : ""}</span> : <span>Alle uitslagen zijn definitief</span>}
+          {shouldPoll ? (
+            <span>Ververst automatisch{anyLive ? ` elke ${pollSeconds} s` : ""}</span>
+          ) : (
+            <span>Alle uitslagen zijn definitief</span>
+          )}
         </div>
         <div aria-live="polite">
           {offline && (
             <div className="notice notice-warn small">
-              <strong>Je bent offline.</strong> De scores hieronder zijn van het laatste moment dat je verbinding had en worden niet bijgewerkt.
+              <strong>Je bent offline.</strong> De scores hieronder zijn van het laatste moment dat je verbinding had en worden niet
+              bijgewerkt.
             </div>
           )}
           {!offline && failed > 0 && (

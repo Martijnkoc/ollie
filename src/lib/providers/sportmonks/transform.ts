@@ -72,7 +72,8 @@ const STATE_BY_ID: Record<number, string> = {
 export const DELETED_STATE = "DELETED";
 
 export function mapState(fixture: Pick<SmFixture, "state" | "state_id">): { status: MatchStatus; code: string } {
-  const code = fixture.state?.developer_name ?? fixture.state?.state ?? (fixture.state_id ? STATE_BY_ID[fixture.state_id] : undefined) ?? "UNKNOWN";
+  const code =
+    fixture.state?.developer_name ?? fixture.state?.state ?? (fixture.state_id ? STATE_BY_ID[fixture.state_id] : undefined) ?? "UNKNOWN";
   return { status: STATE_BY_NAME[code] ?? "unknown", code };
 }
 
@@ -229,7 +230,8 @@ export function liveMinute(fixture: SmFixture): { minute: number | null; extra: 
 
 function toEvents(fixture: SmFixture): ProviderEvent[] {
   const list = [...(fixture.events ?? [])].sort(
-    (a, b) => (a.minute ?? 0) - (b.minute ?? 0) || (a.extra_minute ?? 0) - (b.extra_minute ?? 0) || (a.sort_order ?? 0) - (b.sort_order ?? 0),
+    (a, b) =>
+      (a.minute ?? 0) - (b.minute ?? 0) || (a.extra_minute ?? 0) - (b.extra_minute ?? 0) || (a.sort_order ?? 0) - (b.sort_order ?? 0),
   );
   const out: ProviderEvent[] = [];
   for (const e of list) {
@@ -280,7 +282,10 @@ function toLineups(fixture: SmFixture, homeId: string | undefined, awayId: strin
       formation: fixture.formations?.find((f) => f.participant_id === teamId)?.formation ?? null,
       coachName: null,
       // type 11 = starting line-up, 12 = bench.
-      starters: mine.filter((l) => l.type_id === 11).sort(order).map(player),
+      starters: mine
+        .filter((l) => l.type_id === 11)
+        .sort(order)
+        .map(player),
       substitutes: mine.filter((l) => l.type_id === 12).map(player),
     });
   }
@@ -326,7 +331,8 @@ export function toMatch(fixture: SmFixture, includes: FixtureIncludes): Provider
 
   const { status, code } = mapState(fixture);
   const s = scores(fixture, home.id);
-  const clock = status === "first_half" || status === "second_half" || status === "extra_time" ? liveMinute(fixture) : { minute: null, extra: null };
+  const clock =
+    status === "first_half" || status === "second_half" || status === "extra_time" ? liveMinute(fixture) : { minute: null, extra: null };
 
   return {
     externalId: fixture.id,
@@ -374,7 +380,9 @@ export function toStanding(row: SmStanding): ProviderStanding | null {
   if (!row.participant) return null;
   const detail = (field: keyof typeof DETAIL_FIELDS) => {
     const spec = DETAIL_FIELDS[field];
-    const hit = (row.details ?? []).find((d) => (d.type?.developer_name && spec.names.includes(d.type.developer_name)) || spec.ids.includes(d.type_id));
+    const hit = (row.details ?? []).find(
+      (d) => (d.type?.developer_name && spec.names.includes(d.type.developer_name)) || spec.ids.includes(d.type_id),
+    );
     return hit?.value ?? null;
   };
   const goalsFor = detail("goalsFor");

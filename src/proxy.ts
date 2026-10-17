@@ -28,7 +28,11 @@ export function proxy(request: NextRequest) {
   if (ok) return NextResponse.next();
   return new NextResponse("Geen toegang", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Voetbalradar beheer", charset="UTF-8"', "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
+    headers: {
+      "WWW-Authenticate": 'Basic realm="Voetbalradar beheer", charset="UTF-8"',
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex",
+    },
   });
 }
 

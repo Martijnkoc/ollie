@@ -62,7 +62,10 @@ export async function activeCompetitions(db: Db, provider: string): Promise<Acti
 }
 
 async function matchContext(db: Db, provider: string, now: Date): Promise<MatchContext> {
-  const comps = await db.query<{ id: number; external_id: string }>(`select id, external_id from competitions where provider = $1 and availability = 'available'`, [provider]);
+  const comps = await db.query<{ id: number; external_id: string }>(
+    `select id, external_id from competitions where provider = $1 and availability = 'available'`,
+    [provider],
+  );
   const seasons = await db.query<{ id: number; external_id: string }>(
     `select s.id, s.external_id from seasons s join competitions c on c.id = s.competition_id where s.provider = $1 and c.availability = 'available'`,
     [provider],
@@ -90,17 +93,37 @@ export async function syncCompetitions(ctx: JobContext): Promise<JobResult> {
     }
     const remote = lookup.competition;
     if (!entry.expect.test(remote.name)) {
-      await saveCompetition(db, provider.id, entry, remote.externalId, "mismatch", `De databron noemt deze competitie "${remote.name}".`, remote, now);
+      await saveCompetition(
+        db,
+        provider.id,
+        entry,
+        remote.externalId,
+        "mismatch",
+        `De databron noemt deze competitie "${remote.name}".`,
+        remote,
+        now,
+      );
       notes.push(`${entry.slug}: naam komt niet overeen ("${remote.name}")`);
       continue;
     }
     const competitionId = await saveCompetition(db, provider.id, entry, remote.externalId, "available", null, remote, now);
     const current = remote.seasons.find((s) => s.isCurrent) ?? remote.seasons[0];
-    const previous = remote.seasons.filter((s) => s !== current && current && s.startYear < current.startYear).sort((a, b) => b.startYear - a.startYear)[0];
-    await saveSeasons(db, provider.id, competitionId, [current, previous].filter((s) => s !== undefined));
+    const previous = remote.seasons
+      .filter((s) => s !== current && current && s.startYear < current.startYear)
+      .sort((a, b) => b.startYear - a.startYear)[0];
+    await saveSeasons(
+      db,
+      provider.id,
+      competitionId,
+      [current, previous].filter((s) => s !== undefined),
+    );
     available++;
   }
-  return { items: available, message: `${available} competities beschikbaar${notes.length ? `; ${notes.join("; ")}` : ""}`, nextDueInSeconds: 24 * HOUR };
+  return {
+    items: available,
+    message: `${available} competities beschikbaar${notes.length ? `; ${notes.join("; ")}` : ""}`,
+    nextDueInSeconds: 24 * HOUR,
+  };
 }
 
 export async function syncTeams(ctx: JobContext): Promise<JobResult> {
@@ -151,7 +174,13 @@ export async function syncNearFixtures(ctx: JobContext): Promise<JobResult> {
 /** Complete fixture list of one season, in date windows the provider accepts. */
 export async function syncSeasonFixtures(ctx: JobContext, slug: string, which: "current" | "previous"): Promise<JobResult> {
   const { db, provider } = ctx;
-  const [season] = await db.query<{ id: number; external_id: string; competition_external_id: string; starts_on: string | null; ends_on: string | null }>(
+  const [season] = await db.query<{
+    id: number;
+    external_id: string;
+    competition_external_id: string;
+    starts_on: string | null;
+    ends_on: string | null;
+  }>(
     `select s.id, s.external_id, c.external_id as competition_external_id, to_char(s.starts_on, 'YYYY-MM-DD') as starts_on, to_char(s.ends_on, 'YYYY-MM-DD') as ends_on
      from seasons s join competitions c on c.id = s.competition_id
      where c.provider = $1 and c.slug = $2 and c.availability = 'available' and s.is_current = $3
@@ -171,7 +200,15 @@ export async function syncSeasonFixtures(ctx: JobContext, slug: string, which: "
   const mctx = await matchContext(db, provider.id, ctx.now());
   const w = await saveMatches(db, mctx, ofSeason);
   // Only a complete, successful read may remove fixtures the source no longer lists.
-  const pruned = ofSeason.length > 0 ? await pruneSeasonMatches(db, provider.id, season.id, ofSeason.map((m) => m.externalId)) : 0;
+  const pruned =
+    ofSeason.length > 0
+      ? await pruneSeasonMatches(
+          db,
+          provider.id,
+          season.id,
+          ofSeason.map((m) => m.externalId),
+        )
+      : 0;
   return {
     items: ofSeason.length,
     message: `${ofSeason.length} wedstrijden (${w.inserted} nieuw, ${w.changed} gewijzigd${pruned ? `, ${pruned} verwijderd door de databron` : ""})`,
@@ -231,7 +268,11 @@ export async function syncDetailsBackfill(ctx: JobContext): Promise<JobResult> {
   if (batch.length === 0) return { items: 0, message: "Alle recente wedstrijden hebben details", nextDueInSeconds: 6 * HOUR };
   const matches = await ctx.provider.getMatchesByIds(batch.map((r) => r.external_id));
   await storeWithDetails(ctx, matches);
-  return { items: matches.length, message: `Details opgehaald voor ${matches.length} wedstrijden`, nextDueInSeconds: rows.length > 50 ? 10 * 60 : 6 * HOUR };
+  return {
+    items: matches.length,
+    message: `Details opgehaald voor ${matches.length} wedstrijden`,
+    nextDueInSeconds: rows.length > 50 ? 10 * 60 : 6 * HOUR,
+  };
 }
 
 /** Official standings, refreshed after results change and at least twice a day. */
@@ -266,5 +307,9 @@ export async function maintenance(ctx: JobContext): Promise<JobResult> {
      returning id`,
     [days(30)],
   );
-  return { items: runs.length + analyses.length, message: `${runs.length} logregels en ${analyses.length} oude analyses opgeruimd`, nextDueInSeconds: 24 * HOUR };
+  return {
+    items: runs.length + analyses.length,
+    message: `${runs.length} logregels en ${analyses.length} oude analyses opgeruimd`,
+    nextDueInSeconds: 24 * HOUR,
+  };
 }

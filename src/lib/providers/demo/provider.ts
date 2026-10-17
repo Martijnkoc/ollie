@@ -51,8 +51,40 @@ const TEAMS: Record<string, string[]> = {
   "champions-league": ["Nordhavn", "Valdoria", "Castelbianco", "Strelnik", "Ostravia", "Monterra", "Lisvale", "Brenburg"],
 };
 
-const FIRST = ["Daan", "Luuk", "Sem", "Milan", "Jesse", "Thijs", "Bram", "Ruben", "Noah", "Finn", "Lars", "Stijn", "Tom", "Niels", "Joris", "Koen"];
-const LAST = ["de Vries", "Jansen", "Bakker", "Visser", "Smit", "Meijer", "Mulder", "Bos", "Vos", "Peters", "Hendriks", "Dekker", "Brouwer", "Kok"];
+const FIRST = [
+  "Daan",
+  "Luuk",
+  "Sem",
+  "Milan",
+  "Jesse",
+  "Thijs",
+  "Bram",
+  "Ruben",
+  "Noah",
+  "Finn",
+  "Lars",
+  "Stijn",
+  "Tom",
+  "Niels",
+  "Joris",
+  "Koen",
+];
+const LAST = [
+  "de Vries",
+  "Jansen",
+  "Bakker",
+  "Visser",
+  "Smit",
+  "Meijer",
+  "Mulder",
+  "Bos",
+  "Vos",
+  "Peters",
+  "Hendriks",
+  "Dekker",
+  "Brouwer",
+  "Kok",
+];
 
 const COMPETITION_IDS: Record<string, string> = { eredivisie: "d-1", "premier-league": "d-2", "champions-league": "d-3" };
 const WINDOW_DAYS = 21;
@@ -182,7 +214,12 @@ function script(seed: number): Script {
   }
   const cards: Script["cards"] = [];
   for (let i = 0; i < Math.floor(r() * 5); i++) {
-    cards.push({ minute: 10 + Math.floor(r() * 80), side: r() < 0.5 ? "home" : "away", type: r() < 0.06 ? "red_card" : "yellow_card", player: 1 + Math.floor(r() * 10) });
+    cards.push({
+      minute: 10 + Math.floor(r() * 80),
+      side: r() < 0.5 ? "home" : "away",
+      type: r() < 0.06 ? "red_card" : "yellow_card",
+      player: 1 + Math.floor(r() * 10),
+    });
   }
   const subs: Script["subs"] = [];
   for (const side of ["home", "away"] as const) {
@@ -283,7 +320,7 @@ export class DemoProvider implements FootballProvider {
       competitionExternalId: COMPETITION_IDS[p.slug],
       seasonExternalId: season.externalId,
       stageName: p.slug === "champions-league" ? "League Stage" : "Regular Season",
-      roundName: String(((p.round % 30) + 30) % 30 + 1),
+      roundName: String((((p.round % 30) + 30) % 30) + 1),
       kickoffAt: kickoff,
       status,
       providerStatus: status.toUpperCase(),
@@ -326,11 +363,33 @@ export class DemoProvider implements FootballProvider {
         }
         for (const c of scriptData.cards.filter((c) => c.minute <= cut)) {
           const t = c.side === "home" ? home : away;
-          events.push({ minute: c.minute, minuteExtra: null, teamExternalId: t.externalId, type: c.type, playerName: playerName(t.externalId, c.player), playerExternalId: null, relatedName: null, relatedExternalId: null, detail: null, scoreAfter: null });
+          events.push({
+            minute: c.minute,
+            minuteExtra: null,
+            teamExternalId: t.externalId,
+            type: c.type,
+            playerName: playerName(t.externalId, c.player),
+            playerExternalId: null,
+            relatedName: null,
+            relatedExternalId: null,
+            detail: null,
+            scoreAfter: null,
+          });
         }
         for (const s of scriptData.subs.filter((s) => s.minute <= cut)) {
           const t = s.side === "home" ? home : away;
-          events.push({ minute: s.minute, minuteExtra: null, teamExternalId: t.externalId, type: "substitution", playerName: playerName(t.externalId, s.on), playerExternalId: null, relatedName: playerName(t.externalId, s.off), relatedExternalId: null, detail: null, scoreAfter: null });
+          events.push({
+            minute: s.minute,
+            minuteExtra: null,
+            teamExternalId: t.externalId,
+            type: "substitution",
+            playerName: playerName(t.externalId, s.on),
+            playerExternalId: null,
+            relatedName: playerName(t.externalId, s.off),
+            relatedExternalId: null,
+            detail: null,
+            scoreAfter: null,
+          });
         }
         events.sort((x, y) => (x.minute ?? 0) - (y.minute ?? 0));
       }
@@ -406,7 +465,16 @@ export class DemoProvider implements FootballProvider {
     const anchor = localDay(this.now());
     const rows: ProviderStanding[] = [];
     {
-      const table = TEAMS[slug].map((_, i) => ({ team: team(slug, i), played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, form: [] as string[] }));
+      const table = TEAMS[slug].map((_, i) => ({
+        team: team(slug, i),
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        gf: 0,
+        ga: 0,
+        form: [] as string[],
+      }));
       const matches = this.window([slug], addDays(anchor, -WINDOW_DAYS), anchor).map((p) => this.build(p, false));
       for (const m of matches) {
         if (m.status !== "finished" || m.score.home === null || m.score.away === null) continue;

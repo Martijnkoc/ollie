@@ -22,7 +22,8 @@ export async function syncAnalyses(ctx: JobContext, service: AnalysisService | n
   const now = ctx.now();
   const { start } = localDayRange(localDay(now));
   const [{ n: today }] = await ctx.db.query<{ n: number }>(`select count(*)::int as n from ai_analyses where created_at >= $1`, [start]);
-  if (today >= ctx.cfg.ai.dailyLimit) return { items: 0, message: `Daglimiet AI bereikt (${today}/${ctx.cfg.ai.dailyLimit})`, nextDueInSeconds: 3600 };
+  if (today >= ctx.cfg.ai.dailyLimit)
+    return { items: 0, message: `Daglimiet AI bereikt (${today}/${ctx.cfg.ai.dailyLimit})`, nextDueInSeconds: 3600 };
 
   const candidates = await ctx.db.query<{ id: number }>(
     `select m.id from matches m
@@ -34,7 +35,13 @@ export async function syncAnalyses(ctx: JobContext, service: AnalysisService | n
      )
      and not exists (select 1 from ai_analyses x where x.match_id = m.id and x.created_at > $5 and x.kind = case when m.status = 'scheduled' then 'preview' else 'review' end)
      order by m.kickoff_at limit 40`,
-    [ctx.provider.id, now, new Date(now.getTime() + 36 * 3600_000), new Date(now.getTime() - 48 * 3600_000), new Date(now.getTime() - MIN_INTERVAL_HOURS * 3600_000)],
+    [
+      ctx.provider.id,
+      now,
+      new Date(now.getTime() + 36 * 3600_000),
+      new Date(now.getTime() - 48 * 3600_000),
+      new Date(now.getTime() - MIN_INTERVAL_HOURS * 3600_000),
+    ],
   );
 
   const read = { db: ctx.db, cfg: ctx.cfg, provider: ctx.provider.id, now };
@@ -49,9 +56,16 @@ export async function syncAnalyses(ctx: JobContext, service: AnalysisService | n
     if (!kind) continue;
     const input = buildAnalysisInput(detail, kind, PROVIDER_LABEL[ctx.provider.id] ?? ctx.provider.id);
     const hash = inputHash(input);
-    const [exists] = await ctx.db.query(`select 1 from ai_analyses where match_id = $1 and kind = $2 and input_hash = $3`, [c.id, kind, hash]);
+    const [exists] = await ctx.db.query(`select 1 from ai_analyses where match_id = $1 and kind = $2 and input_hash = $3`, [
+      c.id,
+      kind,
+      hash,
+    ]);
     if (exists) continue;
-    const dataAsOf = [detail.match.syncedAt, detail.detailsSyncedAt].filter((d): d is string => d !== null).sort().pop()!;
+    const dataAsOf = [detail.match.syncedAt, detail.detailsSyncedAt]
+      .filter((d): d is string => d !== null)
+      .sort()
+      .pop()!;
     const expires = kind === "preview" ? new Date(detail.match.kickoffAt) : null;
     try {
       const generated = await service.generate(input);
@@ -78,7 +92,12 @@ export async function syncAnalyses(ctx: JobContext, service: AnalysisService | n
       else rejected++;
     } catch (err) {
       failed++;
-      const note = err instanceof AnalysisRefused ? err.message : err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 300) : "Onbekende fout";
+      const note =
+        err instanceof AnalysisRefused
+          ? err.message
+          : err instanceof Error
+            ? `${err.name}: ${err.message}`.slice(0, 300)
+            : "Onbekende fout";
       await ctx.db.query(
         `insert into ai_analyses (match_id, kind, input_hash, status, ai_provider, model, note, data_as_of, expires_at)
          values ($1, $2, $3, 'failed', $4, $5, $6, $7, $8) on conflict (match_id, kind, input_hash) do nothing`,

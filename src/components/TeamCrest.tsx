@@ -1,4 +1,26 @@
-const SKIP = new Set(["fc", "sc", "sv", "vv", "afc", "cf", "ac", "as", "ssc", "rc", "cd", "ud", "sd", "fk", "sk", "bk", "if", "the", "de", "1.", "club"]);
+const SKIP = new Set([
+  "fc",
+  "sc",
+  "sv",
+  "vv",
+  "afc",
+  "cf",
+  "ac",
+  "as",
+  "ssc",
+  "rc",
+  "cd",
+  "ud",
+  "sd",
+  "fk",
+  "sk",
+  "bk",
+  "if",
+  "the",
+  "de",
+  "1.",
+  "club",
+]);
 
 /** Up to two letters from the meaningful words of a club name: "FC Polderstad" → "PO", "Rivierdam United" → "RU". */
 export function initials(name: string) {

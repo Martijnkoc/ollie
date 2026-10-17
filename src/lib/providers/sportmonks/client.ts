@@ -63,7 +63,8 @@ export class SportmonksProvider implements FootballProvider {
     const out: ProviderMatch[] = [];
     for (const row of rows) {
       const parsed = fixtureSchema.safeParse(row);
-      if (!parsed.success) throw new ProviderError(`Wedstrijd met onverwacht formaat: ${parsed.error.issues[0]?.path.join(".")}`, "invalid_response");
+      if (!parsed.success)
+        throw new ProviderError(`Wedstrijd met onverwacht formaat: ${parsed.error.issues[0]?.path.join(".")}`, "invalid_response");
       if (parsed.data.state?.developer_name === DELETED_STATE || parsed.data.state_id === 20) continue;
       const match = toMatch(parsed.data, { details });
       if (match) out.push(match);
@@ -80,7 +81,10 @@ export class SportmonksProvider implements FootballProvider {
       return { status: "available", competition: toCompetition(league.data) };
     } catch (err) {
       if (err instanceof ProviderError && (err.kind === "forbidden" || err.kind === "not_found")) {
-        return { status: "unavailable", note: err.kind === "forbidden" ? "Geen toegang met het huidige abonnement." : "Onbekend bij Sportmonks." };
+        return {
+          status: "unavailable",
+          note: err.kind === "forbidden" ? "Geen toegang met het huidige abonnement." : "Onbekend bij Sportmonks.",
+        };
       }
       throw err;
     }
@@ -116,7 +120,9 @@ export class SportmonksProvider implements FootballProvider {
 
   async getStandings(seasonExternalId: string): Promise<ProviderStanding[] | null> {
     try {
-      const res = await this.request(`/standings/seasons/${seasonExternalId}`, { include: "participant;details.type;form;group;stage;rule.type" });
+      const res = await this.request(`/standings/seasons/${seasonExternalId}`, {
+        include: "participant;details.type;form;group;stage;rule.type",
+      });
       if (!Array.isArray(res.data) || res.data.length === 0) return null;
       const parsedRows = res.data.map((row) => {
         const parsed = standingSchema.safeParse(row);

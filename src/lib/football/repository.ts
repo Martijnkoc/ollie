@@ -46,12 +46,30 @@ export async function saveCompetition(
        availability = excluded.availability, availability_note = excluded.availability_note,
        availability_checked_at = excluded.availability_checked_at, updated_at = now()
      returning id`,
-    [provider, externalId, entry.slug, entry.name, entry.country, entry.countryCode, entry.kind, remote?.logoUrl ?? null, entry.sortOrder, availability, note, now],
+    [
+      provider,
+      externalId,
+      entry.slug,
+      entry.name,
+      entry.country,
+      entry.countryCode,
+      entry.kind,
+      remote?.logoUrl ?? null,
+      entry.sortOrder,
+      availability,
+      note,
+      now,
+    ],
   );
   return row.id;
 }
 
-export async function saveSeasons(db: Db, provider: string, competitionId: number, seasons: ProviderSeason[]): Promise<Map<string, number>> {
+export async function saveSeasons(
+  db: Db,
+  provider: string,
+  competitionId: number,
+  seasons: ProviderSeason[],
+): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
   for (const s of seasons) {
     const [row] = await db.query<{ id: number }>(
@@ -79,7 +97,20 @@ export async function saveTeams(db: Db, provider: string, teams: ProviderTeam[])
   const ids = new Map<string, number>();
   await chunked(unique, 200, async (chunk) => {
     const v = values(
-      chunk.map((t) => [provider, t.externalId, t.name, t.shortName, t.code, slugify(t.name), t.country, t.founded, t.logoUrl, t.venueName, t.venueCity, t.isPlaceholder]),
+      chunk.map((t) => [
+        provider,
+        t.externalId,
+        t.name,
+        t.shortName,
+        t.code,
+        slugify(t.name),
+        t.country,
+        t.founded,
+        t.logoUrl,
+        t.venueName,
+        t.venueCity,
+        t.isPlaceholder,
+      ]),
     );
     // Partial knowledge never wipes better data: a fixture payload has no venue, a team list does.
     const rows = await db.query<{ id: number; external_id: string }>(
@@ -235,7 +266,13 @@ type Side = "home" | "away";
  * Replaces events, line-ups and statistics of one match when the provider's version differs from
  * what we stored. Parts the provider did not send (undefined) are left untouched.
  */
-export async function saveMatchDetails(db: Db, matchId: number, match: ProviderMatch, details: ProviderMatchDetails, now: Date): Promise<boolean> {
+export async function saveMatchDetails(
+  db: Db,
+  matchId: number,
+  match: ProviderMatch,
+  details: ProviderMatchDetails,
+  now: Date,
+): Promise<boolean> {
   const sideOf = (teamExternalId: string | null): Side | null =>
     teamExternalId === match.home.externalId ? "home" : teamExternalId === match.away.externalId ? "away" : null;
   const [current] = await db.query<{ events_hash: string | null; lineups_hash: string | null; stats_hash: string | null }>(
@@ -286,10 +323,20 @@ export async function saveMatchDetails(db: Db, matchId: number, match: ProviderM
         for (const lineup of details.lineups) {
           const side = sideOf(lineup.teamExternalId);
           if (!side) continue;
-          await tx.query(`insert into match_lineups (match_id, side, formation, coach_name) values ($1, $2, $3, $4)`, [matchId, side, lineup.formation, lineup.coachName]);
-          const players = [...lineup.starters.map((p) => ({ p, starter: true })), ...lineup.substitutes.map((p) => ({ p, starter: false }))];
+          await tx.query(`insert into match_lineups (match_id, side, formation, coach_name) values ($1, $2, $3, $4)`, [
+            matchId,
+            side,
+            lineup.formation,
+            lineup.coachName,
+          ]);
+          const players = [
+            ...lineup.starters.map((p) => ({ p, starter: true })),
+            ...lineup.substitutes.map((p) => ({ p, starter: false })),
+          ];
           if (players.length > 0) {
-            const v = values(players.map(({ p, starter }, i) => [matchId, side, i, starter, p.externalId, p.name, p.number, p.position, p.grid]));
+            const v = values(
+              players.map(({ p, starter }, i) => [matchId, side, i, starter, p.externalId, p.name, p.number, p.position, p.grid]),
+            );
             await tx.query(
               `insert into match_lineup_players (match_id, side, sort, is_starter, player_external_id, name, number, position, grid) values ${v.sql}`,
               v.params,
@@ -323,7 +370,13 @@ export async function saveMatchDetails(db: Db, matchId: number, match: ProviderM
 }
 
 /** Replaces the standings of a season when they differ from what we stored. */
-export async function saveStandings(db: Db, provider: string, seasonId: number, rows: ProviderStanding[] | null, now: Date): Promise<boolean> {
+export async function saveStandings(
+  db: Db,
+  provider: string,
+  seasonId: number,
+  rows: ProviderStanding[] | null,
+  now: Date,
+): Promise<boolean> {
   if (rows === null) {
     await db.query(`update seasons set standings_available = false, standings_synced_at = $2 where id = $1`, [seasonId, now]);
     return false;
@@ -367,7 +420,11 @@ export async function saveStandings(db: Db, provider: string, seasonId: number, 
         v.params,
       );
     });
-    await tx.query(`update seasons set standings_hash = $2, standings_synced_at = $3, standings_available = true where id = $1`, [seasonId, hash, now]);
+    await tx.query(`update seasons set standings_hash = $2, standings_synced_at = $3, standings_available = true where id = $1`, [
+      seasonId,
+      hash,
+      now,
+    ]);
   });
   await linkSeasonTeams(db, seasonId, [...teamIds.values()]);
   return true;

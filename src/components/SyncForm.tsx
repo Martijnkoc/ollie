@@ -3,7 +3,13 @@
 import { useActionState } from "react";
 import type { SyncActionState } from "@/app/beheer/actions";
 
-export function SyncForm({ action, jobs }: { action: (prev: SyncActionState, form: FormData) => Promise<SyncActionState>; jobs: string[] }) {
+export function SyncForm({
+  action,
+  jobs,
+}: {
+  action: (prev: SyncActionState, form: FormData) => Promise<SyncActionState>;
+  jobs: string[];
+}) {
   const [state, run, pending] = useActionState(action, {});
   return (
     <form action={run} className="stack-sm">

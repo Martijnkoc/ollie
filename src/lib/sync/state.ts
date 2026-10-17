@@ -73,7 +73,15 @@ export async function startRun(db: Db, provider: string, job: string, trigger: T
   return Number(row.id);
 }
 
-export async function finishRun(db: Db, id: number, status: "success" | "failed" | "skipped", now: Date, requests: number, items: number, message?: string) {
+export async function finishRun(
+  db: Db,
+  id: number,
+  status: "success" | "failed" | "skipped",
+  now: Date,
+  requests: number,
+  items: number,
+  message?: string,
+) {
   await db.query(`update sync_runs set status = $2, finished_at = $3, requests = $4, items = $5, message = $6 where id = $1`, [
     id,
     status,
@@ -84,7 +92,15 @@ export async function finishRun(db: Db, id: number, status: "success" | "failed"
   ]);
 }
 
-export async function recordUsage(db: Db, provider: string, now: Date, requests: number, failures: number, lastStatus: number | null, rateRemaining: number | null) {
+export async function recordUsage(
+  db: Db,
+  provider: string,
+  now: Date,
+  requests: number,
+  failures: number,
+  lastStatus: number | null,
+  rateRemaining: number | null,
+) {
   if (requests === 0) return;
   await db.query(
     `insert into provider_usage (provider, day, requests, failures, last_status, rate_remaining, updated_at)
@@ -98,6 +114,9 @@ export async function recordUsage(db: Db, provider: string, now: Date, requests:
 }
 
 export async function requestsToday(db: Db, provider: string, now: Date): Promise<number> {
-  const [row] = await db.query<{ requests: number }>(`select requests from provider_usage where provider = $1 and day = $2`, [provider, localDay(now)]);
+  const [row] = await db.query<{ requests: number }>(`select requests from provider_usage where provider = $1 and day = $2`, [
+    provider,
+    localDay(now),
+  ]);
   return row?.requests ?? 0;
 }

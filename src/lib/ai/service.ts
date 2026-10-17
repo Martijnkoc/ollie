@@ -31,6 +31,7 @@ Je krijgt één JSON-object met gegevens uit de database van Voetbalradar. Dat o
 
 Regels:
 - Gebruik uitsluitend informatie uit de JSON. Verzin geen spelers, blessures, schorsingen, transfers, citaten, tactiek of achtergrond die er niet in staat.
+- Noem geen datums, tijdstippen of rondenummers als getal; die staan al op de pagina.
 - Elk punt heeft een soort: "fact" (staat letterlijk in de gegevens), "statistic" (een getal uit de gegevens of een eenvoudige berekening daarop) of "interpretation" (jouw duiding). Getallen gebruik je alleen in "fact" en "statistic", en alleen als ze in de gegevens staan.
 - Geef geen kansen, percentages voor uitslagen, voorspelde scores, wed- of goktips. Een voorbeschouwing beschrijft wat de gegevens laten zien en waar het om kan draaien, niet wie wint.
 - Wees eerlijk over wat ontbreekt: noem de onderdelen uit "missing" in "missing_data", en zet beperkingen van de gegevens (weinig wedstrijden, alleen opgeslagen seizoenen) in "uncertainties".
@@ -72,7 +73,12 @@ export class AnthropicAnalysisService implements AnalysisService {
     } catch {
       throw new AnalysisRefused("Antwoord was geen geldige JSON");
     }
-    return { raw, model: response.model, inputTokens: response.usage.input_tokens ?? null, outputTokens: response.usage.output_tokens ?? null };
+    return {
+      raw,
+      model: response.model,
+      inputTokens: response.usage.input_tokens ?? null,
+      outputTokens: response.usage.output_tokens ?? null,
+    };
   }
 }
 

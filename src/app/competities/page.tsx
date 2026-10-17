@@ -31,7 +31,9 @@ export default async function CompetitionsPage() {
     <div className="container page">
       <div className="page-head">
         <h1>Competities</h1>
-        <p className="muted">We tonen een competitie pas als ondersteund wanneer de databron hem binnen ons abonnement daadwerkelijk levert.</p>
+        <p className="muted">
+          We tonen een competitie pas als ondersteund wanneer de databron hem binnen ons abonnement daadwerkelijk levert.
+        </p>
       </div>
       <div className="card">
         <div className="table-wrap">
@@ -49,7 +51,13 @@ export default async function CompetitionsPage() {
                 const a = AVAILABILITY[c.availability] ?? AVAILABILITY.unknown;
                 return (
                   <tr key={c.id}>
-                    <td>{c.availability === "available" ? <Link href={competitionPath(c.slug)}>{c.name}</Link> : <span className="muted">{c.name}</span>}</td>
+                    <td>
+                      {c.availability === "available" ? (
+                        <Link href={competitionPath(c.slug)}>{c.name}</Link>
+                      ) : (
+                        <span className="muted">{c.name}</span>
+                      )}
+                    </td>
                     <td className="muted">{c.country}</td>
                     <td className="muted">{c.seasonName ?? "–"}</td>
                     <td>

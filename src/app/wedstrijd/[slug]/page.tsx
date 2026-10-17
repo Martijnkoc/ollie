@@ -58,7 +58,8 @@ export async function generateMetadata(props: PageProps<"/wedstrijd/[slug]">): P
 function eventStatus(status: MatchSummary["status"]) {
   if (status === "postponed") return "https://schema.org/EventPostponed";
   if (status === "cancelled") return "https://schema.org/EventCancelled";
-  if (statusCategory(status) === "upcoming" || statusCategory(status) === "live" || statusCategory(status) === "finished") return "https://schema.org/EventScheduled";
+  if (statusCategory(status) === "upcoming" || statusCategory(status) === "live" || statusCategory(status) === "finished")
+    return "https://schema.org/EventScheduled";
   return undefined;
 }
 
@@ -94,7 +95,11 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
   const score = scoreText(m);
   const kickoff = new Date(m.kickoffAt);
   const minutesToKickoff = (kickoff.getTime() - read.now.getTime()) / 60_000;
-  const watch = live || (category === "upcoming" && minutesToKickoff < 120) || (category === "finished" && minutesToKickoff > -240) || m.freshness === "stale";
+  const watch =
+    live ||
+    (category === "upcoming" && minutesToKickoff < 120) ||
+    (category === "finished" && minutesToKickoff > -240) ||
+    m.freshness === "stale";
   const version = watch ? await getMatchVersion(read, m.id) : null;
   const analysis = await analysisFor(read, detail, cfg.ai.apiKey !== null);
   const indexable = isIndexable(cfg);
@@ -103,7 +108,12 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
     { name: m.competition.name, path: competitionPath(m.competition.slug) },
     { name: `${m.home.name} - ${m.away.name}`, path: m.path },
   ];
-  const meta = [roundLabel(m), shortSeasonName(detail.seasonName), [detail.venueName, detail.venueCity].filter(Boolean).join(", ") || null, detail.referee ? `Scheidsrechter ${detail.referee}` : null].filter(Boolean);
+  const meta = [
+    roundLabel(m),
+    shortSeasonName(detail.seasonName),
+    [detail.venueName, detail.venueCity].filter(Boolean).join(", ") || null,
+    detail.referee ? `Scheidsrechter ${detail.referee}` : null,
+  ].filter(Boolean);
   const hasHt = m.halftime.home !== null && m.halftime.away !== null && category !== "upcoming";
   const hasEt = detail.extraTime.home !== null && detail.extraTime.away !== null;
   const hasPens = m.penalties.home !== null && m.penalties.away !== null;
@@ -123,7 +133,9 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
             ...(eventStatus(m.status) ? { eventStatus: eventStatus(m.status) } : {}),
             homeTeam: { "@type": "SportsTeam", name: m.home.name, url: absoluteUrl(cfg, teamPath(m.home)) },
             awayTeam: { "@type": "SportsTeam", name: m.away.name, url: absoluteUrl(cfg, teamPath(m.away)) },
-            ...(detail.venueName ? { location: { "@type": "Place", name: detail.venueName, ...(detail.venueCity ? { address: detail.venueCity } : {}) } } : {}),
+            ...(detail.venueName
+              ? { location: { "@type": "Place", name: detail.venueName, ...(detail.venueCity ? { address: detail.venueCity } : {}) } }
+              : {}),
           }}
         />
       )}
@@ -147,8 +159,13 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
                   <h1 className="visually-hidden">
                     {m.home.name} tegen {m.away.name}
                   </h1>
-                  <div className={`scoreboard-score${score ? "" : " none"}`} aria-label={score ? `Stand ${score}` : "Nog geen stand"}>
-                    {score ? score.replace("-", " – ") : category === "upcoming" ? formatTime(kickoff) : "–"}
+                  <div className={`scoreboard-score${score ? "" : " none"}`}>
+                    <span aria-hidden="true">
+                      {score ? score.replace("-", " – ") : category === "upcoming" ? formatTime(kickoff) : "–"}
+                    </span>
+                    <span className="visually-hidden">
+                      {score ? `Stand ${score}` : category === "upcoming" ? `Aftrap ${formatTime(kickoff)}` : "Nog geen stand"}
+                    </span>
                   </div>
                 </div>
                 <div className="scoreboard-team">
@@ -163,12 +180,18 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
               </span>
               {(hasHt || hasEt || hasPens) && (
                 <p className="small muted">
-                  {[hasHt ? `Rust ${m.halftime.home}-${m.halftime.away}` : null, hasEt ? `Na verlenging ${detail.extraTime.home}-${detail.extraTime.away}` : null, hasPens ? `Strafschoppen ${m.penalties.home}-${m.penalties.away}` : null]
+                  {[
+                    hasHt ? `Rust ${m.halftime.home}-${m.halftime.away}` : null,
+                    hasEt ? `Na verlenging ${detail.extraTime.home}-${detail.extraTime.away}` : null,
+                    hasPens ? `Strafschoppen ${m.penalties.home}-${m.penalties.away}` : null,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
               )}
-              {category === "off" && <p className="small muted">Deze wedstrijd is {statusLabel(m.status).toLowerCase()}; er is geen geldige eindstand.</p>}
+              {category === "off" && (
+                <p className="small muted">Deze wedstrijd is {statusLabel(m.status).toLowerCase()}; er is geen geldige eindstand.</p>
+              )}
               {meta.length > 0 && <p className="tiny dim">{meta.join(" · ")}</p>}
               <p className={`freshness${m.freshness === "stale" ? " stale" : ""}`}>
                 {m.freshness === "stale" ? "Mogelijk verouderd. " : ""}Laatst bevestigd door de databron om {formatTimeSeconds(m.syncedAt)}
@@ -204,7 +227,9 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
             <StatsBars stats={detail.statistics} />
           ) : (
             <p className="card-body small muted">
-              {category === "upcoming" ? "Statistieken volgen zodra de wedstrijd begint." : "Niet beschikbaar: de databron levert voor deze wedstrijd geen statistieken."}
+              {category === "upcoming"
+                ? "Statistieken volgen zodra de wedstrijd begint."
+                : "Niet beschikbaar: de databron levert voor deze wedstrijd geen statistieken."}
             </p>
           )}
         </section>
@@ -217,7 +242,9 @@ export default async function MatchRoute(props: PageProps<"/wedstrijd/[slug]">) 
             <Lineups home={detail.lineups.home} away={detail.lineups.away} homeName={m.home.name} awayName={m.away.name} />
           ) : (
             <p className="card-body small muted">
-              {category === "upcoming" ? "Opstellingen worden meestal kort voor de aftrap bekend." : "Niet beschikbaar bij de databron voor deze wedstrijd."}
+              {category === "upcoming"
+                ? "Opstellingen worden meestal kort voor de aftrap bekend."
+                : "Niet beschikbaar bij de databron voor deze wedstrijd."}
             </p>
           )}
         </section>

@@ -19,7 +19,10 @@ export function DataBanner({ status }: { status: SiteStatus }) {
         <div className="container">
           <strong>Dataconfiguratie ontbreekt</strong>
           <span>
-            Er is nog geen voetbaldatabron gekoppeld. Deze site toont daarom geen wedstrijden. <Link href="/status" className="link">Status</Link>
+            Er is nog geen voetbaldatabron gekoppeld. Deze site toont daarom geen wedstrijden.{" "}
+            <Link href="/status" className="link">
+              Status
+            </Link>
           </span>
         </div>
       </div>
@@ -31,7 +34,10 @@ export function DataBanner({ status }: { status: SiteStatus }) {
         <div className="container">
           <strong>Gegevens mogelijk verouderd</strong>
           <span>
-            De synchronisatie met de databron loopt achter. Scores kunnen niet actueel zijn. <Link href="/status" className="link">Status</Link>
+            De synchronisatie met de databron loopt achter. Scores kunnen niet actueel zijn.{" "}
+            <Link href="/status" className="link">
+              Status
+            </Link>
           </span>
         </div>
       </div>

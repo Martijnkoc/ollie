@@ -121,7 +121,9 @@ export function readConfig(env: Record<string, string | undefined> = process.env
       .map((s) => s.trim())
       .filter(Boolean),
     livePollSeconds: int("LIVE_POLL_SECONDS", env.LIVE_POLL_SECONDS, 30, 10, 600, issues),
-    providerDailyBudget: env.PROVIDER_DAILY_BUDGET ? int("PROVIDER_DAILY_BUDGET", env.PROVIDER_DAILY_BUDGET, 2000, 10, 1_000_000, issues) : null,
+    providerDailyBudget: env.PROVIDER_DAILY_BUDGET
+      ? int("PROVIDER_DAILY_BUDGET", env.PROVIDER_DAILY_BUDGET, 2000, 10, 1_000_000, issues)
+      : null,
     cronSecret: cronSecret && cronSecret.length >= 24 ? cronSecret : null,
     admin,
     syncOnTraffic: flag(env.SYNC_ON_TRAFFIC),

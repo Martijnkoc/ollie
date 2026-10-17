@@ -45,7 +45,11 @@ function Result({ match, teamId }: { match: MatchSummary; teamId: number }) {
   const r = own > other ? "W" : own < other ? "V" : "G";
   const words = { W: "winst", G: "gelijkspel", V: "verlies" };
   return (
-    <span className={`result-badge form-${r}`} style={{ background: r === "W" ? "var(--lime)" : r === "V" ? "var(--red)" : "#c9d1cb" }} title={words[r]}>
+    <span
+      className={`result-badge form-${r}`}
+      style={{ background: r === "W" ? "var(--lime)" : r === "V" ? "var(--red)" : "#c9d1cb" }}
+      title={words[r]}
+    >
       {r}
     </span>
   );
@@ -63,7 +67,11 @@ export default async function TeamRoute(props: PageProps<"/team/[slug]">) {
     ...(page.competitions[0] ? [{ name: page.competitions[0].name, path: competitionPath(page.competitions[0].slug) }] : []),
     { name: team.name, path: teamPath(team) },
   ];
-  const facts = [team.country, team.founded ? `opgericht ${team.founded}` : null, [team.venueName, team.venueCity].filter(Boolean).join(", ") || null].filter(Boolean);
+  const facts = [
+    team.country,
+    team.founded ? `opgericht ${team.founded}` : null,
+    [team.venueName, team.venueCity].filter(Boolean).join(", ") || null,
+  ].filter(Boolean);
 
   return (
     <div className="container layout layout-two">
@@ -93,7 +101,9 @@ export default async function TeamRoute(props: PageProps<"/team/[slug]">) {
             </div>
             <FavoriteToggle kind="teams" id={team.id} name={team.name} withLabel />
           </div>
-          {team.isPlaceholder && <p className="notice notice-info small">Dit is een plaatshouder voor een nog onbekende tegenstander in een knock-outschema.</p>}
+          {team.isPlaceholder && (
+            <p className="notice notice-info small">Dit is een plaatshouder voor een nog onbekende tegenstander in een knock-outschema.</p>
+          )}
         </div>
 
         {page.live.length > 0 && (

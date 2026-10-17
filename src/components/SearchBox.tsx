@@ -13,10 +13,7 @@ interface Entry {
 }
 
 function normalise(s: string) {
-  return s
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+  return s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 /**

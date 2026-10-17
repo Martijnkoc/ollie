@@ -56,7 +56,15 @@ export default async function StatusPage() {
               <SyncTime iso={status.lastSync} prefix="Laatst geslaagd" />
             </dd>
             <dt>Toestand</dt>
-            <dd>{dbError ? "Database niet bereikbaar" : status.degraded ? "Loopt achter" : cfg.dataMode === "unconfigured" ? "Niet actief" : "Normaal"}</dd>
+            <dd>
+              {dbError
+                ? "Database niet bereikbaar"
+                : status.degraded
+                  ? "Loopt achter"
+                  : cfg.dataMode === "unconfigured"
+                    ? "Niet actief"
+                    : "Normaal"}
+            </dd>
           </dl>
         </div>
       </section>

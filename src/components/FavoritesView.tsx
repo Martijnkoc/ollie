@@ -48,7 +48,10 @@ export function FavoritesView() {
   useEffect(() => {
     if (empty) return;
     let cancelled = false;
-    const params = new URLSearchParams({ teams: [...favorites.teams].sort((a, b) => a - b).join(","), competitions: [...favorites.competitions].sort((a, b) => a - b).join(",") });
+    const params = new URLSearchParams({
+      teams: [...favorites.teams].sort((a, b) => a - b).join(","),
+      competitions: [...favorites.competitions].sort((a, b) => a - b).join(","),
+    });
     fetch(`/api/v1/favorites?${params}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: Data) => !cancelled && (setData(d), setError(false)))
@@ -63,12 +66,14 @@ export function FavoritesView() {
     return (
       <div className="card empty">
         <p>Je hebt nog geen favorieten.</p>
-        <p className="small dim">Tik op de ster bij een competitie of op &ldquo;Volgen&rdquo; bij een club. Je favorieten worden alleen in deze browser bewaard.</p>
+        <p className="small dim">
+          Tik op de ster bij een competitie of op &ldquo;Volgen&rdquo; bij een club. Je favorieten worden alleen in deze browser bewaard.
+        </p>
       </div>
     );
   }
   if (error) return <div className="notice notice-warn small">Je favorieten konden niet worden geladen. Probeer het later opnieuw.</div>;
-  if (!data) return <div className="skeleton" style={{ height: 160 }} aria-busy="true" aria-label="Laden" />;
+  if (!data) return <div className="skeleton" style={{ height: 160 }} role="status" aria-busy="true" aria-label="Favorieten laden" />;
   const nothing = data.live.length + data.upcoming.length + data.recent.length === 0;
   return (
     <div className="stack">
@@ -76,7 +81,10 @@ export function FavoritesView() {
         <div className="card-body stack-sm">
           <h2 style={{ fontSize: "0.9rem" }}>Je volgt</h2>
           <ul className="chips" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {[...data.competitions.map((c) => ({ ...c, kind: "competitions" as const })), ...data.teams.map((t) => ({ ...t, kind: "teams" as const }))].map((f) => (
+            {[
+              ...data.competitions.map((c) => ({ ...c, kind: "competitions" as const })),
+              ...data.teams.map((t) => ({ ...t, kind: "teams" as const })),
+            ].map((f) => (
               <li key={`${f.kind}-${f.id}`} className="chip" style={{ paddingRight: 2 }}>
                 <Link href={f.path}>{f.name}</Link>
                 <FavoriteToggle kind={f.kind} id={f.id} name={f.name} />
