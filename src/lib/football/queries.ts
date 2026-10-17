@@ -121,6 +121,16 @@ export async function getDayBoard(ctx: ReadContext, day: string): Promise<DayBoa
   return { day, matches: await matches(ctx, `m.kickoff_at >= $2 and m.kickoff_at < $3`, [start, end], "c.sort_order, m.kickoff_at, m.id") };
 }
 
+/** A cheap stamp that changes whenever anything visible about the match changes. */
+export async function getMatchVersion(ctx: ReadContext, id: number) {
+  const [row] = await ctx.db.query<{ id: number; status: string; synced_at: Date; v: string }>(
+    `select id, status, synced_at, concat_ws(':', core_hash, events_hash, lineups_hash, stats_hash) as v from matches where provider = $1 and id = $2`,
+    [ctx.provider, id],
+  );
+  if (!row) return null;
+  return { id: row.id, status: row.status, syncedAt: new Date(row.synced_at).toISOString(), version: row.v };
+}
+
 /** Only the matches that can change soon; used by the live refresh endpoint. */
 export async function getMatchesByIds(ctx: ReadContext, ids: number[]) {
   if (ids.length === 0) return [];
@@ -510,12 +520,20 @@ export async function getSearchIndex(ctx: ReadContext): Promise<SearchEntry[]> {
 
 /** Upcoming, live and recent matches of a visitor's favourite teams and competitions. */
 export async function getFavoritesMatches(ctx: ReadContext, teamIds: number[], competitionIds: number[]) {
-  if (teamIds.length === 0 && competitionIds.length === 0) return { live: [], upcoming: [], recent: [] };
+  const teams = teamIds.length
+    ? (await ctx.db.query<{ id: number; name: string; slug: string }>(`select id, name, slug from teams where provider = $1 and id = any($2::int[]) order by name`, [ctx.provider, teamIds])).map((t) => ({ id: t.id, name: t.name, path: teamPath(t) }))
+    : [];
+  const competitions = competitionIds.length
+    ? (await ctx.db.query<{ id: number; name: string; slug: string }>(`select id, name, slug from competitions where provider = $1 and id = any($2::int[]) order by sort_order`, [ctx.provider, competitionIds])).map((c) => ({ id: c.id, name: c.name, path: competitionPath(c.slug) }))
+    : [];
+  if (teamIds.length === 0 && competitionIds.length === 0) return { teams, competitions, live: [], upcoming: [], recent: [] };
   const who = `(m.home_team_id = any($2::int[]) or m.away_team_id = any($2::int[]) or m.competition_id = any($3::int[]))`;
   const from = new Date(ctx.now.getTime() - 7 * 86_400_000);
   const to = new Date(ctx.now.getTime() + 14 * 86_400_000);
   const list = await matches(ctx, `${who} and m.kickoff_at between $4 and $5`, [teamIds, competitionIds, from, to], "m.kickoff_at", 300);
   return {
+    teams,
+    competitions,
     live: list.filter((m) => isLive(m.status)),
     upcoming: list.filter((m) => isUpcoming(m.status) && new Date(m.kickoffAt) >= new Date(ctx.now.getTime() - 3 * 3600_000)).slice(0, 30),
     recent: list.filter((m) => isFinished(m.status) || m.status === "postponed" || m.status === "cancelled" || m.status === "abandoned").reverse().slice(0, 30),

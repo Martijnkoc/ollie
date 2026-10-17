@@ -2,10 +2,10 @@ import "server-only";
 import type { MatchDetail, ReadContext } from "@/lib/football/queries";
 import { isFinished, isUpcoming } from "@/lib/football/status";
 import { stableHash } from "@/lib/football/repository";
+import { PROVIDER_LABEL } from "@/lib/providers/labels";
 import { buildAnalysisInput, type AnalysisInput } from "./input";
 import { analysisSchema, type Analysis, type AnalysisKind } from "./schema";
 
-export const PROVIDER_LABELS: Record<string, string> = { sportmonks: "Sportmonks", demo: "Demo-gegevens (fictief)" };
 
 export function analysisKindFor(detail: MatchDetail): AnalysisKind | null {
   if (isUpcoming(detail.match.status)) return "preview";
@@ -28,7 +28,7 @@ export type AnalysisView =
 export async function analysisFor(ctx: ReadContext, detail: MatchDetail, enabled: boolean): Promise<AnalysisView> {
   const kind = analysisKindFor(detail);
   if (!kind) return { state: "none", kind: null };
-  const hash = inputHash(buildAnalysisInput(detail, kind, PROVIDER_LABELS[ctx.provider] ?? ctx.provider));
+  const hash = inputHash(buildAnalysisInput(detail, kind, PROVIDER_LABEL[ctx.provider] ?? ctx.provider));
   const [row] = await ctx.db.query<{ input_hash: string; content: unknown; created_at: Date; data_as_of: Date; model: string }>(
     `select input_hash, content, created_at, data_as_of, model from ai_analyses
      where match_id = $1 and kind = $2 and status = 'ok' order by created_at desc limit 1`,

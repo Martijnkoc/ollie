@@ -2,7 +2,8 @@ import "server-only";
 import { getMatchDetail } from "@/lib/football/queries";
 import { localDayRange, localDay } from "@/lib/time";
 import type { JobContext, JobResult } from "@/lib/sync/jobs";
-import { analysisKindFor, inputHash, PROVIDER_LABELS } from "./analyses";
+import { PROVIDER_LABEL } from "@/lib/providers/labels";
+import { analysisKindFor, inputHash } from "./analyses";
 import { buildAnalysisInput } from "./input";
 import { AnalysisRefused, createAnalysisService, type AnalysisService } from "./service";
 import { validateAnalysis } from "./validate";
@@ -46,7 +47,7 @@ export async function syncAnalyses(ctx: JobContext, service: AnalysisService | n
     if (!detail) continue;
     const kind = analysisKindFor(detail);
     if (!kind) continue;
-    const input = buildAnalysisInput(detail, kind, PROVIDER_LABELS[ctx.provider.id] ?? ctx.provider.id);
+    const input = buildAnalysisInput(detail, kind, PROVIDER_LABEL[ctx.provider.id] ?? ctx.provider.id);
     const hash = inputHash(input);
     const [exists] = await ctx.db.query(`select 1 from ai_analyses where match_id = $1 and kind = $2 and input_hash = $3`, [c.id, kind, hash]);
     if (exists) continue;
