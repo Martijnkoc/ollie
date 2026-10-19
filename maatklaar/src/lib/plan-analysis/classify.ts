@@ -37,6 +37,10 @@ const ROOM_TERMS: { re: RegExp; name: string }[] = [
   { re: /technische\s*ruimte|cv[\s-]*ruimte|installatie\s*ruimte/, name: "Technische ruimte" },
   { re: /inloop\s*kast|garderobe/, name: "Inloopkast" },
   { re: /provisie\s*kast/, name: "Provisiekast" },
+  { re: /trap\s*kast/, name: "Trapkast" },
+  { re: /(?<![a-z])kast(?![a-z])/, name: "Kast" },
+  // Zibber-style plans mark the meter cupboard with a single "K"; only an exact, lone "K" counts.
+  { re: /^k$/, name: "Meterkast" },
   { re: /serre/, name: "Serre" },
   { re: /garage/, name: "Garage" },
   { re: /kelder|souterrain/, name: "Kelder" },

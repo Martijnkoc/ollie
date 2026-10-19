@@ -276,10 +276,240 @@ async function scans() {
   await browser.close();
 }
 
+/**
+ * A fictional ground floor drawn like a makelaarsplattegrond (Zibber/Floorplanner style): filled black walls,
+ * pastel room colours, grey furniture, a black cooktop and TV against the wall, windows as gaps with thin
+ * frame lines, doors with threshold lines and swings, and dimension chains with ticks outside the building.
+ * Only room names, no room dimensions: the app has to measure from the walls. 130 px per metre.
+ * Truth (interior, mm): Woonkamer L 6000×4000 + 3400×1600 = 29,44 m²; Keuken 2500×1500; Hal 2000×2700;
+ * Badkamer 2000×2700; Slaapkamer 1800×2700.
+ */
+async function wandenPlan() {
+  let chromium;
+  try {
+    ({ chromium } = await import("@playwright/test"));
+  } catch {
+    console.warn("Playwright niet beschikbaar; plattegrond-wanden overgeslagen.");
+    return;
+  }
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const bytes = await page.evaluate(async () => {
+    const S = 0.13;
+    const OX = 270;
+    const OY = 250;
+    const W = 1360;
+    const H = 1640;
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const g = c.getContext("2d");
+    const X = (x) => OX + x * S;
+    const Y = (y) => OY + y * S;
+    const rect = (x0, y0, x1, y1, fill) => {
+      g.fillStyle = fill;
+      g.fillRect(X(x0), Y(y0), (x1 - x0) * S, (y1 - y0) * S);
+    };
+    const line = (x0, y0, x1, y1, color = "#8c8c8c", width = 1.5) => {
+      g.strokeStyle = color;
+      g.lineWidth = width;
+      g.beginPath();
+      g.moveTo(X(x0), Y(y0));
+      g.lineTo(X(x1), Y(y1));
+      g.stroke();
+    };
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, W, H);
+
+    // Room colours.
+    rect(0, 0, 6000, 4000, "#e4dcc6");
+    rect(0, 4000, 3400, 5600, "#e4dcc6");
+    rect(3500, 4100, 6000, 5600, "#e4dcc6");
+    rect(0, 5700, 2000, 8400, "#c7b9a9");
+    rect(2100, 5700, 4100, 8400, "#96abc6");
+    rect(4200, 5700, 6000, 8400, "#c9e0b4");
+
+    // Furniture.
+    rect(300, 300, 2500, 1200, "#bfc3c7");
+    g.fillStyle = "#cfcfcf";
+    g.beginPath();
+    g.ellipse(X(4200), Y(2300), 900 * S, 500 * S, 0, 0, Math.PI * 2);
+    g.fill();
+    rect(5960, 800, 6000, 2200, "#161616"); // TV against the wall
+    rect(3500, 5000, 6000, 5600, "#d7d7d7"); // worktop
+    rect(5400, 5050, 6000, 5550, "#191919"); // cooktop against the wall
+    g.fillStyle = "#c62020";
+    for (const [cx, cy] of [
+      [5550, 5180],
+      [5850, 5180],
+      [5550, 5420],
+      [5850, 5420],
+    ]) {
+      g.beginPath();
+      g.arc(X(cx), Y(cy), 80 * S, 0, Math.PI * 2);
+      g.fill();
+    }
+    rect(2150, 6000, 2950, 7700, "#f4f4f4"); // bath
+    g.strokeStyle = "#9a9a9a";
+    g.lineWidth = 1;
+    g.strokeRect(X(2150), Y(6000), 800 * S, 1700 * S);
+    rect(4400, 6300, 5800, 8200, "#9a9a9a"); // bed
+    rect(4400, 6300, 5800, 6800, "#ececec");
+    rect(4400, 7000, 5800, 8200, "#787878");
+
+    // Walls: 300 mm outside, 100 mm inside.
+    const black = "#000000";
+    rect(-300, -300, 6300, 0, black);
+    rect(-300, 8400, 6300, 8700, black);
+    rect(-300, -300, 0, 8700, black);
+    rect(6000, -300, 6300, 8700, black);
+    rect(3400, 4000, 6000, 4100, black);
+    rect(3400, 4000, 3500, 5600, black);
+    rect(0, 5600, 6000, 5700, black);
+    rect(2000, 5700, 2100, 8400, black);
+    rect(4100, 5700, 4200, 8400, black);
+
+    // Windows: a gap in the outer wall with frame lines along the wall.
+    const windowH = (x0, x1, y0, y1) => {
+      rect(x0, y0, x1, y1, "#ffffff");
+      for (const t of [0.05, 0.5, 0.95]) line(x0, y0 + (y1 - y0) * t, x1, y0 + (y1 - y0) * t);
+    };
+    const windowV = (y0, y1, x0, x1) => {
+      rect(x0, y0, x1, y1, "#ffffff");
+      for (const t of [0.05, 0.5, 0.95]) line(x0 + (x1 - x0) * t, y0, x0 + (x1 - x0) * t, y1);
+    };
+    windowH(600, 2000, -300, 0);
+    windowH(3200, 5400, -300, 0);
+    windowV(1000, 2600, -300, 0);
+    windowV(4300, 5300, 6000, 6300);
+    windowV(6400, 7600, 6000, 6300);
+    windowH(2500, 3600, 8400, 8700);
+    windowH(4600, 5600, 8400, 8700);
+
+    // Doors: a gap with threshold lines at both wall faces; some with a leaf and swing.
+    const doorH = (x0, x1, y0, y1) => {
+      rect(x0, y0, x1, y1, "#ffffff");
+      line(x0, y0, x1, y0, "#6e6e6e");
+      line(x0, y1, x1, y1, "#6e6e6e");
+    };
+    const doorV = (y0, y1, x0, x1) => {
+      rect(x0, y0, x1, y1, "#ffffff");
+      line(x0, y0, x0, y1, "#6e6e6e");
+      line(x1, y0, x1, y1, "#6e6e6e");
+    };
+    const swing = (hx, hy, r, a0, a1) => {
+      g.strokeStyle = "#4a4a4a";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(X(hx), Y(hy), r * S, Math.min(a0, a1), Math.max(a0, a1));
+      g.stroke();
+      g.beginPath();
+      g.moveTo(X(hx), Y(hy));
+      g.lineTo(X(hx) + Math.cos(a0) * r * S, Y(hy) + Math.sin(a0) * r * S);
+      g.stroke();
+    };
+    doorH(4200, 5050, 4000, 4100);
+    swing(4200, 4100, 850, Math.PI / 2, 0);
+    doorH(600, 1450, 5600, 5700);
+    doorV(6000, 6800, 2000, 2100);
+    doorH(4600, 5400, 5600, 5700);
+    doorH(500, 1500, 8400, 8700);
+    swing(500, 8400, 1000, -Math.PI / 2, 0);
+
+    // Room names only, like most makelaarsplattegronden.
+    g.fillStyle = "#333333";
+    g.font = "22px Arial, Helvetica, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    for (const [name, x, y] of [
+      ["Woonkamer", 2400, 2700],
+      ["Keuken", 5450, 4500],
+      ["Hal", 1000, 7000],
+      ["Badkamer", 3550, 7100],
+      ["Slaapkamer", 5100, 5980],
+    ])
+      g.fillText(name, X(x), Y(y));
+
+    // Dimension chains outside, measured between the inner faces like on Zibber plans.
+    g.font = "24px Arial, Helvetica, sans-serif";
+    const tick = (px, py, vertical) => {
+      g.strokeStyle = "#222222";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      if (vertical) (g.moveTo(px - 7, py), g.lineTo(px + 7, py));
+      else (g.moveTo(px, py - 7), g.lineTo(px, py + 7));
+      g.stroke();
+    };
+    const dimH = (x0, x1, yPx, text) => {
+      const a = X(x0);
+      const b = X(x1);
+      const tw = g.measureText(text).width + 16;
+      const m = (a + b) / 2;
+      g.strokeStyle = "#222222";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(a, yPx);
+      g.lineTo(m - tw / 2, yPx);
+      g.moveTo(m + tw / 2, yPx);
+      g.lineTo(b, yPx);
+      g.stroke();
+      tick(a, yPx, false);
+      tick(b, yPx, false);
+      g.fillStyle = "#222222";
+      g.fillText(text, m, yPx);
+    };
+    const dimV = (y0, y1, xPx, text) => {
+      const a = Y(y0);
+      const b = Y(y1);
+      const tw = g.measureText(text).width + 16;
+      const m = (a + b) / 2;
+      g.strokeStyle = "#222222";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(xPx, a);
+      g.lineTo(xPx, m - tw / 2);
+      g.moveTo(xPx, m + tw / 2);
+      g.lineTo(xPx, b);
+      g.stroke();
+      tick(xPx, a, true);
+      tick(xPx, b, true);
+      g.save();
+      g.translate(xPx, m);
+      g.rotate(-Math.PI / 2);
+      g.fillStyle = "#222222";
+      g.fillText(text, 0, 0);
+      g.restore();
+    };
+    dimH(0, 3400, Y(-300) - 90, "3.40 m");
+    dimH(3500, 6000, Y(-300) - 90, "2.50 m");
+    dimH(0, 6000, Y(-300) - 170, "6.00 m");
+    dimH(0, 2000, Y(8700) + 90, "2.00 m");
+    dimH(2100, 4100, Y(8700) + 90, "2.00 m");
+    dimH(4200, 6000, Y(8700) + 90, "1.80 m");
+    dimH(0, 6000, Y(8700) + 170, "6.00 m");
+    dimV(0, 5600, X(-300) - 90, "5.60 m");
+    dimV(5700, 8400, X(-300) - 90, "2.70 m");
+    dimV(0, 8400, X(-300) - 170, "8.40 m");
+    dimV(0, 4000, X(6300) + 90, "4.00 m");
+    dimV(4100, 5600, X(6300) + 90, "1.50 m");
+    dimV(5700, 8400, X(6300) + 90, "2.70 m");
+
+    g.font = "16px Arial, Helvetica, sans-serif";
+    g.fillStyle = "#555555";
+    g.fillText("Fictieve woning — testplattegrond MaatKlaar", W / 2, H - 24);
+
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    return Array.from(new Uint8Array(await blob.arrayBuffer()));
+  });
+  writeFileSync(path.join(out, "plattegrond-wanden.png"), Buffer.from(bytes));
+  await browser.close();
+}
+
 await appartement();
 await woonkamer();
 await lvorm();
 await zonderSchaal();
 await brokenFiles();
 await scans();
+await wandenPlan();
 console.log("Fixtures geschreven naar fixtures/");

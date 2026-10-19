@@ -8,7 +8,8 @@ import { mmPerPointForNotation, mmPerUnitFromCalibration } from "@/lib/geometry/
 import { emptyRect, newRoom } from "@/lib/projects/factory";
 import type { Room, Scale } from "@/lib/projects/schema";
 import { PlanCanvas, type Tool } from "./PlanCanvas";
-import { RoomCard } from "./RoomCard";
+import { AutoSummary } from "./AutoSummary";
+import { confirmRoom, RoomCard } from "./RoomCard";
 import { STAGE_LABEL, useAnalyzer } from "./useAnalyzer";
 import { usePlanImage } from "./usePlanImage";
 import type { StepProps } from "./types";
@@ -29,6 +30,7 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
   const [newName, setNewName] = useState("");
 
   const scale = project.scales.find((s) => s.page === page) ?? null;
+  const pageRooms = project.rooms.filter((r) => r.page === page || (r.shape.kind === "drawn" && r.shape.page === page));
   const pageAnalysis = project.analyses.find((a) => a.page === page) ?? null;
 
   // Pages of a multi-page PDF are analysed when the user opens them.
@@ -42,6 +44,19 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
 
   function setRoom(room: Room) {
     update((p) => ({ ...p, rooms: p.rooms.map((r) => (r.id === room.id ? room : r)) }));
+  }
+
+  /** Confirms every automatically measured room on this page that passed all checks, and a proven scale. */
+  function confirmAllOk() {
+    update((p) => ({
+      ...p,
+      rooms: p.rooms.map((r) =>
+        r.autoOk && r.page === page && r.nameStatus === "auto" && r.shape.kind === "drawn" && r.shape.status === "auto"
+          ? confirmRoom(r)
+          : r,
+      ),
+      scales: p.scales.map((s) => (s.page === page && s.method === "maatlijnen" && s.evidence?.proven ? { ...s, status: "confirmed" } : s)),
+    }));
   }
 
   function chooseTool(t: Tool) {
@@ -129,6 +144,7 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
       status: "confirmed",
       reference: { a: line.a, b: line.b, realMm: mm },
       notation: null,
+      evidence: null,
     };
     update((p) => ({ ...p, scales: [...p.scales.filter((s) => s.page !== page), next] }));
     chooseTool("select");
@@ -145,13 +161,13 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
       status: "confirmed",
       reference: null,
       notation: denominator,
+      evidence: null,
     };
     update((p) => ({ ...p, scales: [...p.scales.filter((s) => s.page !== page), next] }));
     setNotationText("");
   }
 
   const measured = line?.b && scale ? formatMFromMm(distance(line.a, line.b) * scale.mmPerUnit) : null;
-  const pageRooms = project.rooms.filter((r) => r.page === page || (r.shape.kind === "drawn" && r.shape.page === page));
 
   return (
     <section className="stack" aria-labelledby="stap-kamers">
@@ -186,6 +202,12 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                 <li key={n}>&ldquo;{n}&rdquo; komt meer dan eens voor. Controleer of het geen dubbele ruimte is.</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {pageAnalysis?.auto && (
+          <div style={{ marginBottom: 16 }}>
+            <AutoSummary analysis={pageAnalysis} scale={scale} rooms={pageRooms} onConfirmAll={confirmAllOk} />
           </div>
         )}
 
@@ -261,7 +283,9 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                     active: r.id === activeId,
                     included: r.includeFloor,
                   }))}
-                  windows={[]}
+                  windows={project.windows
+                    .filter((w) => w.page === page && w.position)
+                    .map((w) => ({ id: w.id, code: w.code, position: w.position!, active: false }))}
                   draft={draft}
                   line={line ? { ...line, label: tool === "measure" ? measured : null } : null}
                   labels={(pageAnalysis?.lengthLabels ?? []).map((l) => ({ box: l.box, text: l.text }))}
@@ -361,7 +385,9 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                   <p className="small" style={{ margin: 0 }}>
                     {scale.method === "schaalnotatie"
                       ? `Schaal 1:${scale.notation} ${scale.status === "auto" ? "gevonden op de tekening" : "ingesteld"}. Dit klopt alleen als de PDF op ware papiergrootte is opgeslagen.`
-                      : `Gekalibreerd op een lijn van ${formatMFromMm(scale.reference?.realMm ?? 0)}.`}
+                      : scale.method === "maatlijnen"
+                        ? `Afgeleid uit ${scale.evidence?.agreeing ?? "de"} maatlijnen op de tekening die onderling kloppen${scale.evidence ? ` (±${(scale.evidence.uncertainty * 100).toFixed(1).replace(".", ",")} %)` : ""}. Controleer gerust met een maat die je zelf kent.`
+                        : `Gekalibreerd op een lijn van ${formatMFromMm(scale.reference?.realMm ?? 0)}.`}
                   </p>
                 ) : (
                   <p className="small" style={{ margin: 0 }}>

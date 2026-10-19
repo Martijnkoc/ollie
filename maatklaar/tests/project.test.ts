@@ -13,7 +13,15 @@ const rect = (l: number, w: number, status: "confirmed" | "auto" = "confirmed") 
   width: { mm: w, status, source: status === "auto" ? ("pdf-tekst" as const) : ("gebruiker" as const) },
 });
 
-const scale: Scale = { page: 0, mmPerUnit: 35.27777, method: "schaalnotatie", status: "auto", reference: null, notation: 100 };
+const scale: Scale = {
+  page: 0,
+  mmPerUnit: 35.27777,
+  method: "schaalnotatie",
+  status: "auto",
+  reference: null,
+  notation: 100,
+  evidence: null,
+};
 const square = [
   { x: 0, y: 0 },
   { x: 100, y: 0 },

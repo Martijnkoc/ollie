@@ -57,6 +57,7 @@ export function newRoom(name: string, shape: RoomShape, extra: Partial<Room> = {
     wallsWithoutPlinth: [],
     doors: [],
     notes: [],
+    autoOk: false,
     ...extra,
   };
 }
@@ -95,6 +96,7 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     acknowledged: {},
     confirmed: false,
     fullness: null,
+    planWidthMm: null,
     ...extra,
   };
 }

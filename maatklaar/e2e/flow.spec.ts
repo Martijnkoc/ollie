@@ -54,11 +54,19 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   await expect(page.getByRole("heading", { name: "Plinten", exact: true })).toBeVisible();
   await expect(page.getByText("Onvolledig: Woonkamer", { exact: true })).toBeVisible();
 
-  // Window register and guided measuring with a deviation that is not averaged away.
+  // Window register: the openings in the outer walls are already listed (indicative width, no measures).
+  const cards = page.locator(".window-card");
+  await expect(cards.first()).toContainText("Herkend op de tekening");
+  const found = await cards.count();
+  expect(found).toBeGreaterThan(0);
+
+  // Guided measuring of a window added by hand, with a deviation that is not averaged away.
   await page.getByRole("button", { name: "+ Raam toevoegen" }).click();
-  await page.getByLabel("Product").selectOption("rolgordijn");
-  await page.getByLabel("Montage").selectOption("in-de-dag");
-  await page.getByRole("button", { name: "Meten" }).click();
+  await expect(cards).toHaveCount(found + 1);
+  const card = cards.last();
+  await card.getByLabel("Product").selectOption("rolgordijn");
+  await card.getByLabel("Montage").selectOption("in-de-dag");
+  await card.getByRole("button", { name: "Meten" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Volgende" }).click();
@@ -83,7 +91,7 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   await dialog.getByLabel(/Ik heb alle maten van dit raam nagekeken/).check();
   await expect(dialog.getByText("Door jou bevestigd")).toBeVisible();
   await dialog.getByRole("button", { name: "Klaar" }).click();
-  await expect(page.locator(".window-card")).toContainText("Bestelmaat: volgens je leverancier.");
+  await expect(card).toContainText("Bestelmaat: volgens je leverancier.");
 
   // Report: PDF and CSV made in the browser.
   await page.getByRole("button", { name: "Naar mijn rapport" }).click();

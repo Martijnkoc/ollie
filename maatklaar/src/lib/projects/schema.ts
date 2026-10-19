@@ -93,16 +93,35 @@ export const roomSchema = z.object({
   doors: z.array(doorSchema).max(20),
   /** Notes from the analysis, e.g. "Vorm aangenomen als rechthoek". */
   notes: z.array(z.string().max(300)).max(10),
+  /**
+   * Outline measured automatically from the walls and every check passed (closed by walls, one name, scale
+   * proven by agreeing dimension lines). Only then may "Bevestig alles wat klopt" confirm it in one go.
+   */
+  autoOk: z.boolean().default(false),
 });
 export type Room = z.infer<typeof roomSchema>;
+
+export const scaleEvidenceSchema = z.object({
+  /** Dimension lines read on the page, and how many of them agree on this scale. */
+  lines: z.number().int().nonnegative(),
+  agreeing: z.number().int().nonnegative(),
+  /** 2 when agreeing lines run both horizontally and vertically (a stretched image would show). */
+  directions: z.number().int().min(0).max(2),
+  /** Half-width of the agreement as a fraction (0.005 = ±0,5 %). */
+  uncertainty: z.number().nonnegative(),
+  outliers: z.array(z.string().max(40)).max(20),
+  proven: z.boolean(),
+});
 
 export const scaleSchema = z.object({
   page: z.number().int().nonnegative(),
   mmPerUnit: z.number().positive().finite(),
-  method: z.enum(["kalibratie", "schaalnotatie"]),
+  /** kalibratie: a line the user measured; schaalnotatie: "1:100" on a PDF; maatlijnen: dimension lines on the drawing. */
+  method: z.enum(["kalibratie", "schaalnotatie", "maatlijnen"]),
   status: z.enum(["auto", "confirmed"]),
   reference: z.object({ a: pointSchema, b: pointSchema, realMm: z.number().positive() }).nullable(),
   notation: z.number().int().positive().nullable(),
+  evidence: scaleEvidenceSchema.nullable().default(null),
 });
 export type Scale = z.infer<typeof scaleSchema>;
 
@@ -142,6 +161,17 @@ export const analysisSchema = z.object({
   scaleNotation: z.object({ denominator: z.number().int().positive(), text: z.string().max(60) }).nullable(),
   notToScale: z.boolean(),
   findings: z.array(z.string().max(300)),
+  /** Summary of the automatic measuring from walls and dimension lines; null when it did not run. */
+  auto: z
+    .object({
+      rooms: z.number().int().nonnegative(),
+      roomsOk: z.number().int().nonnegative(),
+      windows: z.number().int().nonnegative(),
+      doors: z.number().int().nonnegative(),
+      reasons: z.array(z.string().max(300)).max(10),
+    })
+    .nullable()
+    .default(null),
   /** Single length labels with their position, offered as suggestions when calibrating. */
   lengthLabels: z
     .array(
@@ -175,6 +205,11 @@ export const windowSchema = z.object({
   acknowledged: z.partialRecord(z.enum(["breedte", "hoogte", "ophanghoogte"]), z.string().max(100)),
   confirmed: z.boolean(),
   fullness: z.number().positive().max(5).nullable(),
+  /**
+   * Width of the opening in the wall on the plan, in mm. Indicative only: never used as a measurement or for
+   * an order size (a plan seen from above is not a window measurement).
+   */
+  planWidthMm: z.number().positive().max(100_000).nullable().default(null),
 });
 export type ProjectWindow = z.infer<typeof windowSchema>;
 

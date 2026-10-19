@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatM2, formatM2FromMm2, parseDecimal } from "@/lib/format";
+import { formatM2, formatM2FromMm2, formatMFromMm, parseDecimal } from "@/lib/format";
 import { emptyRect, randomId } from "@/lib/projects/factory";
 import type { RoomResult } from "@/lib/projects/compute";
 import { MISSING, type Length, type Room, type RoomShape } from "@/lib/projects/schema";
@@ -11,7 +11,7 @@ import { LengthInput } from "./LengthInput";
 const SHAPE_LABELS: Record<RoomShape["kind"], string> = {
   rect: "Rechthoek (lengte × breedte)",
   l: "L-vorm",
-  drawn: "Getekend op de plattegrond",
+  drawn: "Omtrek op de plattegrond",
   area: "Alleen oppervlakte bekend",
 };
 
@@ -46,6 +46,7 @@ export function confirmRoom(room: Room): Room {
     nameStatus: "confirmed",
     shape,
     obstacles: room.obstacles.map((o) => ({ ...o, length: confirmLength(o.length), width: confirmLength(o.width) })),
+    doors: room.doors.map((d) => ({ ...d, width: confirmLength(d.width) })),
   };
 }
 
@@ -54,7 +55,10 @@ function shapeSummary(room: Room) {
   const m = (l: Length) => (l.mm === null ? "?" : (l.mm / 1000).toFixed(2).replace(".", ","));
   if (s.kind === "rect") return `Rechthoek ${m(s.length)} × ${m(s.width)} m`;
   if (s.kind === "l") return `L-vorm ${m(s.length)} × ${m(s.width)} m, uitsparing ${m(s.notchLength)} × ${m(s.notchWidth)} m`;
-  if (s.kind === "drawn") return s.points.length >= 3 ? `Getekend, ${s.points.length} hoekpunten` : "Nog niet getekend";
+  if (s.kind === "drawn")
+    return s.points.length >= 3
+      ? `${room.origin === "auto" ? "Opgemeten langs de wanden" : "Getekend"}, ${s.points.length} hoekpunten`
+      : "Nog niet getekend";
   return s.m2 === null ? "Oppervlakte nog onbekend" : "Alleen oppervlakte bekend";
 }
 
@@ -95,6 +99,13 @@ export function RoomCard({
   onConfirmed?: () => void;
 }) {
   const room = result.room;
+  const poly = result.geometry.polygonMm;
+  const outer = poly
+    ? {
+        w: Math.max(...poly.map((p) => p.x)) - Math.min(...poly.map((p) => p.x)),
+        h: Math.max(...poly.map((p) => p.y)) - Math.min(...poly.map((p) => p.y)),
+      }
+    : null;
   const id = useId();
   const s = room.shape;
   const hasAuto =
@@ -228,8 +239,9 @@ export function RoomCard({
           <div className="full stack-sm">
             <p className="small muted" style={{ margin: 0 }}>
               {s.points.length >= 3
-                ? `${s.points.length} hoekpunten getekend op pagina ${s.page + 1}.`
+                ? `${s.points.length} hoekpunten ${room.origin === "auto" ? "langs de wanden opgemeten" : "getekend"} op pagina ${s.page + 1}.`
                 : "Nog niet getekend. Klik op de plattegrond op elke hoek van de ruimte, langs de muur."}
+              {outer && ` Uiterste maten ${formatMFromMm(outer.w)} × ${formatMFromMm(outer.h)}.`}
             </p>
             <button type="button" className="btn btn-sm" style={{ justifySelf: "start" }} onClick={onDraw}>
               {s.points.length ? "Opnieuw tekenen" : "Teken op de plattegrond"}

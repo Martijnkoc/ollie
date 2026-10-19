@@ -7,6 +7,7 @@ import {
   parseScaleNotation,
   parseSingleLength,
 } from "./classify";
+import type { AutoMeasureResult } from "./auto-measure";
 import { mergeLines, type TextLine } from "./lines";
 import { center, type Box, type LengthLabel, type RoomCandidate, type ScaleNotation, type TextItem } from "./types";
 
@@ -27,6 +28,8 @@ export type AnalysisResult = {
   quality: Quality;
   reasons: string[];
   meanConfidence: number | null;
+  /** Rooms, openings and scale measured from the drawing itself; added after the text analysis. */
+  auto: AutoMeasureResult | null;
 };
 
 const boxOf = (l: TextLine): Box => ({ x: l.x, y: l.y, w: l.w, h: l.h });
@@ -136,7 +139,12 @@ export function analyzeText(
   ctx: { method: "pdf-tekst" | "ocr"; imageWidthPx: number | null; minImageWidthPx: number },
 ): AnalysisResult {
   const lines = mergeLines(items);
-  const confs = items.map((i) => i.confidence).filter((c): c is number => c !== null);
+  // Only real words count for the reading quality: OCR also "reads" ticks and lines of the drawing as
+  // short junk ("=", "li") with low confidence, which says nothing about how well the text was read.
+  const confs = items
+    .filter((i) => (i.text.match(/[\p{L}\p{N}]/gu)?.length ?? 0) >= 3)
+    .map((i) => i.confidence)
+    .filter((c): c is number => c !== null);
   const meanConfidence = confs.length ? confs.reduce((s, c) => s + c, 0) / confs.length : null;
 
   const roomLines: TextLine[] = [];
@@ -264,5 +272,6 @@ export function analyzeText(
     quality,
     reasons,
     meanConfidence,
+    auto: null,
   };
 }

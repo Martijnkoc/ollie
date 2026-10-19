@@ -145,7 +145,15 @@ describe("vormen naar oppervlakte", () => {
   });
 
   it("getekende kamer met bevestigde schaal: px → mm → m²", () => {
-    const scale: Scale = { page: 0, mmPerUnit: 40, method: "kalibratie", status: "confirmed", reference: null, notation: null };
+    const scale: Scale = {
+      page: 0,
+      mmPerUnit: 40,
+      method: "kalibratie",
+      status: "confirmed",
+      reference: null,
+      notation: null,
+      evidence: null,
+    };
     const shape = {
       kind: "drawn" as const,
       page: 0,

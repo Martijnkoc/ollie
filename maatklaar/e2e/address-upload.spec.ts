@@ -39,7 +39,7 @@ test("zonder schaal: kalibreren met een bekende maat, dan een kamer tekenen", as
   await expect(page.locator(".plan-inner img")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Zonder schaal kunnen we getekende ruimtes niet omrekenen/)).toBeVisible();
 
-  // Recognised rooms without measurements have no area: nothing is invented.
+  // Without a scale nothing has an area, not even the outlines measured along the walls: nothing is invented.
   await expect(page.locator(".room-card").first()).toContainText("—");
 
   // The fixture page is 600 × 450 pt; its outer wall runs from (60, 80) to (460, 80) and is 8,00 m.
@@ -51,9 +51,12 @@ test("zonder schaal: kalibreren met een bekende maat, dan een kamer tekenen", as
   await page.getByRole("button", { name: "Schaal opslaan" }).click();
   await expect(page.getByText("Gekalibreerd op een lijn van 8,00 m.")).toBeVisible();
 
-  // Draw the woonkamer (5,00 × 6,00 m) on the first recognised room.
+  // The walls were outlined automatically; with the calibrated scale the rooms now have an area.
+  await expect(page.locator(".room-card").first().locator(".room-area")).toHaveText(/\d+,\d{2} m²/);
+
+  // Redraw the woonkamer by hand along the wall lines (5,00 × 6,00 m).
   await page.getByRole("button", { name: "Controleren" }).first().click();
-  await page.getByRole("button", { name: "Teken op de plattegrond" }).click();
+  await page.getByRole("button", { name: /^(Opnieuw tekenen|Teken op de plattegrond)$/ }).click();
   for (const [x, y] of [
     [60, 80],
     [310, 80],

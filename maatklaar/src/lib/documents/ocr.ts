@@ -33,3 +33,33 @@ export async function recognizeCanvas(
     await worker.terminate();
   }
 }
+
+/**
+ * Reads short labels from small, prepared images: dimension values (digits, separators, units only) or
+ * the text inside one small space (a lone "K" or "MK" that page OCR skips). Same local engine and
+ * language data as the page OCR.
+ */
+export async function recognizeLabels(images: HTMLCanvasElement[], mode: "maat" | "naam" = "maat"): Promise<string[]> {
+  if (!images.length) return [];
+  const { createWorker, PSM } = await import("tesseract.js");
+  const origin = window.location.origin;
+  const worker = await createWorker("nld", 1, {
+    workerPath: `${origin}/vendor/tesseract/worker.min.js`,
+    corePath: `${origin}/vendor/tesseract/core`,
+    langPath: `${origin}/vendor/tesseract/lang`,
+    workerBlobURL: false,
+    gzip: true,
+  });
+  try {
+    await worker.setParameters(
+      mode === "maat"
+        ? { tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "0123456789.,cm ", user_defined_dpi: "300" }
+        : { tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: "", user_defined_dpi: "300" },
+    );
+    const out: string[] = [];
+    for (const image of images) out.push((await worker.recognize(image)).data.text.trim());
+    return out;
+  } finally {
+    await worker.terminate();
+  }
+}

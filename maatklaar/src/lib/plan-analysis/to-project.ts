@@ -62,6 +62,7 @@ export function scaleFromNotation(result: AnalysisResult, page: number, kind: "p
     status: "auto",
     reference: null,
     notation: result.scaleNotation.denominator,
+    evidence: null,
   };
 }
 
@@ -73,6 +74,11 @@ export function analysisSummary(result: AnalysisResult, page: number, ranAt: Dat
   if (withDims) findings.push(`${withDims} met lengte × breedte op de tekening.`);
   if (result.scaleNotation) findings.push(`Schaalnotatie ${result.scaleNotation.text} gevonden.`);
   if (result.lengthLabels.length) findings.push(`${result.lengthLabels.length} losse maatlabels gevonden (bruikbaar bij kalibreren).`);
+  if (result.auto?.rooms.length) findings.push(`${result.auto.rooms.length} ruimtes opgemeten langs de wanden op de tekening.`);
+  if (result.auto?.scale)
+    findings.push(
+      `Schaal uit maatlijnen: ${result.auto.scale.agreeing} van ${result.auto.scale.lines} kloppen onderling (±${(result.auto.scale.uncertainty * 100).toFixed(1).replace(".", ",")} %).`,
+    );
   return {
     page,
     method: result.method,
@@ -89,6 +95,15 @@ export function analysisSummary(result: AnalysisResult, page: number, ranAt: Dat
     scaleNotation: result.scaleNotation,
     notToScale: result.notToScale,
     findings,
+    auto: result.auto
+      ? {
+          rooms: result.auto.rooms.length,
+          roomsOk: result.auto.rooms.filter((r) => r.ok).length,
+          windows: result.auto.openings.filter((o) => o.kind === "raam").length,
+          doors: result.auto.openings.filter((o) => o.kind === "deur").length,
+          reasons: result.auto.reasons.slice(0, 10),
+        }
+      : null,
     lengthLabels: result.lengthLabels.slice(0, 300).map((l) => ({ mm: l.mm, text: l.text.slice(0, 40), box: l.box })),
   };
 }

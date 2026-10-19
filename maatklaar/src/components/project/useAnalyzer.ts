@@ -19,6 +19,8 @@ export const STAGE_LABEL: Record<AnalysisStage["stage"], string> = {
   tekst: "Tekst en posities uit de PDF lezen",
   ocr: "Tekst herkennen op je apparaat (OCR)",
   herkennen: "Kamernamen, maten en schaal zoeken",
+  wanden: "Wanden, deuren en ramen op de tekening zoeken",
+  maatlijnen: "Maatlijnen lezen en de schaal controleren",
 };
 
 /** Runs the local analysis of one plan page and merges the result into the project. */

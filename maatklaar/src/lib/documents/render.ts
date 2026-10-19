@@ -2,7 +2,10 @@
 
 import { LIMITS } from "@/config/site";
 import { analyzeText, type AnalysisResult } from "@/lib/plan-analysis/analyze";
+import { flattenBackground } from "@/lib/plan-analysis/raster";
+import type { TextItem } from "@/lib/plan-analysis/types";
 import type { PlanDocument } from "@/lib/projects/schema";
+import { autoMeasurePage } from "./auto-measure-browser";
 import { recognizeCanvas } from "./ocr";
 import { openPdf, pageText, renderPage, scaleForTarget, PdfOpenError, type PdfPage } from "./pdf";
 import type { FileKind } from "./sniff";
@@ -86,11 +89,12 @@ export async function renderPageCanvas(
   return { canvas, pxPerUnit: scale };
 }
 
-export type AnalysisStage = { stage: "tekst" | "ocr" | "herkennen"; fraction?: number };
+export type AnalysisStage = { stage: "tekst" | "ocr" | "herkennen" | "wanden" | "maatlijnen"; fraction?: number };
 
 /**
  * Analysis of one page: embedded PDF text first; if a page has (almost) no text it is a scan and we run
- * local OCR on a high-resolution render. Then the same recognition rules run on whatever text was found.
+ * local OCR on a high-resolution render. Then the same recognition rules run on whatever text was found,
+ * and finally the drawing itself is measured: walls, rooms, openings and the scale from dimension lines.
  */
 export async function analyzePage(
   blob: Blob,
@@ -99,22 +103,40 @@ export async function analyzePage(
   onStage: (s: AnalysisStage) => void,
 ): Promise<AnalysisResult> {
   const page = doc.pages[pageIndex]!;
+  let result: AnalysisResult | null = null;
+  let pdfItems: TextItem[] | null = null;
   if (doc.kind === "pdf") {
     onStage({ stage: "tekst" });
     const pdf = await pdfFor(blob);
     const items = await pageText(await pdf.getPage(pageIndex + 1));
     if (items.length >= 3) {
       onStage({ stage: "herkennen" });
-      return analyzeText(items, { method: "pdf-tekst", imageWidthPx: null, minImageWidthPx: LIMITS.minImageWidthPx });
+      pdfItems = items;
+      result = analyzeText(items, { method: "pdf-tekst", imageWidthPx: null, minImageWidthPx: LIMITS.minImageWidthPx });
     }
   }
-  onStage({ stage: "ocr", fraction: 0 });
-  const { canvas, pxPerUnit } = await renderPageCanvas(blob, doc.kind, pageIndex, 3000);
-  const items = await recognizeCanvas(canvas, pxPerUnit, (fraction) => onStage({ stage: "ocr", fraction }));
-  onStage({ stage: "herkennen" });
-  return analyzeText(items, {
-    method: "ocr",
-    imageWidthPx: page.unit === "px" ? page.width : null,
-    minImageWidthPx: LIMITS.minImageWidthPx,
-  });
+  if (!result) {
+    onStage({ stage: "ocr", fraction: 0 });
+    // Vector PDFs render sharp at any size; images lose letters when enlarged a lot, so they are read at
+    // their own resolution unless they are small.
+    const longSide = Math.max(page.width, page.height);
+    const target = doc.kind === "pdf" ? 3000 : Math.min(3000, Math.max(1600, longSide));
+    const { canvas, pxPerUnit } = await renderPageCanvas(blob, doc.kind, pageIndex, target);
+    // Coloured room fills confuse OCR thresholding; flatten them to white first (text keeps its contrast).
+    const ctx = canvas.getContext("2d")!;
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    image.data.set(flattenBackground(image.data, image.width, image.height));
+    ctx.putImageData(image, 0, 0);
+    const items = await recognizeCanvas(canvas, pxPerUnit, (fraction) => onStage({ stage: "ocr", fraction }));
+    onStage({ stage: "herkennen" });
+    result = analyzeText(items, {
+      method: "ocr",
+      imageWidthPx: page.unit === "px" ? page.width : null,
+      minImageWidthPx: LIMITS.minImageWidthPx,
+    });
+  }
+  // With an unreadable scan we do not measure automatically either (no exact values from a bad source).
+  if (result.quality === "onvoldoende") return result;
+  const auto = await autoMeasurePage(blob, doc, pageIndex, result, pdfItems, renderPageCanvas, (stage) => onStage({ stage }));
+  return { ...result, auto };
 }

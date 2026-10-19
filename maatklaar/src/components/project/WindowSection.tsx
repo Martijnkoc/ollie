@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatMm } from "@/lib/format";
+import { formatMFromMm, formatMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, type WindowStatus } from "@/lib/measurements/evaluate";
 import { rulesFor } from "@/lib/measurements/protocols";
 import {
@@ -188,6 +188,14 @@ export function WindowSection({ project, update, computed }: StepProps) {
                   </select>
                 </div>
               </div>
+              {(w.origin === "auto" || w.planWidthMm) && (
+                <p className="small" style={{ margin: 0 }}>
+                  {w.origin === "auto" ? "Herkend op de tekening. " : ""}
+                  {w.planWidthMm
+                    ? `Opening op de tekening ongeveer ${formatMFromMm(w.planWidthMm)} breed: een indicatie om het juiste raam te vinden, geen raammaat.`
+                    : ""}
+                </p>
+              )}
               <p className="small muted" style={{ margin: 0 }}>
                 {raw.length ? raw.map((k) => formatMm(w.measures[k]!)).join(" · ") : "Nog geen maten."}{" "}
                 {evaluation.order
