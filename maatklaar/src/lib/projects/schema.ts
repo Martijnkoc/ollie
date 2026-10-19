@@ -211,6 +211,29 @@ export const windowSchema = z.object({
    * an order size (a plan seen from above is not a window measurement).
    */
   planWidthMm: z.number().positive().max(100_000).nullable().default(null),
+  /**
+   * Photo of the window (kept on this device only) with the corners the user tapped and the size estimate
+   * from an A4 reference. An estimate ("browser_scan_estimate"), never a measurement or an order size.
+   */
+  photo: z
+    .object({
+      takenAt: z.string(),
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+      reference: z.array(pointSchema).max(4),
+      opening: z.array(pointSchema).max(4),
+      estimate: z
+        .object({
+          topMm: z.number().positive(),
+          bottomMm: z.number().positive(),
+          leftMm: z.number().positive(),
+          rightMm: z.number().positive(),
+          uncertaintyMm: z.number().nonnegative(),
+        })
+        .nullable(),
+    })
+    .nullable()
+    .default(null),
 });
 export type ProjectWindow = z.infer<typeof windowSchema>;
 

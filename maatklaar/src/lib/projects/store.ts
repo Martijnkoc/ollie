@@ -111,6 +111,7 @@ export async function findProjectByOrder(orderId: string): Promise<Project | nul
 
 export async function deleteProject(id: string): Promise<void> {
   await deleteFile(id);
+  await deletePhotos(id);
   await withFallback(
     () => tx(PROJECTS, "readwrite", (s) => void s.delete(id)).then(() => undefined),
     () => void memory.projects.delete(id),
@@ -146,6 +147,49 @@ export async function deleteFile(projectId: string): Promise<void> {
     () => tx(FILES, "readwrite", (s) => void s.delete(projectId)).then(() => undefined),
     () => void memory.files.delete(projectId),
   );
+}
+
+/** Window photos share the files store under their own key; they never leave the device either. */
+const photoKey = (projectId: string, windowId: string) => `${projectId}#foto#${windowId}`;
+
+export async function savePhoto(projectId: string, windowId: string, blob: Blob): Promise<void> {
+  const value: StoredFile = { projectId: photoKey(projectId, windowId), blob, type: blob.type, savedAt: new Date().toISOString() };
+  await withFallback(
+    () => tx(FILES, "readwrite", (s) => void s.put(value)).then(() => undefined),
+    () => void memory.files.set(value.projectId, value),
+  );
+}
+
+export async function loadPhoto(projectId: string, windowId: string): Promise<Blob | null> {
+  const key = photoKey(projectId, windowId);
+  const f = await withFallback(
+    () => tx<StoredFile>(FILES, "readonly", (s) => s.get(key)),
+    () => memory.files.get(key),
+  );
+  return f?.blob ?? null;
+}
+
+export async function deletePhoto(projectId: string, windowId: string): Promise<void> {
+  const key = photoKey(projectId, windowId);
+  await withFallback(
+    () => tx(FILES, "readwrite", (s) => void s.delete(key)).then(() => undefined),
+    () => void memory.files.delete(key),
+  );
+}
+
+async function deletePhotos(projectId: string): Promise<void> {
+  const prefix = `${projectId}#foto#`;
+  const keys = await withFallback(
+    () => tx<IDBValidKey[]>(FILES, "readonly", (s) => s.getAllKeys()).then((k) => k ?? []),
+    () => [...memory.files.keys()],
+  );
+  for (const key of keys) {
+    if (typeof key !== "string" || !key.startsWith(prefix)) continue;
+    await withFallback(
+      () => tx(FILES, "readwrite", (s) => void s.delete(key)).then(() => undefined),
+      () => void memory.files.delete(key),
+    );
+  }
 }
 
 /** Removes projects (and their files) that were not changed for LIMITS.projectExpiryDays. */

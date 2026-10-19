@@ -47,3 +47,16 @@ export async function confirmAllRooms(page: Page) {
     if (!(await page.getByRole("button", { name: "Naam en maten kloppen" }).count())) return;
   }
 }
+
+/** A paid (DEMO) project with one window, with the photo assistant of that window open. */
+export async function paidProjectWithWindow(page: Page) {
+  await newProject(page);
+  await step(page, /Plinten & ramen/);
+  await page.getByRole("button", { name: /Betaal € 8,99/ }).click();
+  await page.waitForURL(/\/betaling\/demo/);
+  await page.getByRole("button", { name: "Simuleer geslaagde betaling" }).click();
+  await page.waitForURL(/#plinten-ramen$/);
+  await page.getByRole("button", { name: "+ Raam toevoegen" }).click();
+  await page.locator(".window-card").last().getByRole("button", { name: "Foto-assistent" }).click();
+  await expect(page.getByRole("dialog", { name: "Raam schatten met een foto" })).toBeVisible();
+}

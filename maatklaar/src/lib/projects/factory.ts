@@ -98,6 +98,7 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     confirmed: false,
     fullness: null,
     planWidthMm: null,
+    photo: null,
     ...extra,
   };
 }

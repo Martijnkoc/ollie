@@ -18,6 +18,8 @@ import { newWindow } from "@/lib/projects/factory";
 import type { ProjectWindow } from "@/lib/projects/schema";
 import type { Status } from "@/lib/projects/status";
 import { MeasureWizard } from "./MeasureWizard";
+import { PhotoAssistant } from "./PhotoAssistant";
+import { compareWithPhoto } from "@/lib/measurements/photo";
 import { PlanCanvas } from "./PlanCanvas";
 import { usePlanImage } from "./usePlanImage";
 import type { StepProps } from "./types";
@@ -35,6 +37,7 @@ export function WindowSection({ project, update, computed }: StepProps) {
   const [open, setOpen] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
+  const [photoFor, setPhotoFor] = useState<string | null>(null);
   const doc = project.document;
   const page = doc ? Math.min(doc.selectedPage, doc.pages.length - 1) : 0;
   const image = usePlanImage(project.id, doc, page, doc ? doc.sizeBytes : 0);
@@ -210,6 +213,13 @@ export function WindowSection({ project, update, computed }: StepProps) {
                     : ""}
                 </p>
               )}
+              {w.photo?.estimate && (
+                <p className="small" style={{ margin: 0 }}>
+                  Foto-schatting (niet bevestigd): ca. {formatMm(Math.round(Math.max(w.photo.estimate.topMm, w.photo.estimate.bottomMm)))} ×{" "}
+                  {formatMm(Math.round(Math.max(w.photo.estimate.leftMm, w.photo.estimate.rightMm)))}, ±{" "}
+                  {formatMm(w.photo.estimate.uncertaintyMm)}. {photoCheck(w)}
+                </p>
+              )}
               <p className="small muted" style={{ margin: 0 }}>
                 {raw.length ? raw.map((k) => formatMm(w.measures[k]!)).join(" · ") : "Nog geen maten."}{" "}
                 {evaluation.order
@@ -219,6 +229,9 @@ export function WindowSection({ project, update, computed }: StepProps) {
               <div className="row">
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => setOpen(w.id)}>
                   {raw.length ? "Maten bekijken of aanpassen" : "Meten"}
+                </button>
+                <button type="button" className="btn btn-sm" onClick={() => setPhotoFor(w.id)}>
+                  {w.photo ? "Foto en schatting" : "Foto-assistent"}
                 </button>
                 <button
                   type="button"
@@ -234,8 +247,36 @@ export function WindowSection({ project, update, computed }: StepProps) {
       </div>
 
       {opened && <MeasureWizard window={opened.window} rule={opened.rule} onChange={setWindow} onClose={() => setOpen(null)} />}
+      {photoFor && project.windows.some((x) => x.id === photoFor) && (
+        <PhotoAssistant
+          projectId={project.id}
+          window={project.windows.find((x) => x.id === photoFor)!}
+          onChange={setWindow}
+          onClose={() => setPhotoFor(null)}
+        />
+      )}
     </section>
   );
+}
+
+/** A tape measurement far from the photo estimate means one of the two needs another look. */
+function photoCheck(w: ProjectWindow) {
+  const e = w.photo?.estimate;
+  if (!e) return "";
+  const pairs: [number | undefined, number][] = [
+    [w.measures.breedte_boven, e.topMm],
+    [w.measures.breedte_onder, e.bottomMm],
+    [w.measures.hoogte_links, e.leftMm],
+    [w.measures.hoogte_rechts, e.rightMm],
+  ];
+  const compared = pairs
+    .filter((p): p is [number, number] => typeof p[0] === "number")
+    .map(([m, est]) => compareWithPhoto(m, est, e.uncertaintyMm));
+  if (!compared.length) return "Meet het raam met een rolmaat; daarna vergelijken we.";
+  const off = compared.filter((c) => !c.agrees);
+  return off.length
+    ? `Je meting wijkt tot ${formatMm(Math.max(...off.map((c) => c.gapMm)))} af van de foto: meet die maat nog eens na.`
+    : "Je metingen passen bij de foto.";
 }
 
 function pageInfoOk(doc: NonNullable<StepProps["project"]["document"]>, page: number) {

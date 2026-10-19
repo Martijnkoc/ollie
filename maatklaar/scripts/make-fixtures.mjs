@@ -505,6 +505,61 @@ async function wandenPlan() {
   await browser.close();
 }
 
+/**
+ * A photo of a window seen at an angle, with an A4 sheet taped on the glass: for the photo measuring
+ * assistant. The opening is 1200 × 1500 mm; the sheet (portrait) sits at 400–610 × 300–597 mm.
+ * Projected with the fixed homography below (mm on the wall → photo pixels); tests use the same one.
+ */
+export const RAAM_FOTO_H = [0.9, 0.1, 260, -0.05, 0.95, 90, 0.00008, 0.00002, 1];
+async function raamFoto() {
+  let chromium;
+  try {
+    ({ chromium } = await import("@playwright/test"));
+  } catch {
+    return;
+  }
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const bytes = await page.evaluate(async (H) => {
+    const P = (x, y) => {
+      const w = H[6] * x + H[7] * y + H[8];
+      return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w];
+    };
+    const c = document.createElement("canvas");
+    c.width = 1600;
+    c.height = 1700;
+    const g = c.getContext("2d");
+    const quad = (x0, y0, x1, y1, fill, stroke) => {
+      g.beginPath();
+      for (const [x, y] of [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ])
+        g.lineTo(...P(x, y));
+      g.closePath();
+      g.fillStyle = fill;
+      g.fill();
+      if (stroke) {
+        g.strokeStyle = stroke;
+        g.lineWidth = 2;
+        g.stroke();
+      }
+    };
+    g.fillStyle = "#d9d2c3";
+    g.fillRect(0, 0, c.width, c.height);
+    quad(-90, -90, 1290, 1590, "#f6f6f2", "#bdb6a8"); // frame
+    quad(0, 0, 1200, 1500, "#8fa3ae"); // glass in the opening
+    quad(590, 0, 610, 1500, "#f6f6f2"); // mullion
+    quad(400, 300, 610, 597, "#ffffff", "#9aa"); // A4 sheet
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
+    return Array.from(new Uint8Array(await blob.arrayBuffer()));
+  }, RAAM_FOTO_H);
+  writeFileSync(path.join(out, "raam-foto.jpg"), Buffer.from(bytes));
+  await browser.close();
+}
+
 await appartement();
 await woonkamer();
 await lvorm();
@@ -512,4 +567,5 @@ await zonderSchaal();
 await brokenFiles();
 await scans();
 await wandenPlan();
+await raamFoto();
 console.log("Fixtures geschreven naar fixtures/");
