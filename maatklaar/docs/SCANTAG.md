@@ -27,4 +27,35 @@ fysiek gevalideerd moet worden. Het wordt bijgewerkt bij elke stap.
 - **Een camerameting is niet gevalideerd** zolang er geen acceptatiegrenzen per productfamilie zijn vastgesteld
   met fysieke referentiemetingen (`src/config/scantag.ts`). Tot die tijd: hooguit een concept-bestelmaat.
 
-De status per onderdeel staat onderaan dit document (wordt bij afronding ingevuld).
+## Status per onderdeel
+
+| Onderdeel | Status | Waar |
+| --- | --- | --- |
+| Camera, upload, toestemming pas bij start, geweigerde camera | **Echt** | `CameraMeasure.tsx`, e2e `camera*.spec.ts` |
+| Meetkunde: vlak uit één of twee referenties, sub-pixel randen, foutmarge | **Echt**, getest op synthetische foto's | `photo.ts`, `edges.ts`, `tests/photo|edges.test.ts` |
+| Fotocontroles (onscherp, schuin, te klein, schittering) | **Echt**, drempels zijn startwaarden | `scantag/quality.ts` |
+| Schaalbewijs: alleen een fysieke referentie (A4, bankpas) in het meetvlak | **Echt**; BAG, plattegrond of overlay tellen nooit als schaal | `camera.ts` |
+| Maten pas na betaling, server-side vrijgegeven | **Echt** (punten naar de server, nooit foto's) | `api/scantag`, `tests/scantag.test.ts`, e2e `scantag.spec.ts` |
+| Drie lagen (geometrie, opening, bestelmaat), validatiestatus, auditlog | **Echt** | `projects/schema.ts`, `rules/engine.ts`, `projects/audit.ts` |
+| Productregelschema en engine | **Echt**, met golden fixtures en property-tests | `src/lib/rules`, `tests/rules.test.ts` |
+| Tuiss-adapter | **Concept**: samengevat, deels bevestigd, nog niet door een mens tegen de volledige bron gecontroleerd | `rules/tuiss.ts`, `docs/MEETREGELS.md` |
+| Mobiel ↔ desktop (QR, eenmalig, versleuteld) | **Echt**; in productie alleen met `DATABASE_URL` | `api/overdracht`, `lib/transfer`, e2e `transfer.spec.ts` |
+| Acceptatiegrenzen per productfamilie | **Leeg (bewust)**: geen ScanTag-maat is gevalideerd | `config/scantag.ts` |
+| Systematische marge 0,5 % | **Aanname**, zichtbaar bij elke maat | `config/site.ts` |
+| Fysieke metrologische validatie | **Nog uit te voeren**: plan, statistiek en harnas staan klaar | `docs/METROLOGIE.md`, `npm run validate` |
+| WebXR/AR-diepte | **Niet gebruikt**: alleen gedetecteerd | `capabilities.ts` |
+| Live-kaders in de camera | **Basis**: hulplijnen in de live camera; geen live-detectie (de camera-app maakt scherpere foto's) | `CameraMeasure.tsx` |
+
+Er is geen nepscan, nep-zekerheid of verzonnen meetwaarde in de app: elke maat komt uit aangetikte punten op een
+echte foto en de meetkunde hierboven, met de foutmarge erbij.
+
+## Tests
+
+- Unit en integratie (Vitest): regels per record incl. de 25 mm-grens, min/max-keuze en dubbele correcties; golden
+  fixtures; property-based tests (eenheden, ontbrekende en onmogelijke maten, tegelregel, concept nooit
+  `order_ready`); servervrijgave en weigering (onbetaald, verkeerd geheim, ander project, andere site, ongeldige
+  invoer); auditlog; scanstatus; fotocontroles; overdracht (versleuteling, eenmalig, verlopen, terug, API).
+- E2E (Playwright): camera geweigerd, camera met toestemming, foto uploaden, ScanTag vóór betaling zonder maat in
+  pagina of netwerk en vrijgave na betaling, geen verbinding en later verwerken, overdracht met twee apparaten
+  (incl. gebruikte en kapotte link), betaling geannuleerd en via Mollie (bestaande tests), rapportdownload.
+- Niet als e2e: een verlopen QR-token (tien minuten wachten); gedekt door unit- en API-tests met een gegeven tijd.

@@ -2,10 +2,12 @@
 
 Nederlandstalige webapp voor wie verhuist, een huis koopt, verbouwt of opnieuw inricht: adres invoeren →
 plattegrond uploaden → ruimtes worden **automatisch opgemeten langs de wanden** en jij controleert → **gratis**
-vloer per kamer, vloerhoeveelheid en verf → voor **€ 8,99 eenmalig** alle materialen (laminaat, PVC, tegels,
-ondervloer, plinten, profielen, primer, behang), een raamregister met meetbegeleiding en foto-assistent, en een
-persoonlijk PDF-rapport plus CSV-bestellijst. Alles draait in de browser; er gaat geen plattegrond of foto naar
-een server of AI-dienst.
+vloer per kamer, vloerhoeveelheid en verf → ramen meten met **ScanTag** (je telefoon en twee A4-vellen, geen
+rolmaat) → voor **€ 8,99 eenmalig** de maten, alle materialen (laminaat, PVC, tegels, ondervloer, plinten,
+profielen, primer, behang), bestelmaten volgens de gekozen leveranciersregel en een persoonlijk PDF-rapport plus
+CSV-bestellijst. Plattegronden en foto's blijven in de browser; er gaat geen plattegrond of foto naar een server of
+AI-dienst. ScanTag stuurt alleen aangetikte punten (geen beeld) naar de server, die de maten pas na een
+geverifieerde betaling vrijgeeft. Status, ontwerp en wat nog gevalideerd moet worden: [`docs/SCANTAG.md`](docs/SCANTAG.md).
 
 Deze map is een zelfstandige Next.js-app binnen de repository `ollie`; de rest van de repository (Cafe) wordt niet
 gebruikt of gewijzigd. Projectregels en architectuur: [`CLAUDE.md`](CLAUDE.md). Plan en voortgang:
@@ -54,10 +56,12 @@ PDOK_LOCATIESERVER_URL=http://localhost:3201/ls PDOK_BAG_URL=http://localhost:32
 | Materiaalbibliotheek (betaald) | Getypeerde, geversioneerde modules met tests: laminaat, PVC, vloertegels, ondervloer, plinten, overgangsprofielen, muurverf, primer, behang, gordijnen, rolgordijnen, jaloezieën, plissés, vouwgordijnen, rolluiken. Per categorie: invoer met eenheden, formule, afronding, ruimtes in/uit, en status `niet_genoeg_gegevens` / `geschat` / `berekend` / `klaar_voor_bestellen` / `wacht_op_controle` / `extra_controle_nodig`. Raamproducten worden nooit "klaar voor bestellen" zonder gecontroleerde leveranciersregel; rolluiken altijd extra controle. |
 | Betalen | Mollie Payments API v2 (eenmalig € 8,99, iDEAL e.a.), server-side verificatie (webhook of statusopvraag), idempotent en bestand tegen volgorde, terugbetaling trekt toegang in. Orders bevatten alleen ordernummer, projectreferentie, bedrag en status. DEMO-provider zonder sleutel, in productie uit tenzij expliciet aangezet. |
 | Plinten | Omtrek per gecontroleerde ruimte, per wand aan/uit, deuren alleen afgetrokken als de breedte is bevestigd (opgemeten deuren komen mee als "automatisch herkend"), obstakels, marge, handelslengtes alleen als opgegeven. |
-| Raamregister | R01, R02 …; herkend op de tekening of zelf toegevoegd, verplaatsen op de plattegrond; product (gordijn, rolgordijn, plissé, jaloezie, vouwgordijn, rolluik), montagewijze, meetregel. Meetwizard met meerdere meetpunten en afwijkingscontrole (nooit middelen). **Foto-assistent**: mogelijkheden detecteren zonder toestemming te vragen (camera, https, WebXR), camera pas bij "Camera starten", of een foto kiezen; A4-vel op het glas, hoeken aantikken → schatting met foutmarge (`browser_scan_estimate`), vergeleken met je rolmaatmetingen, nooit een bestelmaat. Foto's blijven op het apparaat. |
-| MeasurementRules | Versieerbaar schema met bron, datum, verplichte maten, toleranties, diepte en een omrekenformule. Alleen algemene meetprotocollen (geen bestelmaat); leveranciersregels worden geweigerd zonder bron-URL. Zie [`docs/MEETREGELS.md`](docs/MEETREGELS.md). |
+| Raamregister | R01, R02 …; herkend op de tekening of zelf toegevoegd, verplaatsen op de plattegrond; product (gordijn, wave, rolgordijn, plissé, jaloezie, verticale jaloezie, vouwgordijn, dakraam, rolluik), montage (in/op de dag, plafond, wand, schroefloos, dakraam, rolluik), meetregel per leverancier en variant, raamvorm (erker en afwijkend: niet ondersteund). Meetwizard met meetpunten, afwijkingscontrole (nooit middelen), antwoorden (bevestiging, dakraamcode, eindpunt…) en controlevragen. Drie lagen per raam: wat de camera zag, de gemeten opening (met methode, schaalreferentie, foutmarge, validatiestatus) en de bestelmaat. Auditlog per raam. |
+| **ScanTag** | Ramen meten met de telefoon in de browser, zonder app: **twee A4-vellen** op de muur (diepte: een bankpas), een foto (camera-app, browsercamera of upload), punten aantikken met loep en fijn verslepen; hoeken klikken sub-pixel vast op rechte randen. Het vlak wordt gefit op beide vellen samen (hun onderlinge plek is onbekend), wat het perspectief ±10× zekerder maakt dan één vel en vellen die niet bij elkaar passen herkent. Elke maat met foutmarge (puntonzekerheid door de fit + aangenomen 0,5 % systematisch). Fotocontroles op het apparaat (onscherp, schuin, te klein, schittering) → "extra opname nodig". **Vóór betaling** alleen status ("scan verwerkt", "extra opname nodig"); de server controleert de punten en geeft maten **alleen vrij voor een betaalde bestelling van hetzelfde project**. Zonder verbinding blijft de scan bewaard. Eigen schema's per opname. Export voor validatie. |
+| Mobiel ↔ computer | "Scannen met je telefoon": QR-code met een eenmalige link (10 minuten), project end-to-end versleuteld (AES-GCM, sleutel alleen in de link na `#`), geen persoonsgegevens in de link. Scans gaan versleuteld terug naar de computer. Opslag kortlevend in Postgres (of een bestand lokaal). |
+| Productregels | Versioneerbaar schema (`src/lib/rules`): bron met URL, controledatum, regelsversie en status (`concept`/`published`), productfamilie en variant, montagetype, verplichte invoer, maatkeuze (kleinste, grootste, vaste positie, gekozen, op typecode, of "bron zegt het niet" → vraag), diepte per variant of bevestiging, smalste doorgang (tegels, met de exacte grens als vraag), overlap, aftrek en wie hem doet, toevoegingen door de leverancier, afronding, limieten, open vragen. **Tuiss-adapter** als concept (zie [`docs/MEETREGELS.md`](docs/MEETREGELS.md)). Een bestelmaat is pas `order_ready` met een gecontroleerde, actuele regel én bevestigde of gevalideerde maten. |
 | Rapport | PDF (A4, pdf-lib) in de browser: project, woningoverzicht met bron, plattegrond met nummers, vloer met **bron per ruimte** (`PDF_explicit_dimension`, `OCR_explicit_dimension`, `PDF_scaled_geometry`, `user_input`, `user_confirmed`), plinten, raamtabel plus **een kaart per raam** (foto-uitsnede, bron van de maten, foto-schatting, wat ontbreekt, bestelstatus), **materialen per categorie** met status, aannames, ontbrekende gegevens en regelversie, winkelchecklist, schaalbewijs, disclaimer. Paginanummers, herhaalde tabelkoppen, geen afgebroken rijen. CSV met puntkomma's, decimale komma en de materiaalregels. |
-| Privacy | Project, bestand en raamfoto's in IndexedDB op het apparaat, verval na 30 dagen, wisknoppen. Geen analytics. CSP en security headers; camera alleen toegestaan voor de eigen site. Privacy, voorwaarden en contact als gemarkeerd concept met checklist. |
+| Privacy | Project, bestand en raamfoto's in IndexedDB op het apparaat, verval na 30 dagen, wisknoppen. Geen analytics. ScanTag stuurt alleen pixelcoördinaten van aangetikte punten; overdrachten zijn versleuteld en verlopen binnen uren. CSP en security headers; camera alleen toegestaan voor de eigen site. Privacy, voorwaarden en contact als gemarkeerd concept met checklist. |
 
 ## Controleren
 
@@ -73,19 +77,21 @@ npm run fixtures       # testplattegronden en testfoto opnieuw maken
 
 Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
 
-- **Vitest: 142 tests geslaagd** — o.a. geometrie, vloer, plinten, raammetingen, uploadvalidatie, PDF.js-tekst, echte
-  lokale OCR, PDOK/BAG en Mollie-contracttests, PDF met 1/10/50 ramen en met alle materiaalcategorieën, foto's en
-  lange namen binnen de marges; **de hele opmeetketen** (OCR → wanden → maatlijnen → schaal → ruimtes → project →
-  vloertotaal) op de testplattegrond; rasterbewerkingen, decimaalpuntherstel, schaalconsensus met uitschieter;
-  splitsen/samenvoegen; materiaalmodules (afronding, aannames, uitsluiten, ontbrekende maten, raamstatussen);
-  homografie en foto-schatting met foutmarge.
-- **Playwright: 26 tests geslaagd** — complete reis tot PDF/CSV (incl. verf en laminaat), automatisch opmeten +
-  "Bevestig alles wat klopt" + splitsen/samenvoegen in de browser, foto-assistent met testfoto, nep-camera en
-  geweigerde camera, landingpage (adres en plattegrond vanaf de hero, demo), betalingen (redirect geeft niets vrij,
-  echte Mollie-adapter tegen een nagebootste dienst, annuleren, webhook), adres- en uploadfouten, kalibreren +
-  tekenen, OCR in de browser, mobiel zonder horizontale scroll, axe WCAG 2.2 A/AA op alle pagina's en stappen.
-- `npm run validate` op het fictieve voorbeeld: 5/5 ruimtes, 7/7 ramen, oppervlakte- en schaalfout 0,00 %.
-  Dat bewijst dat de meetopstelling werkt, niet hoe goed het product is op echte woningen.
+- **Vitest: 209 tests geslaagd** — o.a. geometrie, vloer, plinten, raammetingen, uploadvalidatie, PDF.js-tekst, echte
+  lokale OCR, PDOK/BAG en Mollie-contracttests, PDF met 1/10/50 ramen en alle materiaalcategorieën; de hele
+  opmeetketen op de testplattegrond; ScanTag-meetkunde (één en twee referenties, sub-pixel randen op een
+  gerenderde foto met ruis, foutmarge die de echte fout dekt, vellen die niet bij elkaar passen); **elke
+  productregel** met golden fixtures, grensgevallen (exact 25 mm) en property-based tests; servervrijgave van maten
+  en weigering; auditlog; fotocontroles; overdracht (versleuteling, eenmalig, verlopen, API); metrologie-statistiek.
+- **Playwright: 29 tests geslaagd** — complete reis tot PDF/CSV, automatisch opmeten in de browser, **ScanTag**
+  (twee A4-vellen op een testfoto, hoeken klikken vast, maten tot op 3 mm met foutmarge; vóór betaling geen enkele
+  maat in pagina of netwerk, vrijgave na betaling; zonder verbinding bewaard en later verwerkt), **overdracht met
+  twee apparaten** (QR-link, scannen op de telefoon, terug naar de computer, gebruikte en kapotte link), camera met
+  en zonder toestemming, landingpage, betalingen (redirect geeft niets vrij, Mollie-adapter, annuleren, webhook),
+  adres- en uploadfouten, kalibreren en tekenen, mobiel zonder horizontale scroll, axe WCAG 2.2 A/AA.
+- `npm run validate`: het fictieve plattegrondvoorbeeld (5/5 ruimtes, 7/7 ramen, fout 0,00 %) en het synthetische
+  ScanTag-voorbeeld (6 maten, fout 0 mm). Dat bewijst dat de meetopstelling werkt, niet hoe goed het product is op
+  echte woningen.
 - `tsc`, Prettier en `next build`: geen fouten.
 
 ## Valkuilen (gevonden of te verwachten)
@@ -108,9 +114,10 @@ Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
    "niet op schaal". De notatie is daarom alleen een kandidaat; bevestigen of kalibreren blijft nodig.
 7. **"L × B" naast een kamernaam is vaak de maximale maat, niet de vorm.** Zo'n kamer wordt als rechthoek
    voorgesteld met een duidelijke notitie; bij een oppervlaktelabel dat niet klopt met L × B volgt een waarschuwing.
-8. **Client-side ontgrendeling is te omzeilen** door iemand die de browsercode aanpast: alle berekeningen draaien
-   lokaal (privacy-by-design). De server ontgrendelt nooit zonder verificatie, maar kan niet afdwingen wat de browser
-   toont. Bij misbruik: rapportgeneratie server-side met projectdata, tegen een privacykost.
+8. **Raammaten geeft de server vrij, de rest rekent de browser.** ScanTag-maten komen pas na een geverifieerde
+   betaling van de server (geen maat in pagina of netwerk vóór betaling, getest). Maar de meetkunde staat ook in de
+   browsercode (de gratis plafondhoogte gebruikt hem) en de punten staan op je eigen apparaat: wie de code zelf
+   draait, kan zijn eigen scan uitrekenen. Vloer, plinten en materialen rekent de browser na ontgrendeling.
 9. **iDEAL op mobiel kan terugkeren in een andere browser** (app-switch). Het project staat dan niet in die browser.
    De terugkeerpagina legt dat uit; in de oorspronkelijke browser controleert het project de betaling opnieuw.
 10. **Mollie kan `localhost` niet bereiken**: lokaal wordt de webhook weggelaten en de status bij terugkeer
@@ -139,17 +146,28 @@ Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
     controleer na Next-updates dat de opmeting in productie draait (e2e-test `auto-measure.spec.ts`).
 22. **Permissions-Policy**: de camera stond eerst uit (`camera=()`), waardoor elke cameratoegang faalde. Nu
     `camera=(self)`; let hierop bij het aanscherpen van headers.
-23. **Foto-schattingen hangen af van pixels**: een klein A4-vel op een vage foto geeft ±6 cm of meer. De app toont de
-    foutmarge en noemt de schatting "te onnauwkeurig" boven 3 %. WebXR wordt gedetecteerd maar bewust niet gebruikt
-    voor maten zolang de nauwkeurigheid voor raamdecoratie niet is aangetoond.
+23. **Eén A4-vel naast een raam bepaalt het perspectief slecht**: op een testfoto ±27 mm bij perfect vastgeklikte
+    hoeken. Met twee vellen aan weerszijden ±2 mm. ScanTag vraagt daarom twee vellen; de foutmarge wordt altijd
+    getoond en boven 5 % van de maat wordt een maat niet gebruikt.
+24. **Een referentie moet in het gemeten vlak liggen.** Een vel op het glas terwijl je de muuropening meet, geeft
+    een schaalfout van (diepteverschil / afstand), al snel 1–2 %. Instructies en schema's zeggen daarom "op de muur".
+    Twee vellen in verschillende vlakken worden herkend (ze passen niet bij elkaar); één vel niet.
+25. **Snel tikken vóór de foto klaar is**: de randen worden pas gezocht als de foto als grijswaarden geladen is;
+    hoeken die al stonden worden dan alsnog vastgeklikt (gevonden door een e2e-test).
+26. **De Tuiss-regels zijn een samenvatting** en dus een concept tot iemand ze tegen de volledige gids controleert;
+    sommige punten (welke hoogte bij een rolgordijn, dieptes voor enkel plissé) staan er niet in en worden als vraag
+    getoond, niet aangenomen.
+27. **Overdracht tussen apparaten vraagt een database in productie.** Zonder `DATABASE_URL` staat "Scannen met je
+    telefoon" uit (een bestand overleeft serverless hosting niet).
 
 ## Configuratie en productie
 
 Alle namen staan in [`.env.example`](.env.example).
 
 1. **Hosting**: Vercel of een andere Node-host. Root directory `maatklaar`. Zet `APP_URL` op het publieke adres.
-2. **Database voor orders**: `DATABASE_URL` (Postgres; bij Supabase de pooler-URL). Tabellen worden bij eerste
-   gebruik aangemaakt, met RLS aan.
+2. **Database voor orders en overdrachten**: `DATABASE_URL` (Postgres; bij Supabase de pooler-URL). Tabellen worden
+   bij eerste gebruik aangemaakt, met RLS aan. Zonder database staan betalen met Mollie en "Scannen met je telefoon"
+   in productie uit.
 3. **Mollie**: eerst `MOLLIE_API_KEY=test_…`, één volledige testbetaling, dan `live_…`. De webhook is
    `${APP_URL}/api/betalingen/mollie` en wordt per betaling meegestuurd.
 4. **Inhoud**: merknaam, prijs, btw-tekst, limieten en FAQ in `src/config/site.ts`; bedrijfsgegevens in `COMPANY`
@@ -159,7 +177,9 @@ Alle namen staan in [`.env.example`](.env.example).
 
 - Btw-behandeling van de prijs (staat als concept gemarkeerd) en herroepingsrecht bij digitale inhoud.
 - Bedrijfsgegevens, privacytekst en voorwaarden juridisch laten toetsen (nu concepten met checklist).
-- Echte leveranciersregels (met bron en tweede controle) als je bestelmaten wilt tonen.
+- De Tuiss-regels door een mens tegen de volledige gids laten controleren (zie `docs/MEETREGELS.md`) en publiceren.
+- De fysieke validatie van ScanTag volgens [`docs/METROLOGIE.md`](docs/METROLOGIE.md), en daarna per productfamilie
+  een acceptatiegrens in `src/config/scantag.ts`.
 - Een validatieset volgens [`docs/VALIDATIE.md`](docs/VALIDATIE.md) vóór enige claim over nauwkeurigheid.
 - Bewaartermijn van ordermetadata.
 
@@ -169,7 +189,9 @@ Alle namen staan in [`.env.example`](.env.example).
 - Nauwkeurigheid op echte woningen: getest op één fictieve testplattegrond en twee aangeleverde
   makelaarsplattegronden, vergeleken met de maatlijnen op die tekeningen zelf (zie `docs/VALIDATIE.md`), niet met
   metingen in de woning. Geen percentage claimen vóór een validatieset.
-- Foto-assistent op echte telefoons: getest met een synthetische foto en de testcamera van Chromium.
+- ScanTag op echte telefoons en echte ramen: getest met synthetische foto's (fout ≤ 3 mm na vastklikken) en de
+  testcamera van Chromium. De foutmarge van 0,5 % systematisch is een aanname; echte nauwkeurigheid volgt pas uit
+  [`docs/METROLOGIE.md`](docs/METROLOGIE.md).
 - Safari en Firefox: alleen Chromium is automatisch getest.
 - Volledige WCAG-conformiteit: alleen automatische axe-checks en toetsenbordbasis; geen screenreadertest. Het
   tekenen op de plattegrond is met muis/vinger; met het toetsenbord kun je alle maten wel als getal invoeren.

@@ -84,3 +84,20 @@ Uitgevoerd op basis van de V2-opdracht, bovenop V1 (niets weggegooid):
   Nauwkeurigheid op echte woningen is nog niet gemeten.
 - Client-side ontgrendeling is voor een technisch onderlegde gebruiker te omzeilen (berekeningen draaien lokaal).
 - iDEAL op mobiel kan terugkeren in een andere browser → project niet gevonden; uitleg + hercontrole in de oorspronkelijke browser.
+
+## ScanTag (raammeting met de camera als USP)
+
+Uitgevoerd in kleine, geteste stappen (details en status: `docs/SCANTAG.md`):
+
+1. Meetkunde: vlak uit één of twee referenties (A4, bankpas) met onbekende onderlinge plek, sub-pixel randen,
+   foutmarge per maat; meten met loep en fijn verslepen.
+2. Productregelschema met bron, versie en status; algemene meetbladen; Tuiss-adapter als concept; engine voor de
+   bestelmaat met `order_ready` alleen bij gecontroleerde regels en bevestigde of gevalideerde maten.
+3. Drie lagen per raam (geometrie, opening, bestelmaat), validatiestatus, apparaatgegevens, auditlog.
+4. Servergrens: vóór betaling alleen statussen; maten vrijgegeven door `/api/scantag` na geverifieerde betaling.
+5. Mobiel ↔ desktop met een eenmalige, versleutelde QR-link.
+6. Fotocontroles, eigen schema's, Nederlandse teksten, metrologisch testplan (`docs/METROLOGIE.md`), harnas.
+
+Open: Tuiss-regels door een mens publiceren; fysieke validatie en acceptatiegrenzen per productfamilie; database
+voor productie (orders en overdracht).
+

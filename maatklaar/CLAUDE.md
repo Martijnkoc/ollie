@@ -21,12 +21,18 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
 4. BAG-gebruiksoppervlakte ≠ som van kamers. Altijd apart tonen, met uitleg.
 5. Een adres of gebouwcontour onthult geen interne plattegrond of raammaten. De pandcontour is van het hele
    gebouw (bij appartementen meerdere woningen).
-6. Raamhoogte/-breedte/montagediepte komen nooit uit een plattegrond van bovenaf; die worden gemeten. Een
-   breedte van de tekening (`planWidthMm`) en een foto-schatting (`photo.estimate`, `browser_scan_estimate`) zijn
-   indicaties naast de meting, nooit een meetwaarde of bestelmaat.
-7. Geen universele aftrek voor raamdecoratie. Een bestelmaat wordt alleen berekend met een expliciete,
-   bronvermelde `MeasurementRuleSet` van het type `supplier` (`src/lib/measurements`). In V1 staan er **geen**
-   leveranciersregels in de app (`src/config/measurement-rules.ts` is leeg); dan tonen we een meetblad met ruwe maten.
+6. Raamhoogte/-breedte/montagediepte komen nooit uit een plattegrond van bovenaf; die worden gemeten: met een
+   rolmaat of met ScanTag (camera + fysieke referentie in het meetvlak). Een breedte van de tekening
+   (`planWidthMm`) is alleen een indicatie. Een ScanTag-maat heeft altijd methode, schaalreferentie, foutmarge en
+   validatiestatus (`window.sources`); hij is `not_validated` zolang `src/config/scantag.ts` geen acceptatiegrens
+   voor die productfamilie heeft (pas na `docs/METROLOGIE.md`). Een schaal komt nooit uit BAG, plattegrond of een
+   browser-overlay. Geen generatieve AI als bron van millimeters.
+7. Geen universele aftrek voor raamdecoratie. Een bestelmaat komt alleen uit een productregel met bron
+   (`src/lib/rules`, zie `docs/MEETREGELS.md`): drie gescheiden lagen (geometrie → gemeten opening → bestelmaat).
+   Leveranciersregels gelden alleen voor die leverancier. Een regel met status `concept` (zoals de Tuiss-adapter tot
+   een mens hem tegen de volledige bron controleert) levert hooguit een concept-bestelmaat; `order_ready` alleen
+   met een gepubliceerde, actuele regel en bevestigde of gevalideerde maten. Wat de bron openlaat wordt gevraagd,
+   niet aangenomen. Een aftrek die de leverancier zelf doet, passen wij nooit toe.
 8. Onvoldoende scankwaliteit → geen automatisch gegenereerde exacte maten; begeleid naar kalibratie/handmatig.
 9. Toon aannames en herkomst in resultaten, PDF en CSV.
 10. Geen nepreviews, nepbeoordelingen, nepbetalingen. DEMO-modus is altijd zichtbaar gelabeld.
@@ -37,8 +43,11 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
   naar onze server, een AI-, vision- of OCR-dienst sturen.
 - Projecten (inclusief het bestand) staan in IndexedDB op het apparaat van de gebruiker, verlopen na
   `LIMITS.projectExpiryDays` en zijn met één knop te wissen.
-- Server ziet alleen: adreszoekopdrachten (doorgestuurd naar PDOK, niet opgeslagen of gelogd) en ordermetadata
-  (order-id, projectreferentie, bedrag, status). Geen adres, naam, e-mail of kamerdata in orders.
+- Server ziet alleen: adreszoekopdrachten (doorgestuurd naar PDOK, niet opgeslagen of gelogd), ordermetadata
+  (order-id, projectreferentie, bedrag, status), ScanTag-punten (pixelcoördinaten, geen beeld; niet opgeslagen) en
+  versleutelde overdrachten die het niet kan lezen (sleutel alleen in het `#`-deel van de link, verloopt binnen uren).
+- Raammaten (ScanTag) geeft de server pas vrij na een geverifieerde betaling van hetzelfde project; vóór betaling
+  toont de app alleen statussen. Geen maat in pagina of netwerk vóór betaling (e2e `scantag.spec.ts`).
 - Geen analytics/tracking. Log geen adressen, bestandsnamen of documentinhoud.
 
 ## Betalen
@@ -52,10 +61,14 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
 ## Architectuur
 
 ```
-src/config/            site.ts (merk, prijs, teksten, limieten), measurement-rules.ts (leveranciersregels, leeg)
+src/config/            site.ts (merk, prijs, teksten, limieten), scantag.ts (acceptatiegrenzen, bewust leeg)
 src/lib/geometry/      eenheden, polygonen (oppervlakte, omtrek, validatie, overlap), vormen → mm-polygoon
 src/lib/materials/     vloer (snijverlies, pakken), plinten, legpatronen; catalog.ts = materiaalbibliotheek met statussen
-src/lib/measurements/  MeasurementRuleSet-schema, generieke meetprotocollen, raamevaluatie, foto-schatting (photo.ts)
+src/lib/measurements/  meetprotocol-weergave, raamevaluatie (opening), ScanTag-meetkunde: photo.ts (vlak uit
+                       referenties, foutmarge), edges.ts (sub-pixel randen), camera.ts (opnames, taken, vrijgegeven maten)
+src/lib/rules/         productregelschema, algemene meetbladen, Tuiss-adapter (concept), engine (bestelmaat + status)
+src/lib/scantag/       serververwerking (process.ts), fotocontroles, scanstatus, metrologie-statistiek
+src/lib/transfer/      mobiel ↔ desktop: versleuteling (browser), kortlevende opslag, samenvoegen
 src/lib/plan-analysis/ tekstregels, classificatie (kamers, maten, schaal), koppeling, kwaliteitspoort;
                        raster.ts, walls.ts, dimensions.ts, rooms-auto.ts, auto-measure.ts: opmeten uit de tekening
 src/lib/documents/     uploadvalidatie (signatuur, MIME, grootte, afmetingen), PDF.js, OCR (browser)
@@ -67,7 +80,7 @@ src/app/               pagina's en API-routes (route handlers)
 src/components/        UI; berekeningen nooit in componenten, altijd via src/lib
 tests/                 Vitest (pure functies, adapters met nep-fetch, PDF-uitvoer, fixtures)
 e2e/                   Playwright (mock-PDOK en DEMO-betaling, mobiel, toegankelijkheid, camera)
-validation/            testharnas: npm run validate (plannen met referentiematen; echte woningen niet in Git)
+validation/            testharnas: npm run validate (plannen en ScanTag-scans met referentiematen; echte woningen niet in Git)
 fixtures/              synthetische testplattegronden (gegenereerd met `npm run fixtures`)
 ```
 

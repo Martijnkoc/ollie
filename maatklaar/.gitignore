@@ -14,4 +14,5 @@ public/vendor/
 
 # Validation runs: results and plans of real homes stay local
 validation/**/resultaat.json
+validation/scantag-resultaat.json
 validation/eigen/

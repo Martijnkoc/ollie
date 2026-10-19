@@ -2,6 +2,7 @@ import Link from "next/link";
 import { HeroStart } from "@/components/landing/HeroStart";
 import { InteractiveDemo } from "@/components/landing/InteractiveDemo";
 import { PlanIllustration } from "@/components/landing/PlanIllustration";
+import { ScanDiagram } from "@/components/project/ScanDiagram";
 import { EXAMPLE_PACK_M2, EXAMPLE_ROOMS, EXAMPLE_WASTE, exampleFloor } from "@/components/landing/example";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BRAND, FAQ, PRICE } from "@/config/site";
@@ -127,6 +128,32 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="section" id="scantag">
+        <div className="container grid-2" style={{ alignItems: "center" }}>
+          <div>
+            <p className="eyebrow">ScanTag</p>
+            <h2>Je ramen meten met je telefoon, zonder rolmaat</h2>
+            <p className="muted">
+              Plak twee A4-vellen naast het raam, maak een foto en tik de hoeken aan. ScanTag rekent het perspectief terug en geeft elke
+              maat met zijn foutmarge. Gewoon in je browser, geen app nodig, en je kunt op je computer verder.
+            </p>
+            <ul className="ticks">
+              <li>Breedte op drie hoogtes, hoogte op drie plekken, diepte met je bankpas</li>
+              <li>Hoeken klikken vast op de randen in de foto; een slechte foto vragen we opnieuw</li>
+              <li>Je foto blijft op je telefoon; alleen de aangetikte punten gaan naar ons</li>
+              <li>Bestelmaat volgens de meetregels van je leverancier, met bron en versie</li>
+            </ul>
+            <p className="small muted" style={{ margin: 0 }}>
+              Eerlijk: ScanTag-maten zijn nog niet gevalideerd tegen metingen in echte woningen. Tot dat gebeurd is, krijg je een
+              concept-bestelmaat met foutmarge, nooit een stille belofte op de millimeter.
+            </p>
+          </div>
+          <div className="scantag-visual" aria-hidden="true">
+            <ScanDiagram task="opening" />
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="demo">
         <div className="container grid-2" style={{ alignItems: "center" }}>
           <div>
@@ -139,7 +166,7 @@ export default function Home() {
             <ul className="ticks">
               <li>Ruimtes worden opgemeten langs de wanden op je tekening, ook L-vormen</li>
               <li>De schaal komt uit de maatlijnen op de tekening, en die moeten onderling kloppen</li>
-              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je zelf, wij begeleiden</li>
+              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je met ScanTag of een rolmaat</li>
               <li>Elke waarde houdt zijn label: herkend, door jou bevestigd, berekend of nog te meten</li>
             </ul>
           </div>

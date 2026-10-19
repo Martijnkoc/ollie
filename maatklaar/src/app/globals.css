@@ -1850,3 +1850,20 @@ dialog.sheet::backdrop {
   border-radius: 8px;
   border: 1px solid var(--line, #d9d2c3);
 }
+
+.scan-diagram-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.scan-diagram {
+  width: min(360px, 100%);
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.scantag-visual {
+  display: flex;
+  justify-content: center;
+}

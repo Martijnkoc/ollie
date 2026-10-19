@@ -58,3 +58,9 @@ en hoe het gaat op andere tekenstijlen. Daarvoor is de set hieronder nodig.
 4. Rapporteer per categorie met aantallen en betrouwbaarheidsintervallen. Bewaar de set en de scripts, zodat
    iedere wijziging opnieuw gemeten kan worden.
 5. Pas pas daarna teksten aan, en alleen met de gemeten getallen en de beschrijving van de set.
+
+## ScanTag (ramen met de camera)
+
+Het meten van ramen met de camera heeft een eigen testplan met referentie-instrument, proefopzet en uitkomstmaten
+(P95/P99, uiterste fout, dekking, false accepts en rejects, uitval): [`METROLOGIE.md`](METROLOGIE.md). Het harnas
+`validation/scantag.run.ts` draait mee met `npm run validate`.

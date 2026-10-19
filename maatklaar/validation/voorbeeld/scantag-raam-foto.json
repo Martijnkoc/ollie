@@ -1,0 +1,80 @@
+{
+  "naam": "Voorbeeld: synthetische foto (fixtures/raam-foto.jpg), exacte punten",
+  "task": "opening",
+  "orientation": "auto",
+  "reference": [
+    {
+      "x": 171.499,
+      "y": 698.244,
+      "sigma": 0.15
+    },
+    {
+      "x": 358.29,
+      "y": 675.933,
+      "sigma": 0.15
+    },
+    {
+      "x": 385.797,
+      "y": 953.419,
+      "sigma": 0.15
+    },
+    {
+      "x": 200.601,
+      "y": 980.326,
+      "sigma": 0.15
+    },
+    {
+      "x": 1574.37,
+      "y": 867.057,
+      "sigma": 0.15
+    },
+    {
+      "x": 1716.509,
+      "y": 845.138,
+      "sigma": 0.15
+    },
+    {
+      "x": 1733.476,
+      "y": 1086.217,
+      "sigma": 0.15
+    },
+    {
+      "x": 1592.334,
+      "y": 1111.597,
+      "sigma": 0.15
+    }
+  ],
+  "points": [
+    {
+      "x": 460.0,
+      "y": 190.0,
+      "sigma": 0.15
+    },
+    {
+      "x": 1405.109,
+      "y": 118.613,
+      "sigma": 0.15
+    },
+    {
+      "x": 1500.888,
+      "y": 1380.995,
+      "sigma": 0.15
+    },
+    {
+      "x": 592.233,
+      "y": 1567.961,
+      "sigma": 0.15
+    }
+  ],
+  "waarheid": {
+    "breedte_boven": 1200,
+    "breedte_midden": 1200,
+    "breedte_onder": 1200,
+    "hoogte_links": 1500,
+    "hoogte_midden": 1500,
+    "hoogte_rechts": 1500
+  },
+  "instrument": "geen: de waarheid is de tekening zelf (synthetisch)",
+  "tolerantieMm": 5,
+  "apparaat": "synthetisch"
+}

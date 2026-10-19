@@ -19,6 +19,7 @@ import { captureContext, checkShot } from "@/lib/scantag/quality";
 import { MEASURE_INFO, type MeasureKey } from "@/lib/measurements/schema";
 import { deletePhoto, loadPhoto, savePhoto, shotPhotoKey } from "@/lib/projects/store";
 import { PhotoMarker, type MarkerGroup } from "./PhotoMarker";
+import { ScanDiagram } from "./ScanDiagram";
 
 type Photo = { url: string; blob: Blob | null; width: number; height: number };
 type Draft = {
@@ -431,6 +432,11 @@ export function CameraMeasure({
               <button type="button" className="btn btn-primary" onClick={() => dialog.current?.close()}>
                 Klaar
               </button>
+              {reveal && shots.length > 0 && (
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => exportForValidation(heading, shots)}>
+                  Exporteren voor validatie
+                </button>
+              )}
             </div>
           </>
         )}
@@ -438,6 +444,9 @@ export function CameraMeasure({
         {view.kind === "capture" && (
           <>
             <h3 style={{ margin: 0 }}>{view.task.title}</h3>
+            <div className="scan-diagram-wrap">
+              <ScanDiagram task={view.task.id} />
+            </div>
             <ol className="small" style={{ margin: 0, paddingLeft: 20 }}>
               {view.task.setup.map((s) => (
                 <li key={s}>{s}</li>
@@ -474,6 +483,18 @@ export function CameraMeasure({
                 Terug
               </button>
             </div>
+            <details className="small">
+              <summary style={{ cursor: "pointer", fontWeight: 650 }}>Tips voor een bruikbare scan</summary>
+              <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                <li>Alles wat je meet en de referentie(s) helemaal in beeld, met wat ruimte eromheen.</li>
+                <li>Recht ervoor staan; een beetje schuin mag, de rekenkern corrigeert het perspectief.</li>
+                <li>Geen zon op het glas en geen flits: schittering verbergt de randen.</li>
+                <li>Houd je telefoon stil; een bewogen foto vragen we opnieuw.</li>
+                <li>
+                  Het vel of de pas moet plat liggen, in hetzelfde vlak als wat je meet. Een opgekruld vel geeft een verkeerde schaal.
+                </li>
+              </ul>
+            </details>
             <p className="tiny muted" style={{ margin: 0 }}>
               &ldquo;Foto maken&rdquo; opent de camera-app van je telefoon: die maakt de scherpste foto. De foto blijft op dit apparaat.
             </p>
@@ -618,6 +639,31 @@ export function CameraMeasure({
       </div>
     </dialog>
   );
+}
+
+/**
+ * Downloads the scans in the validation format (validation/scantag.run.ts): points and values, no photo.
+ * Whoever validates fills in the reference values from a measuring instrument.
+ */
+function exportForValidation(heading: string, shots: CameraShot[]) {
+  const records = shots.map((s) => ({
+    naam: `${heading} · ${CAMERA_TASKS[s.task].title} · ${s.takenAt}`,
+    task: s.task,
+    orientation: s.orientation,
+    reference: s.reference,
+    points: s.points,
+    scanTag: s.values,
+    waarheid: {},
+    instrument: "",
+    tolerantieMm: 5,
+    apparaat: `${s.capture.device} · ${s.capture.browser} · ${s.capture.method}`,
+  }));
+  const url = URL.createObjectURL(new Blob([JSON.stringify(records, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "scantag-validatie.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function refCount(task: CameraTask) {
