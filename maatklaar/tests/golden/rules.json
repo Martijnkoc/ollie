@@ -1,0 +1,125 @@
+{
+  "about": "Vooraf vastgelegde verwachtingen per regelrecord: ruwe opening, gekozen maat en bestelmaat. Een regelwijziging die een uitkomst verandert, vraagt een bewuste aanpassing hier (met nieuwe rulesVersion).",
+  "cases": [
+    {
+      "name": "Tuiss rolgordijn in de dag: bovenmaat, geen tegels",
+      "rule": "tuiss-rolgordijn-enkel-in-de-dag",
+      "measures": { "breedte_boven": 1203, "breedte_midden": 1198, "breedte_onder": 1196, "hoogte_links": 1500, "hoogte_midden": 1497, "hoogte_rechts": 1502, "diepte": 80 },
+      "answers": { "bevestiging": "wand" },
+      "checks": { "grepen": false, "tegels": false, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "needs_verification", "width": 1203, "height": null, "order": [1203, null], "depthOk": true }
+    },
+    {
+      "name": "Tuiss rolgordijn: tegels 24 mm smaller → bovenmaat",
+      "rule": "tuiss-rolgordijn-enkel-in-de-dag",
+      "measures": { "breedte_boven": 1200, "breedte_midden": 1199, "breedte_onder": 1199, "hoogte_links": 1500, "hoogte_midden": 1500, "hoogte_rechts": 1500, "diepte": 60, "breedte_tegels": 1176 },
+      "answers": { "bevestiging": "plafond" },
+      "checks": { "grepen": false, "tegels": true, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "needs_verification", "width": 1200, "height": null, "order": [1200, null], "depthOk": true }
+    },
+    {
+      "name": "Tuiss rolgordijn: tegels 26 mm smaller → tegelmaat",
+      "rule": "tuiss-rolgordijn-enkel-in-de-dag",
+      "measures": { "breedte_boven": 1200, "breedte_midden": 1199, "breedte_onder": 1199, "hoogte_links": 1500, "hoogte_midden": 1500, "hoogte_rechts": 1500, "diepte": 60, "breedte_tegels": 1174 },
+      "answers": { "bevestiging": "plafond" },
+      "checks": { "grepen": false, "tegels": true, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "needs_verification", "width": 1174, "height": null, "order": [1174, null], "depthOk": true }
+    },
+    {
+      "name": "Tuiss rolgordijn: precies 25 mm → onbeslist, geen breedte",
+      "rule": "tuiss-rolgordijn-enkel-in-de-dag",
+      "measures": { "breedte_boven": 1200, "breedte_midden": 1199, "breedte_onder": 1199, "hoogte_links": 1500, "hoogte_midden": 1500, "hoogte_rechts": 1500, "diepte": 60, "breedte_tegels": 1175 },
+      "answers": { "bevestiging": "plafond" },
+      "checks": { "grepen": false, "tegels": true, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "needs_verification", "width": null, "height": null, "order": [null, null], "depthOk": true, "question": "smalste-grens" }
+    },
+    {
+      "name": "Tuiss houten jaloezie 50 mm in de dag: kleinste maten, 70 mm diepte",
+      "rule": "tuiss-jaloezie-hout-50-in-de-dag",
+      "measures": { "breedte_boven": 1203, "breedte_midden": 1201, "breedte_onder": 1198, "hoogte_links": 1500, "hoogte_midden": 1496, "hoogte_rechts": 1501, "diepte": 70 },
+      "answers": {},
+      "checks": { "grepen": false, "tegels": false, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "concept", "width": 1198, "height": 1496, "order": [1198, 1496], "depthOk": true }
+    },
+    {
+      "name": "Tuiss houten jaloezie 50 mm: 69 mm diepte past niet",
+      "rule": "tuiss-jaloezie-hout-50-in-de-dag",
+      "measures": { "breedte_boven": 1203, "breedte_midden": 1201, "breedte_onder": 1198, "hoogte_links": 1500, "hoogte_midden": 1496, "hoogte_rechts": 1501, "diepte": 69 },
+      "answers": {},
+      "checks": { "grepen": false, "tegels": false, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "not_suitable", "width": 1198, "height": 1496, "order": [1198, 1496], "depthOk": false }
+    },
+    {
+      "name": "Tuiss jaloezie: smalste punt bij een greep telt mee",
+      "rule": "tuiss-jaloezie-alu-25-in-de-dag",
+      "measures": { "breedte_boven": 1203, "breedte_midden": 1201, "breedte_onder": 1198, "smalste_breedte": 1185, "hoogte_links": 1500, "hoogte_midden": 1496, "hoogte_rechts": 1501, "diepte": 40 },
+      "answers": {},
+      "checks": { "grepen": true, "tegels": false, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "concept", "width": 1185, "height": 1496, "order": [1185, 1496], "depthOk": true }
+    },
+    {
+      "name": "Tuiss wave in de dag: aftrek 10/15 mm door Tuiss, niet door ons",
+      "rule": "tuiss-wave-in-de-dag",
+      "measures": { "breedte_boven": 1800, "breedte_midden": 1797, "breedte_onder": 1799, "hoogte_links": 1400, "hoogte_midden": 1402, "hoogte_rechts": 1398, "diepte": 80 },
+      "answers": {},
+      "checks": { "grepen": false, "tegels": false, "raam_openen": false, "vensterbank": false },
+      "expect": { "status": "concept", "width": 1797, "height": 1398, "order": [1797, 1398], "depthOk": true }
+    },
+    {
+      "name": "Tuiss wave op de dag: te weinig overlap",
+      "rule": "tuiss-wave-op-de-dag",
+      "measures": { "gewenste_breedte": 2000, "gewenste_hoogte": 1600, "breedte_midden": 1800, "hoogte_midden": 1400, "ruimte_boven": 300 },
+      "answers": {},
+      "checks": { "radiator": false, "vensterbank": false, "ventilatierooster": false },
+      "expect": { "status": "not_suitable", "width": 2000, "height": 1600, "order": [2000, 1600] }
+    },
+    {
+      "name": "Tuiss jaloezie op de dag: gekozen buitenmaat, overlap als richtlijn",
+      "rule": "tuiss-jaloezie-op-de-dag",
+      "measures": { "gewenste_breedte": 1300, "gewenste_hoogte": 1600, "breedte_midden": 1200, "hoogte_midden": 1500, "ruimte_boven": 200 },
+      "answers": {},
+      "checks": { "radiator": false, "vensterbank": false, "grepen": false, "raam_openen": false },
+      "expect": { "status": "concept", "width": 1300, "height": 1600, "order": [1300, 1600], "suggestion": [1300, 1570] }
+    },
+    {
+      "name": "Tuiss schroefloos: 15 mm rechte kozijndiepte is genoeg",
+      "rule": "tuiss-schroefloos",
+      "measures": { "breedte_boven": 600, "breedte_midden": 598, "breedte_onder": 599, "hoogte_links": 1200, "hoogte_midden": 1199, "hoogte_rechts": 1201, "kozijndiepte": 15 },
+      "answers": {},
+      "checks": { "grepen": false, "raam_openen": false },
+      "expect": { "status": "needs_verification", "width": 598, "height": 1199, "order": [598, 1199], "depthOk": true }
+    },
+    {
+      "name": "Tuiss schroefloos: 14 mm is te weinig",
+      "rule": "tuiss-schroefloos",
+      "measures": { "breedte_boven": 600, "breedte_midden": 598, "breedte_onder": 599, "hoogte_links": 1200, "hoogte_midden": 1199, "hoogte_rechts": 1201, "kozijndiepte": 14 },
+      "answers": {},
+      "checks": { "grepen": false, "raam_openen": false },
+      "expect": { "status": "not_suitable", "width": 598, "height": 1199, "order": [598, 1199], "depthOk": false }
+    },
+    {
+      "name": "Tuiss dakraam: bestellen op typecode, compatibiliteit navragen",
+      "rule": "tuiss-dakraam",
+      "measures": {},
+      "answers": { "dakraam_code": "Velux GGL MK04" },
+      "checks": {},
+      "expect": { "status": "needs_verification", "width": null, "height": null, "byCode": "Velux GGL MK04" }
+    },
+    {
+      "name": "Tuiss gordijn aan de wand: railbreedte, 30 mm van de ringen niet nog eens optellen",
+      "rule": "tuiss-gordijn-wand",
+      "measures": { "rail_breedte": 2200, "ophanghoogte_links": 2500, "ophanghoogte_midden": 2495, "ophanghoogte_rechts": 2490 },
+      "answers": { "eindpunt": "vloer", "ophanging": "ringen", "nieuwe_rail": "nee" },
+      "checks": { "radiator": false, "vensterbank": false, "ventilatierooster": false },
+      "expect": { "status": "needs_verification", "width": 2200, "height": null, "order": [2200, null] }
+    },
+    {
+      "name": "Algemeen meetblad: geen bestelmaat",
+      "rule": "protocol-in-de-dag",
+      "measures": { "breedte_boven": 1203, "breedte_midden": 1201, "breedte_onder": 1198, "hoogte_links": 1500, "hoogte_midden": 1496, "hoogte_rechts": 1501, "diepte": 70 },
+      "answers": {},
+      "checks": { "grepen": false, "ventilatierooster": false, "raam_openen": false, "vensterbank": false, "tegels": false },
+      "expect": { "status": "measuring_sheet", "width": null, "height": null }
+    }
+  ]
+}

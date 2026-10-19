@@ -1,6 +1,7 @@
 import type { ProjectComputation } from "@/lib/projects/compute";
 import { MEASURE_INFO } from "@/lib/measurements/schema";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
+import { ORDER_STATUS_LABELS } from "@/lib/rules/engine";
 import { STATUS_META } from "@/lib/projects/status";
 import { roomName } from "@/lib/projects/compute";
 import type { MaterialSection } from "./model";
@@ -90,13 +91,16 @@ export function buildCsv(c: ProjectComputation, opts: { demo: boolean; materials
           : "ruwe maat",
       ]);
     }
+    const o = c.windows.find((x) => x.window.id === w.id)!.order;
     rows.push([
       `Raam ${w.code}`,
       "Bestelmaat (breedte x hoogte)",
-      e.order ? `${e.order.widthMm} x ${e.order.heightMm}` : null,
-      "mm",
-      WINDOW_STATUS_LABELS[e.status],
-      e.order ? `${rule.title} v${rule.version}` : "volgens meetinstructie leverancier",
+      o.order && !o.order.byCode ? `${o.order.widthMm ?? "navragen"} x ${o.order.heightMm ?? "navragen"}` : (o.order?.byCode ?? null),
+      o.order?.byCode ? "typecode" : "mm",
+      ORDER_STATUS_LABELS[o.status],
+      o.status === "measuring_sheet"
+        ? `volgens meetinstructie leverancier (${o.rule.title})`
+        : `${o.rule.title} regels ${o.rule.version}${o.rule.url ? ` (${o.rule.url})` : ""}${o.blockedBy.length || o.questions.length ? `; niet definitief: ${[...o.questions.map((q) => q.question), ...o.blockedBy].join(" | ")}` : ""}`,
     ]);
   }
   for (const m of opts.materials ?? []) {

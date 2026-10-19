@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { MEASURE_KEYS, type MeasureKey, type MeasurementRuleSet } from "./schema";
+import { SCANTAG_ACCEPTANCE } from "@/config/scantag";
+import { VALIDATION_STATUSES, type ValidationStatus } from "@/lib/rules/engine";
 import { combine, measureInPlane, tooRough, type Combined, type Marked, type ReferenceKind, type Shape } from "./photo";
+import type { ProductFamily } from "./schema";
 
 /**
  * Measuring with the camera instead of a tape measure. Each task is one kind of photo: what to place where,
@@ -167,15 +170,45 @@ export const cameraShotSchema = z.object({
   points: z.array(markedSchema).max(8),
   /** Per point (reference first): moved onto an edge in the photo. */
   snapped: z.array(z.boolean()).max(12),
-  values: z.partialRecord(z.enum(CAMERA_TARGETS), valueSchema),
+  /**
+   * The measurements from this photo. Window measurements are filled in only once the server released them
+   * after the payment; before that a shot holds geometry only.
+   */
+  values: z.partialRecord(z.enum(CAMERA_TARGETS), valueSchema).default({}),
+  /** How the photo was taken: needed to debug and to validate per device type; no identifiers. */
+  capture: z
+    .object({
+      method: z.enum(["camera-app", "browser-camera", "upload", "onbekend"]),
+      device: z.enum(["mobiel", "desktop", "onbekend"]),
+      browser: z.string().max(40),
+    })
+    .default({ method: "onbekend", device: "onbekend", browser: "" }),
+  /** Photo checks on this device (blur, glare, reference size, viewing angle); blocking ones mean a new photo. */
+  photoChecks: z
+    .array(z.object({ blocking: z.boolean(), text: z.string().max(200) }))
+    .max(10)
+    .default([]),
+  /** Processed by the server (ScanTag): its verdict merged with the photo checks. */
+  processed: z.boolean().default(false),
+  quality: z
+    .object({ status: z.enum(["ok", "needs_more_data"]), issues: z.array(z.string().max(200)).max(10) })
+    .default({ status: "ok", issues: [] }),
 });
 export type CameraShot = z.infer<typeof cameraShotSchema>;
 
-/** Where a window measurement came from. Absent: typed in by the user (tape measure or otherwise). */
+/**
+ * Where a window measurement came from, when it came from the camera (ScanTag). Absent: typed in by the user
+ * (measurement method "handmatig"). The uncertainty is the combined margin at about 95 %: point positions
+ * propagated through the fitted plane, plus the assumed systematic share (CAMERA_MEASURE).
+ */
 export const measureSourceSchema = z.object({
   method: z.literal("camera"),
   uncertaintyMm: z.number().int().nonnegative(),
   shots: z.number().int().positive(),
+  /** The physical scale reference: an A4 sheet or a bank card (ISO/IEC 7810 ID-1). */
+  scaleReference: z.enum(["a4", "bankpas"]).default("a4"),
+  validation: z.enum(VALIDATION_STATUSES).default("not_validated"),
+  capturedAt: z.string().default(""),
 });
 export type MeasureSource = z.infer<typeof measureSourceSchema>;
 
@@ -200,7 +233,11 @@ export type CameraResult = Combined & { target: CameraTarget; usable: boolean; r
 export function cameraResults(shots: readonly CameraShot[]): CameraResult[] {
   const out: CameraResult[] = [];
   for (const target of CAMERA_TARGETS) {
-    const list = shots.map((s) => s.values[target]).filter((v): v is NonNullable<typeof v> => Boolean(v));
+    // A photo that failed its quality checks never counts towards a measurement.
+    const list = shots
+      .filter((s) => s.quality.status === "ok")
+      .map((s) => s.values[target])
+      .filter((v): v is NonNullable<typeof v> => Boolean(v));
     const c = combine(list);
     if (!c) continue;
     const reason = !c.agree
@@ -217,12 +254,28 @@ export function cameraResults(shots: readonly CameraShot[]): CameraResult[] {
  * Writes the usable camera results into a window's measurements, for the keys its rule asks for. A value the
  * user typed in later wins: only keys without a value or with an earlier camera value are replaced.
  */
+/**
+ * Whether a camera measurement may count as validated for an order size: only for a rectangular window, within
+ * the acceptance limit set for the product family after physical validation (none set yet).
+ */
+export function cameraValidation(
+  family: ProductFamily,
+  uncertaintyMm: number,
+  shape: "rechthoek" | "erker" | "afwijkend",
+): ValidationStatus {
+  if (shape !== "rechthoek") return "unsupported";
+  const limit = SCANTAG_ACCEPTANCE[family];
+  return limit && uncertaintyMm <= limit.maxUncertaintyMm ? "validated" : "not_validated";
+}
+
 export function applyCameraToWindow<
   W extends {
     camera: CameraShot[];
     measures: Partial<Record<MeasureKey, number>>;
     sources: Partial<Record<MeasureKey, MeasureSource>>;
     confirmed: boolean;
+    product: ProductFamily;
+    shape?: "rechthoek" | "erker" | "afwijkend";
   },
 >(w: W, rule: MeasurementRuleSet): W {
   const keys = new Set<MeasureKey>([...rule.required, ...rule.optional]);
@@ -242,7 +295,19 @@ export function applyCameraToWindow<
       continue;
     }
     const mm = Math.round(r.mm);
-    const source: MeasureSource = { method: "camera", uncertaintyMm: r.uncertaintyMm, shots: r.shots };
+    const used = w.camera.filter((s) => s.values[key]);
+    const source: MeasureSource = {
+      method: "camera",
+      uncertaintyMm: r.uncertaintyMm,
+      shots: r.shots,
+      scaleReference: CAMERA_TASKS[used[0]!.task].reference,
+      validation: cameraValidation(w.product, r.uncertaintyMm, w.shape ?? "rechthoek"),
+      capturedAt:
+        used
+          .map((s) => s.takenAt)
+          .sort()
+          .at(-1) ?? "",
+    };
     if (measures[key] !== mm || JSON.stringify(sources[key]) !== JSON.stringify(source)) changed = true;
     measures[key] = mm;
     sources[key] = source;

@@ -102,7 +102,7 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   await dialog.getByRole("button", { name: "Volgende" }).click();
   for (const radio of await dialog.getByRole("radio", { name: "Nee" }).all()) await radio.check();
   await dialog.getByRole("button", { name: "Volgende" }).click();
-  await expect(dialog.getByText("Meetblad met ruwe maten.")).toBeVisible();
+  await expect(dialog.getByText("Meetblad: bestelmaat volgens je leverancier")).toBeVisible();
   await dialog.getByLabel(/Ik heb alle maten van dit raam nagekeken/).check();
   await expect(dialog.getByText("Door jou bevestigd")).toBeVisible();
   await dialog.getByRole("button", { name: "Klaar" }).click();

@@ -15,6 +15,7 @@ import {
 import type { ProjectComputation } from "@/lib/projects/compute";
 import type { Project } from "@/lib/projects/schema";
 import { CameraMeasure } from "./CameraMeasure";
+import { processLocally } from "./scantag-client";
 
 const STATUS_STYLE: Record<CategoryStatus, { icon: string; data: string }> = {
   niet_genoeg_gegevens: { icon: "?", data: "missing" },
@@ -226,6 +227,8 @@ export function CategoryCard({
           heading="Plafondhoogte voor verf en behang"
           tasks={[CAMERA_TASKS.plafond]}
           shots={project.camera.filter((s) => s.task === "plafond")}
+          reveal
+          process={processLocally}
           onSave={saveCeiling}
           onClose={() => setMeasuring(false)}
         />

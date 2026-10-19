@@ -2,6 +2,7 @@ import { z } from "zod";
 import { addressSchema, buildingSchema } from "@/lib/address/types";
 import { CATEGORY_KEYS } from "@/lib/materials/catalog";
 import { cameraShotSchema, measureSourceSchema } from "@/lib/measurements/camera";
+import { ANSWER_KEYS } from "@/lib/rules/schema";
 import { CHECK_KEYS, MEASURE_KEYS, MOUNTINGS, PRODUCT_FAMILIES } from "@/lib/measurements/schema";
 
 export const SCHEMA_VERSION = 1;
@@ -216,6 +217,17 @@ export const windowSchema = z.object({
   camera: z.array(cameraShotSchema).max(30).default([]),
   /** Per measurement that came from the camera: its uncertainty. A typed-in value has no entry. */
   sources: z.partialRecord(z.enum(MEASURE_KEYS), measureSourceSchema).default({}),
+  /** Answers that are not lengths (fixing, roof window code, curtain end point…), as the rule asks them. */
+  answers: z.partialRecord(z.enum(ANSWER_KEYS), z.string().max(80)).default({}),
+  /** Shape of the window: product rules and ScanTag only handle rectangular windows. */
+  shape: z.enum(["rechthoek", "erker", "afwijkend"]).default("rechthoek"),
+  /** When the user last confirmed all measurements of this window (reviewed_at). */
+  confirmedAt: z.string().nullable().default(null),
+  /** What happened to this window's measurements, newest last: scans, edits, confirmations, rule changes. */
+  audit: z
+    .array(z.object({ at: z.string(), event: z.string().max(240) }))
+    .max(400)
+    .default([]),
   /**
    * Photo of the first photo assistant (kept on this device only): corners tapped on an A4 sheet on the glass
    * and the opening, with a size estimate. Only shown for windows that still have one; new photos are

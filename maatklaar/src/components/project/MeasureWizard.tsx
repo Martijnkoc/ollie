@@ -15,11 +15,14 @@ import {
   type MeasurementRuleSet,
 } from "@/lib/measurements/schema";
 import type { ProjectWindow } from "@/lib/projects/schema";
+import { orderSummary, type OrderResult } from "@/lib/rules/engine";
+import { ANSWER_INFO, type ProductRule } from "@/lib/rules/schema";
 import { MeasureDiagram } from "./MeasureDiagram";
 
 type Screen =
   | { kind: "intro" }
-  | { kind: "measure"; key: MeasureKey; optional: boolean }
+  | { kind: "answers" }
+  | { kind: "measure"; key: MeasureKey; optional: boolean; when?: { check: CheckKey; equals: boolean } }
   | { kind: "group"; group: MeasureGroup }
   | { kind: "checks" }
   | { kind: "fullness" }
@@ -28,8 +31,12 @@ type Screen =
 const GROUP_LABEL: Record<MeasureGroup, string> = { breedte: "breedte", hoogte: "hoogte", ophanghoogte: "ophanghoogte" };
 
 /** Builds the guided sequence: every measuring point on its own screen, a check after each group of points. */
-function screensFor(rule: MeasurementRuleSet): Screen[] {
-  const all = [...rule.required.map((k) => ({ k, optional: false })), ...rule.optional.map((k) => ({ k, optional: true }))];
+function screensFor(rule: MeasurementRuleSet, product: ProductRule): Screen[] {
+  // Lengths asked only after a check (the width between tiles) come after the checks, and only when they apply.
+  const conditional = product.inputs.flatMap((i) => (i.kind === "mm" && i.when ? [{ key: i.key, when: i.when }] : []));
+  const all = [...rule.required.map((k) => ({ k, optional: false })), ...rule.optional.map((k) => ({ k, optional: true }))].filter(
+    (x) => !conditional.some((c) => c.key === x.k),
+  );
   const screens: Screen[] = [{ kind: "intro" }];
   const done = new Set<MeasureKey>();
   for (const { k, optional } of all) {
@@ -47,36 +54,46 @@ function screensFor(rule: MeasurementRuleSet): Screen[] {
       done.add(k);
     }
   }
+  if (product.inputs.some((i) => i.kind === "answer")) screens.push({ kind: "answers" });
   if (rule.checks.length) screens.push({ kind: "checks" });
+  for (const c of conditional) screens.push({ kind: "measure", key: c.key, optional: false, when: c.when });
   if (rule.productFamilies.includes("gordijn")) screens.push({ kind: "fullness" });
   screens.push({ kind: "summary" });
   return screens;
 }
 
 /** Where to continue after measuring with the camera: the first missing measurement, else the questions. */
+/** A screen for a length that depends on a check is skipped while that check does not ask for it. */
+const applies = (s: Screen, w: ProjectWindow) => s.kind !== "measure" || !s.when || w.checks[s.when.check] === s.when.equals;
+
 function resumeAt(screens: Screen[], w: ProjectWindow) {
-  const missing = screens.findIndex((s) => s.kind === "measure" && !s.optional && !w.measures[s.key]);
+  const missing = screens.findIndex((s) => s.kind === "measure" && !s.optional && applies(s, w) && !w.measures[s.key]);
   if (missing >= 0) return missing;
-  const rest = screens.findIndex((s) => s.kind === "checks" || s.kind === "fullness" || s.kind === "summary");
+  const rest = screens.findIndex((s) => s.kind === "answers" || s.kind === "checks" || s.kind === "fullness" || s.kind === "summary");
   return Math.max(0, rest);
 }
 
 export function MeasureWizard({
   window: w,
   rule,
+  product,
+  order,
   resume = false,
   onChange,
   onClose,
 }: {
   window: ProjectWindow;
   rule: MeasurementRuleSet;
+  /** The product rule behind `rule`: its answer inputs and the order layer. */
+  product: ProductRule;
+  order: OrderResult;
   /** Start where the camera left off instead of at the introduction. */
   resume?: boolean;
   onChange: (w: ProjectWindow) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const screens = useMemo(() => screensFor(rule), [rule]);
+  const screens = useMemo(() => screensFor(rule, product), [rule, product]);
   const [i, setI] = useState(() => (resume ? resumeAt(screens, w) : 0));
   const [text, setText] = useState("");
   const [invalid, setInvalid] = useState(false);
@@ -123,7 +140,19 @@ export function MeasureWizard({
 
   function next() {
     if (screen.kind === "measure" && !saveMeasure(screen.key)) return;
-    setI((x) => Math.min(screens.length - 1, x + 1));
+    setI((x) => {
+      let n = Math.min(screens.length - 1, x + 1);
+      while (n < screens.length - 1 && !applies(screens[n]!, w)) n++;
+      return n;
+    });
+  }
+
+  function previous() {
+    setI((x) => {
+      let n = Math.max(0, x - 1);
+      while (n > 0 && !applies(screens[n]!, w)) n--;
+      return n;
+    });
   }
 
   const progress = `Stap ${i + 1} van ${screens.length}`;
@@ -280,6 +309,50 @@ export function MeasureWizard({
           </div>
         )}
 
+        {screen.kind === "answers" && (
+          <div className="stack">
+            {product.inputs.map((input) => {
+              if (input.kind !== "answer") return null;
+              const info = ANSWER_INFO[input.key];
+              const value = w.answers[input.key] ?? "";
+              const set = (v: string) => {
+                const answers = { ...w.answers };
+                if (v) answers[input.key] = v;
+                else delete answers[input.key];
+                onChange({ ...w, answers, confirmed: false });
+              };
+              return (
+                <div key={input.key} className="field">
+                  <label htmlFor={`antwoord-${input.key}`}>
+                    {info.label}
+                    {input.required ? "" : " (optioneel)"}
+                  </label>
+                  {info.options ? (
+                    <select id={`antwoord-${input.key}`} className="select" value={value} onChange={(e) => set(e.target.value)}>
+                      <option value="">Kies…</option>
+                      {Object.entries(info.options).map(([k, label]) => (
+                        <option key={k} value={k}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`antwoord-${input.key}`}
+                      className="input"
+                      maxLength={80}
+                      value={value}
+                      onChange={(e) => set(e.target.value)}
+                      autoComplete="off"
+                    />
+                  )}
+                  <span className="hint">{info.hint}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {screen.kind === "checks" && (
           <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="label" style={{ marginBottom: 8 }}>
@@ -363,28 +436,33 @@ export function MeasureWizard({
                 </tbody>
               </table>
             </div>
-            {evaluation.order ? (
-              <div className="notice notice-ok">
-                <strong>
-                  Bestelmaat: {formatMm(evaluation.order.widthMm)} × {formatMm(evaluation.order.heightMm)}
-                </strong>
-                <ul>
-                  {evaluation.order.steps.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="notice">
-                <strong>Meetblad met ruwe maten.</strong> De uiteindelijke bestelmaat bevestig je volgens de meetinstructie van je gekozen
-                leverancier.
-                <ul>
-                  {evaluation.orderBlocked.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <div className={`notice ${order.status === "order_ready" ? "notice-ok" : ""}`}>
+              <strong>{orderSummary(order)}</strong>
+              <ul>
+                {order.width && <li>Breedte: {order.width.how}.</li>}
+                {order.height && <li>Hoogte: {order.height.how}.</li>}
+                {order.corrections.map((c) => (
+                  <li key={c.what}>
+                    {c.what}: {c.reason}
+                  </li>
+                ))}
+                {order.depth && order.depth.requiredMm !== null && (
+                  <li>
+                    Diepte: nodig {formatMm(order.depth.requiredMm)}
+                    {order.depth.measuredMm !== null ? `, gemeten ${formatMm(order.depth.measuredMm)}` : ""}.
+                  </li>
+                )}
+                {[...order.missing.map((m) => `Ontbreekt: ${m}`), ...order.questions.map((q) => q.question), ...order.blockedBy].map(
+                  (x) => (
+                    <li key={x}>{x}</li>
+                  ),
+                )}
+              </ul>
+              <span className="small">
+                Regel: {order.rule.title}, regels {order.rule.version}
+                {order.rule.url ? ` — bron: ${order.rule.url}` : ""}.
+              </span>
+            </div>
             {evaluation.warnings.length > 0 && (
               <ul className="small muted" style={{ margin: 0, paddingLeft: 18 }}>
                 {evaluation.warnings.map((x) => (
@@ -407,7 +485,7 @@ export function MeasureWizard({
         )}
 
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <button type="button" className="btn" disabled={i === 0} onClick={() => setI((x) => Math.max(0, x - 1))}>
+          <button type="button" className="btn" disabled={i === 0} onClick={previous}>
             Vorige
           </button>
           {screen.kind === "summary" ? (

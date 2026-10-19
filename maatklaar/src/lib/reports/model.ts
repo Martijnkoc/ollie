@@ -4,6 +4,7 @@ import { CATALOG, CATEGORY_STATUS_LABELS, computeCategory, type CategoryStatus }
 import { patternByKey } from "@/lib/materials/patterns";
 import { cameraResults, ceilingHeightM, type MeasureSource } from "@/lib/measurements/camera";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
+import { ORDER_STATUS_LABELS, orderSummary, type OrderResult } from "@/lib/rules/engine";
 import { MEASURE_GROUPS, MEASURE_INFO, MOUNTING_SHORT, PRODUCT_LABELS, PRODUCT_SHORT, type MeasureKey } from "@/lib/measurements/schema";
 import { roomName, type ProjectComputation } from "@/lib/projects/compute";
 import type { Project, Room } from "@/lib/projects/schema";
@@ -93,6 +94,45 @@ function measureList(keys: readonly MeasureKey[], measures: Partial<Record<Measu
   return parts.length ? `${parts.join(" · ")} mm` : "nog meten";
 }
 
+/** The order size in a table cell: "1200 × 1495 mm", sides that need asking say so. */
+function orderCell(o: OrderResult) {
+  if (!o.order) return o.status === "measuring_sheet" ? "volgens leverancier" : ORDER_STATUS_LABELS[o.status].toLowerCase();
+  if (o.order.byCode) return `op typecode ${o.order.byCode}`;
+  const side = (mm: number | null) => (mm === null ? "navragen" : formatMm(mm));
+  return `${side(o.order.widthMm)} × ${side(o.order.heightMm)}${o.status === "order_ready" ? "" : " (concept)"}`;
+}
+
+/** The order layer of a window card: rule and source, selected sizes, corrections, depth, status, open points. */
+function orderRows(o: OrderResult): { label: string; value: string }[] {
+  const rows = [
+    {
+      label: "Regel",
+      value: `${o.rule.title}, regels ${o.rule.version}${o.rule.url ? ` — ${o.rule.url}` : ""}${o.rule.status === "concept" ? " (concept, nog niet volledig tegen de bron gecontroleerd)" : o.rule.checkedOn ? ` (gecontroleerd ${o.rule.checkedOn})` : ""}`,
+    },
+  ];
+  if (o.width) rows.push({ label: "Gekozen breedte", value: `${formatMm(o.width.mm)}: ${o.width.how}` });
+  if (o.height) rows.push({ label: "Gekozen hoogte", value: `${formatMm(o.height.mm)}: ${o.height.how}` });
+  if (o.suggestion)
+    rows.push({
+      label: "Overlap",
+      value: `${o.suggestion.widthMm !== null ? formatMm(o.suggestion.widthMm) : "?"} × ${o.suggestion.heightMm !== null ? formatMm(o.suggestion.heightMm) : "?"}: ${o.suggestion.how}`,
+    });
+  for (const k of o.corrections)
+    rows.push({
+      label: "Correctie",
+      value: `${k.what} (${k.appliedBy === "leverancier" ? "door de leverancier" : "door MaatKlaar"}): ${k.reason}`,
+    });
+  if (o.depth)
+    rows.push({
+      label: "Diepte",
+      value: `${o.depth.measuredMm !== null ? formatMm(o.depth.measuredMm) : "niet gemeten"}; nodig ${o.depth.requiredMm !== null ? formatMm(o.depth.requiredMm) : "onbekend"}${o.depth.ok === null ? "" : o.depth.ok ? " — voldoende" : " — te weinig"}`,
+    });
+  rows.push({ label: "Bestelmaat", value: orderSummary(o) });
+  for (const q of o.questions) rows.push({ label: "Navragen", value: q.question });
+  for (const b of o.blockedBy) rows.push({ label: "Niet definitief", value: b });
+  return rows;
+}
+
 /** Provenance of one window measurement, as in the room sources: camera values are browser_scan_estimate. */
 function measureProvenance(source: MeasureSource | undefined, confirmed: boolean) {
   const code = source
@@ -128,7 +168,7 @@ export function buildReportModel(
   const demo = project.payment?.mode === "demo";
   const included = c.rooms.filter((r) => r.room.includeFloor);
   const confirmedRooms = included.filter((r) => r.status === "derived").length;
-  const completeWindows = c.windows.filter((w) => w.evaluation.status === "bevestigd" || w.evaluation.status === "bestelmaat").length;
+  const completeWindows = c.windows.filter((w) => w.evaluation.status === "bevestigd").length;
 
   const summary = [
     `${confirmedRooms} van ${included.length} meegetelde ruimtes rusten op door jou bevestigde maten.`,
@@ -200,7 +240,7 @@ export function buildReportModel(
   ];
 
   // Windows
-  const windowRows: Cell[][] = c.windows.map(({ window: w, rule, evaluation: e, roomName: rn }) => {
+  const windowRows: Cell[][] = c.windows.map(({ window: w, rule, evaluation: e, order: o, roomName: rn }) => {
     const keys = [...rule.required, ...rule.optional];
     const grouped = new Set<MeasureKey>(Object.values(MEASURE_GROUPS).flat());
     const width = keys.filter((k) => (MEASURE_GROUPS.breedte as readonly MeasureKey[]).includes(k));
@@ -233,7 +273,7 @@ export function buildReportModel(
             ...(e.fabricWidthMm !== null ? [`Stofbreedte bij gekozen volheid ${w.fullness}×: ${formatMm(e.fabricWidthMm)}`] : []),
           ].join("; ") || "—",
       },
-      { text: e.order ? `${formatMm(e.order.widthMm)} × ${formatMm(e.order.heightMm)}` : "volgens leverancier" },
+      { text: orderCell(o) },
       { text: `${WINDOW_STATUS_LABELS[e.status]} (${source})`, status },
     ];
   });
@@ -263,10 +303,15 @@ export function buildReportModel(
     todo.push(
       `Plinten ${r.name}: meet de breedte van ${r.unconfirmedDoors === 1 ? "de deuropening" : `${r.unconfirmedDoors} deuropeningen`}.`,
     );
-  for (const { window: w, evaluation: e } of c.windows) {
-    if (e.order)
-      order.push(`${w.code}: bestelmaat ${formatMm(e.order.widthMm)} × ${formatMm(e.order.heightMm)} (${PRODUCT_LABELS[w.product]}).`);
-    else if (e.status === "bevestigd") order.push(`${w.code}: ruwe maten compleet; laat je leverancier de bestelmaat bepalen.`);
+  for (const { window: w, evaluation: e, order: o } of c.windows) {
+    if (o.status === "order_ready" && o.order)
+      order.push(`${w.code}: bestelmaat ${orderCell(o)} (${PRODUCT_LABELS[w.product]}, ${o.rule.title}).`);
+    else if (e.status === "bevestigd")
+      order.push(
+        o.order
+          ? `${w.code}: ${orderSummary(o).toLowerCase()} — nog niet definitief: ${o.blockedBy[0] ?? o.questions[0]?.question ?? ""}`
+          : `${w.code}: ruwe maten compleet; laat je leverancier de bestelmaat bepalen.`,
+      );
     else
       todo.push(
         `${w.code}: ${e.status === "afwijking" ? "afwijking tussen meetpunten controleren" : e.status === "nog-meten" ? `nog meten (${e.missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ")})` : "maten nakijken en bevestigen"}.`,
@@ -305,7 +350,7 @@ export function buildReportModel(
   ];
 
   // Window cards: every window with its measurements and their sources, and what is still missing.
-  const cards: WindowCard[] = c.windows.map(({ window: w, rule, evaluation: e, roomName: rn }) => {
+  const cards: WindowCard[] = c.windows.map(({ window: w, evaluation: e, order: o, roomName: rn }) => {
     const rows = [
       { label: "Ruimte", value: rn ?? "niet gekoppeld" },
       { label: "Product en montage", value: `${PRODUCT_SHORT[w.product]}, ${MOUNTING_SHORT[w.mounting]}` },
@@ -331,12 +376,8 @@ export function buildReportModel(
         ? [{ label: "Op de plattegrond", value: `opening ongeveer ${formatMFromMm(w.planWidthMm)} breed (indicatief, geen raammaat)` }]
         : []),
       { label: "Ontbreekt", value: e.missing.length ? e.missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ") : "niets" },
-      {
-        label: "Bestelstatus",
-        value: e.order
-          ? `bestelmaat ${formatMm(e.order.widthMm)} × ${formatMm(e.order.heightMm)} volgens ${rule.title} (versie ${rule.version})`
-          : `${WINDOW_STATUS_LABELS[e.status]}; bestelmaat volgens je leverancier`,
-      },
+      { label: "Meetstatus", value: WINDOW_STATUS_LABELS[e.status] },
+      ...orderRows(o),
     ];
     return { title: `${w.code}${w.label ? ` · ${w.label}` : ""}`, photo: opts.photos?.[w.id] ?? null, rows };
   });

@@ -91,9 +91,9 @@ function Checkout(props: StepProps) {
               : per wand, met deuren en marge
             </li>
             <li>
-              Raamregister
-              {project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""} met
-              begeleid meetprotocol en afwijkingscontrole
+              ScanTag-maten van je ramen
+              {project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""}, elk met
+              foutmarge en bron, plus begeleid meetprotocol, afwijkingscontrole en bestelmaat volgens de gekozen leveranciersregel
             </li>
             <li>
               Materiaalbibliotheek: laminaat, PVC, tegels, ondervloer, overgangsprofielen, primer, behang, gordijnen, rolgordijnen,
@@ -157,7 +157,14 @@ function Checkout(props: StepProps) {
 }
 
 export function PaidStep(props: StepProps) {
-  if (!isPaid(props.project)) return <Checkout {...props} />;
+  // Before payment: ScanTag already works for scanning and checking; sizes stay locked on the server.
+  if (!isPaid(props.project))
+    return (
+      <div className="stack">
+        <Checkout {...props} />
+        <WindowSection {...props} paid={false} />
+      </div>
+    );
   return (
     <div className="stack">
       {props.project.payment?.mode === "demo" && <DemoNotice />}

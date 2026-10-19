@@ -2,6 +2,7 @@ import { formatCount, formatM2, formatPercent } from "@/lib/format";
 import { ceilSafe, mm2ToM2 } from "@/lib/geometry/units";
 import type { ProjectComputation, RoomResult, WindowResult } from "@/lib/projects/compute";
 import type { ProductFamily } from "@/lib/measurements/schema";
+import { orderSummary, type OrderStatus } from "@/lib/rules/engine";
 import type { Room } from "@/lib/projects/schema";
 
 /**
@@ -657,13 +658,21 @@ const behang: CategoryModule = (() => {
   };
 })();
 
-const WINDOW_STATUS: Record<WindowResult["evaluation"]["status"], CategoryStatus> = {
-  "nog-meten": "niet_genoeg_gegevens",
-  afwijking: "extra_controle_nodig",
-  ingevoerd: "wacht_op_controle",
-  bevestigd: "wacht_op_controle",
-  bestelmaat: "klaar_voor_bestellen",
-};
+/** Category status of one window: its measurements first, then the order size from its rule. */
+function windowStatus(w: WindowResult): CategoryStatus {
+  if (w.evaluation.status === "nog-meten") return "niet_genoeg_gegevens";
+  if (w.evaluation.status === "afwijking") return "extra_controle_nodig";
+  const map: Record<OrderStatus, CategoryStatus> = {
+    order_ready: "klaar_voor_bestellen",
+    concept: "wacht_op_controle",
+    measuring_sheet: "wacht_op_controle",
+    needs_more_data: "niet_genoeg_gegevens",
+    needs_verification: "extra_controle_nodig",
+    not_suitable: "extra_controle_nodig",
+    unsupported: "extra_controle_nodig",
+  };
+  return map[w.order.status];
+}
 
 const ORDER: CategoryStatus[] = [
   "niet_genoeg_gegevens",
@@ -692,18 +701,14 @@ function windowModule(key: CategoryKey, label: string, family: ProductFamily, ex
     compute(ctx) {
       const windows = ctx.windows.filter((w) => w.window.product === family);
       const statuses = windows.map((w) =>
-        family === "rolluik" && w.evaluation.status !== "nog-meten" ? "extra_controle_nodig" : WINDOW_STATUS[w.evaluation.status],
+        family === "rolluik" && w.evaluation.status !== "nog-meten" ? "extra_controle_nodig" : windowStatus(w),
       );
       const lines: CategoryLine[] = windows.flatMap((w) => [
         {
           label: `${w.window.code}${w.roomName ? ` · ${w.roomName}` : ""}`,
           quantity: 1,
           unit: "stuk",
-          note: w.evaluation.order
-            ? `Bestelmaat ${fmt(w.evaluation.order.widthMm, 0)} × ${fmt(w.evaluation.order.heightMm, 0)} mm (${w.rule.manufacturer ?? "leverancier"}, regel ${w.rule.version})`
-            : w.evaluation.status === "nog-meten"
-              ? "Nog meten"
-              : "Bestelmaat volgens de meetinstructie van je leverancier",
+          note: w.evaluation.status === "nog-meten" ? "Nog meten" : orderSummary(w.order),
         },
         ...(extra?.(w) ?? []),
       ]);

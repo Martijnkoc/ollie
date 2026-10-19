@@ -14,7 +14,8 @@ import {
 } from "@/lib/measurements/camera";
 import { cameraError, detectCapabilities, type Capabilities } from "@/lib/measurements/capabilities";
 import { grayFromRgba, type Gray } from "@/lib/measurements/edges";
-import { REFERENCES, type Marked, type Orientation } from "@/lib/measurements/photo";
+import { isConvexQuad, REFERENCES, type Marked, type Orientation } from "@/lib/measurements/photo";
+import { captureContext, checkShot } from "@/lib/scantag/quality";
 import { MEASURE_INFO, type MeasureKey } from "@/lib/measurements/schema";
 import { deletePhoto, loadPhoto, savePhoto, shotPhotoKey } from "@/lib/projects/store";
 import { PhotoMarker, type MarkerGroup } from "./PhotoMarker";
@@ -28,6 +29,7 @@ type Draft = {
   snapped: boolean[];
   orientation: Orientation;
   takenAt: string;
+  method: "camera-app" | "browser-camera" | "upload";
 };
 
 const REF_COLOR = "#b98c3c";
@@ -71,6 +73,8 @@ export function CameraMeasure({
   heading,
   tasks,
   shots,
+  reveal,
+  process,
   onSave,
   onClose,
 }: {
@@ -80,6 +84,10 @@ export function CameraMeasure({
   heading: string;
   tasks: CameraTask[];
   shots: CameraShot[];
+  /** Show measurements. False before payment: then only statuses, and no size is computed on this page. */
+  reveal: boolean;
+  /** Checks shots (and releases measurements when allowed); throws when it cannot be reached. */
+  process: (shots: CameraShot[]) => Promise<CameraShot[]>;
   onSave: (shots: CameraShot[]) => void;
   onClose: () => void;
 }) {
@@ -94,6 +102,7 @@ export function CameraMeasure({
   const [gray, setGray] = useState<Gray | null>(null);
   const [snap, setSnap] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -123,12 +132,12 @@ export function CameraMeasure({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftUrl]);
 
-  function begin(task: CameraTask, photo: Photo) {
-    setDraft({ task, id: newShotId(), photo, points: [], snapped: [], orientation: "auto", takenAt: new Date().toISOString() });
+  function begin(task: CameraTask, photo: Photo, method: Draft["method"]) {
+    setDraft({ task, id: newShotId(), photo, points: [], snapped: [], orientation: "auto", takenAt: new Date().toISOString(), method });
     setView({ kind: "mark" });
   }
 
-  async function choose(task: CameraTask, file: File | undefined) {
+  async function choose(task: CameraTask, file: File | undefined, method: Draft["method"]) {
     setError(null);
     if (!file) return;
     if (!file.type.startsWith("image/") || file.size > 30 * 1024 * 1024) {
@@ -140,7 +149,7 @@ export function CameraMeasure({
       const bitmap = await createImageBitmap(file);
       const shot = await toJpeg(bitmap, bitmap.width, bitmap.height);
       bitmap.close();
-      begin(task, { url: URL.createObjectURL(shot.blob), ...shot });
+      begin(task, { url: URL.createObjectURL(shot.blob), ...shot }, method);
     } catch {
       setError("Deze foto kunnen we niet openen. Kies een andere, of maak de foto met je camera-app als JPG.");
     } finally {
@@ -187,7 +196,7 @@ export function CameraMeasure({
       }
       shot ??= await toJpeg(v, v.videoWidth, v.videoHeight);
       stopCamera();
-      begin(task, { url: URL.createObjectURL(shot.blob), ...shot });
+      begin(task, { url: URL.createObjectURL(shot.blob), ...shot }, "browser-camera");
     } finally {
       setBusy(false);
     }
@@ -207,8 +216,21 @@ export function CameraMeasure({
       snapped: shot.snapped.length === shot.reference.length + shot.points.length ? shot.snapped : [],
       orientation: shot.orientation,
       takenAt: shot.takenAt,
+      method: shot.capture.method === "onbekend" ? "upload" : shot.capture.method,
     });
     setView({ kind: "mark" });
+  }
+
+  /** Sends shots for checking (and release); without a connection they stay saved and are sent later. */
+  async function run(list: CameraShot[], all: CameraShot[]) {
+    setNotice(null);
+    try {
+      const done = await process(list);
+      onSave(all.map((s) => done.find((d) => d.id === s.id) ?? s));
+    } catch {
+      onSave(all);
+      setNotice("Geen verbinding met MaatKlaar: je scan is op dit apparaat bewaard. We verwerken hem zodra je weer online bent.");
+    }
   }
 
   async function remove(shot: CameraShot) {
@@ -216,8 +238,14 @@ export function CameraMeasure({
     onSave(shots.filter((s) => s.id !== shot.id));
   }
 
+  const complete =
+    draft !== null &&
+    draft.points.length === refCount(draft.task) + markCount(draft.task) &&
+    [0, 4].filter((i) => i < refCount(draft.task)).every((i) => isConvexQuad(draft.points.slice(i, i + 4))) &&
+    (draft.task.shape.kind !== "rect" || isConvexQuad(draft.points.slice(refCount(draft.task))));
+  // Sizes in this preview only once they are released (after payment); before that we compute none here.
   const result =
-    draft && draft.points.length === refCount(draft.task) + markCount(draft.task)
+    reveal && draft && complete
       ? measureShot(draft.task, {
           reference: draft.points.slice(0, refCount(draft.task)),
           points: draft.points.slice(refCount(draft.task)),
@@ -234,8 +262,12 @@ export function CameraMeasure({
       : null;
 
   async function save() {
-    if (!draft || !result?.ok) return;
+    if (!draft || !complete || (reveal && !result?.ok)) return;
+    setBusy(true);
     if (draft.photo.blob) await savePhoto(projectId, shotPhotoKey(owner, draft.id), draft.photo.blob);
+    const refs = [0, 4].filter((i) => i < refCount(draft.task)).map((i) => draft.points.slice(i, i + 4));
+    const marks = draft.points.slice(refCount(draft.task));
+    const rect = draft.task.shape.kind === "rect";
     const shot: CameraShot = {
       id: draft.id,
       task: draft.task.id,
@@ -246,12 +278,17 @@ export function CameraMeasure({
       reference: draft.points.slice(0, refCount(draft.task)),
       points: draft.points.slice(refCount(draft.task)),
       snapped: draft.snapped,
-      values: result.values,
+      values: {},
+      capture: captureContext(draft.method),
+      photoChecks: checkShot(gray, refs, rect ? marks : null, rect && draft.snapped.slice(refCount(draft.task)).every(Boolean)),
+      processed: false,
+      quality: { status: "ok", issues: [] },
     };
-    onSave([...shots.filter((s) => s.id !== shot.id), shot]);
     URL.revokeObjectURL(draft.photo.url);
     setDraft(null);
     setView({ kind: "overview" });
+    await run([shot], [...shots.filter((s) => s.id !== shot.id), shot]);
+    setBusy(false);
   }
 
   const groups: MarkerGroup[] = draft
@@ -279,7 +316,7 @@ export function CameraMeasure({
             {heading}
           </p>
           <h2 id="camera-titel" style={{ fontSize: "1.3rem", margin: 0 }}>
-            Meten met je camera
+            ScanTag: meten met je camera
           </h2>
         </div>
         <button type="button" className="btn btn-sm btn-ghost" onClick={() => dialog.current?.close()} aria-label="Sluiten">
@@ -291,27 +328,35 @@ export function CameraMeasure({
           <>
             <p className="small" style={{ margin: 0 }}>
               Geen rolmaat nodig: <strong>twee A4-vellen</strong> op de muur geven de schaal en het perspectief (voor de diepte een{" "}
-              <strong>bankpas</strong>). Per foto zie je elke maat met zijn foutmarge. Een tweede foto van een iets andere plek vangt een
-              verkeerde tik of een verschoven vel op.
+              <strong>bankpas</strong>). Je foto blijft op dit apparaat; alleen de aangetikte punten gaan naar MaatKlaar om de scan te
+              controleren. Een tweede foto van een iets andere plek vangt een verkeerde tik of een verschoven vel op.
             </p>
             <ul className="task-list" aria-label="Wat je meet">
               {tasks.map((task) => {
                 const own = shots.filter((s) => s.task === task.id);
                 const results = cameraResults(own).filter((r) => task.targets.includes(r.target));
+                const pending = own.filter((s) => !s.processed).length;
+                const retake = own.filter((s) => s.processed && s.quality.status === "needs_more_data");
+                const good = own.filter((s) => s.processed && s.quality.status === "ok").length;
+                const state = !own.length
+                  ? { text: "Nog geen foto", status: undefined }
+                  : pending
+                    ? { text: "Wacht op verwerking", status: "auto" }
+                    : !good
+                      ? { text: "Extra opname nodig", status: "missing" }
+                      : reveal && !results.every((r) => r.usable)
+                        ? { text: "Controleren", status: "check" }
+                        : { text: reveal ? "Gemeten" : "Scan verwerkt", status: "confirmed" };
                 return (
                   <li key={task.id} className="card-flat stack-sm">
                     <div className="row" style={{ justifyContent: "space-between" }}>
                       <strong>{task.title}</strong>
-                      <span
-                        className={`badge ${own.length ? "" : "badge-neutral"}`}
-                        data-status={own.length ? (results.every((r) => r.usable) ? "confirmed" : "check") : undefined}
-                      >
-                        {own.length
-                          ? `${own.length} foto${own.length > 1 ? "'s" : ""} · ${results.every((r) => r.usable) ? "gemeten" : "controleren"}`
-                          : "Nog geen foto"}
+                      <span className={`badge ${state.status ? "" : "badge-neutral"}`} data-status={state.status}>
+                        {own.length ? `${own.length} foto${own.length > 1 ? "'s" : ""} · ` : ""}
+                        {state.text}
                       </span>
                     </div>
-                    {results.length > 0 && (
+                    {reveal && results.length > 0 && (
                       <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
                         {results.map((r) => (
                           <li key={r.target}>
@@ -320,6 +365,33 @@ export function CameraMeasure({
                           </li>
                         ))}
                       </ul>
+                    )}
+                    {!reveal && good > 0 && (
+                      <p className="small" style={{ margin: 0 }}>
+                        De maten uit deze scan zie je na het ontgrendelen van je rapport.
+                      </p>
+                    )}
+                    {retake.length > 0 && (
+                      <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                        {[...new Set(retake.flatMap((s) => s.quality.issues))].map((x) => (
+                          <li key={x}>{x}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {pending > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(
+                            own.filter((s) => !s.processed),
+                            shots,
+                          )
+                        }
+                      >
+                        Nu verwerken
+                      </button>
                     )}
                     {own.length > 0 && own.length < CAMERA_MEASURE.recommendedShots && results.every((r) => r.usable) && (
                       <p className="tiny muted" style={{ margin: 0 }}>
@@ -380,7 +452,7 @@ export function CameraMeasure({
                   capture="environment"
                   className="visually-hidden"
                   disabled={busy}
-                  onChange={(e) => void choose(view.task, e.target.files?.[0])}
+                  onChange={(e) => void choose(view.task, e.target.files?.[0], "camera-app")}
                 />
               </label>
               <label className="btn">
@@ -390,7 +462,7 @@ export function CameraMeasure({
                   accept="image/*"
                   className="visually-hidden"
                   disabled={busy}
-                  onChange={(e) => void choose(view.task, e.target.files?.[0])}
+                  onChange={(e) => void choose(view.task, e.target.files?.[0], "upload")}
                 />
               </label>
               {caps?.camera && (
@@ -485,6 +557,12 @@ export function CameraMeasure({
                 {result.reason}
               </p>
             )}
+            {!reveal && complete && (
+              <p className="notice small" role="status" style={{ margin: 0 }}>
+                Alle punten staan. Bij opslaan controleren we of de scan bruikbaar is. De maten zelf zie je na het ontgrendelen van je
+                rapport.
+              </p>
+            )}
             {result?.ok && (
               <div className="notice small" role="status" style={{ margin: 0 }}>
                 <strong>Gemeten in deze foto</strong>
@@ -504,8 +582,13 @@ export function CameraMeasure({
               </p>
             )}
             <div className="row">
-              <button type="button" className="btn btn-primary" disabled={!result?.ok} onClick={() => void save()}>
-                Meting opslaan
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy || !complete || (reveal && !result?.ok)}
+                onClick={() => void save()}
+              >
+                {reveal ? "Meting opslaan" : "Scan opslaan"}
               </button>
               <button
                 type="button"
@@ -522,6 +605,11 @@ export function CameraMeasure({
           </div>
         )}
 
+        {notice && (
+          <p className="notice notice-warn small" role="status" style={{ margin: 0 }}>
+            {notice}
+          </p>
+        )}
         {error && view.kind !== "mark" && (
           <p className="notice notice-warn small" role="alert" style={{ margin: 0 }}>
             {error}

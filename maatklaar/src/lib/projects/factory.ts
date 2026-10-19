@@ -101,6 +101,10 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     planWidthMm: null,
     camera: [],
     sources: {},
+    answers: {},
+    shape: "rechthoek",
+    confirmedAt: null,
+    audit: [],
     photo: null,
     ...extra,
   };

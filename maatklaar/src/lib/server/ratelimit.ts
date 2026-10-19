@@ -12,6 +12,7 @@ export const RATE_LIMITS = {
   woning: { max: 20, windowMs: 60_000 },
   bestelling: { max: 10, windowMs: 60_000 },
   bestellingStatus: { max: 60, windowMs: 60_000 },
+  scantag: { max: 60, windowMs: 60_000 },
 } as const;
 
 export function allow(bucket: keyof typeof RATE_LIMITS, key: string, now = Date.now()) {

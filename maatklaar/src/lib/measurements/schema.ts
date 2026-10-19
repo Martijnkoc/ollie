@@ -1,29 +1,46 @@
 import { z } from "zod";
 
-export const PRODUCT_FAMILIES = ["gordijn", "rolgordijn", "plisse", "jaloezie", "vouwgordijn", "rolluik", "onbekend"] as const;
+export const PRODUCT_FAMILIES = [
+  "gordijn",
+  "wave",
+  "rolgordijn",
+  "plisse",
+  "jaloezie",
+  "verticale_jaloezie",
+  "vouwgordijn",
+  "dakraam",
+  "rolluik",
+  "onbekend",
+] as const;
 export type ProductFamily = (typeof PRODUCT_FAMILIES)[number];
 
 export const PRODUCT_LABELS: Record<ProductFamily, string> = {
   gordijn: "Gordijn (rail of roede)",
+  wave: "Wave-gordijn",
   rolgordijn: "Rolgordijn",
   plisse: "Plissé",
   jaloezie: "Jaloezie",
+  verticale_jaloezie: "Verticale jaloezie",
   vouwgordijn: "Vouwgordijn",
+  dakraam: "Raamdecoratie voor een dakraam",
   rolluik: "Rolluik (extra controle)",
   onbekend: "Ik weet het nog niet",
 };
 
 export const PRODUCT_SHORT: Record<ProductFamily, string> = {
   gordijn: "Gordijn",
+  wave: "Wave-gordijn",
   rolgordijn: "Rolgordijn",
   plisse: "Plissé",
   jaloezie: "Jaloezie",
+  verticale_jaloezie: "Verticale jaloezie",
   vouwgordijn: "Vouwgordijn",
+  dakraam: "Dakraamdecoratie",
   rolluik: "Rolluik",
   onbekend: "Product nog niet gekozen",
 };
 
-export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "voorzet", "inbouw", "onbekend"] as const;
+export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "schroefloos", "dakraam", "voorzet", "inbouw", "onbekend"] as const;
 export type Mounting = (typeof MOUNTINGS)[number];
 
 export const MOUNTING_LABELS: Record<Mounting, string> = {
@@ -31,6 +48,8 @@ export const MOUNTING_LABELS: Record<Mounting, string> = {
   "op-de-dag": "Op de dag (op of boven het kozijn)",
   plafond: "Rail aan het plafond",
   wand: "Rail of roede aan de wand",
+  schroefloos: "Schroefloos op het kozijn (draaikiepraam)",
+  dakraam: "In het dakraam (volgens type en code)",
   voorzet: "Voorzetrolluik (kast en geleiders op de gevel of in de dag)",
   inbouw: "Inbouwrolluik (kast in de muur of het kozijn)",
   onbekend: "Weet ik nog niet",
@@ -41,6 +60,8 @@ export const MOUNTING_SHORT: Record<Mounting, string> = {
   "op-de-dag": "op de dag",
   plafond: "rail aan plafond",
   wand: "rail/roede aan wand",
+  schroefloos: "schroefloos op het kozijn",
+  dakraam: "in het dakraam",
   voorzet: "voorzetrolluik",
   inbouw: "inbouwrolluik",
   onbekend: "montage nog niet gekozen",
@@ -49,7 +70,10 @@ export const MOUNTING_SHORT: Record<Mounting, string> = {
 /** Which mountings make sense for a product family. Curtains hang from a rail; the others sit in or on the opening. */
 export function mountingsFor(family: ProductFamily): Mounting[] {
   if (family === "gordijn") return ["plafond", "wand", "onbekend"];
+  if (family === "wave") return ["op-de-dag", "in-de-dag", "onbekend"];
   if (family === "rolluik") return ["voorzet", "inbouw", "onbekend"];
+  if (family === "dakraam") return ["dakraam"];
+  if (family === "rolgordijn" || family === "plisse" || family === "jaloezie") return ["in-de-dag", "op-de-dag", "schroefloos", "onbekend"];
   return ["in-de-dag", "op-de-dag", "onbekend"];
 }
 
@@ -68,6 +92,10 @@ export const MEASURE_KEYS = [
   "ophanghoogte_links",
   "ophanghoogte_midden",
   "ophanghoogte_rechts",
+  "breedte_tegels",
+  "smalste_breedte",
+  "kozijndiepte",
+  "roede_diameter",
 ] as const;
 export type MeasureKey = (typeof MEASURE_KEYS)[number];
 
@@ -94,6 +122,13 @@ export const MEASURE_INFO: Record<MeasureKey, { label: string; hint: string }> =
   ophanghoogte_links: { label: "Ophanghoogte links", hint: "Van het ophangpunt (onderkant rail of plafond) tot de vloer, links." },
   ophanghoogte_midden: { label: "Ophanghoogte midden", hint: "Van het ophangpunt tot de vloer, in het midden." },
   ophanghoogte_rechts: { label: "Ophanghoogte rechts", hint: "Van het ophangpunt tot de vloer, rechts. Vloeren lopen vaak niet waterpas." },
+  breedte_tegels: {
+    label: "Breedte tussen de tegels",
+    hint: "Zitten er tegels in of naast de dag? Meet dan ook de breedte tussen de tegels: daar is de doorgang vaak het smalst.",
+  },
+  smalste_breedte: { label: "Smalste breedte", hint: "De breedte op het smalste punt, bijvoorbeeld bij een uitstekende greep of rand." },
+  kozijndiepte: { label: "Rechte kozijndiepte", hint: "De vlakke, rechte diepte van het kozijn waar een schroefloze beugel op klemt." },
+  roede_diameter: { label: "Diameter van de roede", hint: "De dikte van de gordijnroede, als je gordijnen met ringen ophangt." },
 };
 
 export const CHECK_KEYS = [
@@ -105,6 +140,7 @@ export const CHECK_KEYS = [
   "kast_ruimte",
   "geleiders",
   "stroom",
+  "tegels",
 ] as const;
 export type CheckKey = (typeof CHECK_KEYS)[number];
 
@@ -134,6 +170,10 @@ export const CHECK_INFO: Record<CheckKey, { question: string; why: string }> = {
   stroom: {
     question: "Is er een stroompunt in de buurt, voor een elektrische bediening?",
     why: "Bepaalt of elektrische bediening zonder extra werk kan.",
+  },
+  tegels: {
+    question: "Zitten er tegels in of naast de dag?",
+    why: "Tussen tegels is de doorgang vaak smaller dan bovenin; dat bepaalt welke breedte past.",
   },
 };
 

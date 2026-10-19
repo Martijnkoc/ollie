@@ -4,7 +4,9 @@ import { computeFloor, type FloorResult } from "@/lib/materials/floor";
 import { computePlinths, type PlinthTotals } from "@/lib/materials/plinths";
 import { evaluateWindow, type WindowEvaluation } from "@/lib/measurements/evaluate";
 import { defaultRuleFor, findRule } from "@/lib/measurements/protocols";
-import type { MeasurementRuleSet } from "@/lib/measurements/schema";
+import type { MeasureKey, MeasurementRuleSet } from "@/lib/measurements/schema";
+import { productRule } from "@/lib/rules";
+import { orderDimensions, type OrderInput, type OrderResult } from "@/lib/rules/engine";
 import type { Project, ProjectWindow, Room } from "./schema";
 import { combine, type Status } from "./status";
 
@@ -18,7 +20,17 @@ export type RoomResult = {
   issues: string[];
 };
 
-export type WindowResult = { window: ProjectWindow; rule: MeasurementRuleSet; evaluation: WindowEvaluation; roomName: string | null };
+/**
+ * One window in three layers: its camera geometry and opening measurements (`window`), the evaluation of
+ * those measurements (`evaluation`) and the order size from its product rule (`order`).
+ */
+export type WindowResult = {
+  window: ProjectWindow;
+  rule: MeasurementRuleSet;
+  evaluation: WindowEvaluation;
+  order: OrderResult;
+  roomName: string | null;
+};
 
 export type ProjectComputation = {
   rooms: RoomResult[];
@@ -62,14 +74,27 @@ export function computeRoom(room: Room, project: Pick<Project, "scales">): RoomR
   return { room, geometry, obstaclesMm2, netAreaMm2, status, issues };
 }
 
-export function windowRule(w: ProjectWindow, rules?: readonly MeasurementRuleSet[]) {
-  const chosen = findRule(w.ruleId, rules);
+export function windowRule(w: ProjectWindow) {
+  const chosen = findRule(w.ruleId);
   // A rule that no longer exists (removed supplier rule) falls back to the generic protocol, never to a guess.
   if (chosen && chosen.productFamilies.includes(w.product) && chosen.mounting === w.mounting) return chosen;
   return defaultRuleFor(w.product, w.mounting);
 }
 
-export function computeProject(project: Project, rules?: readonly MeasurementRuleSet[]): ProjectComputation {
+/** What the rule engine needs from a window: measurements with their validation, answers, checks, shape. */
+export function orderInputFor(w: ProjectWindow): OrderInput {
+  const validation: OrderInput["validation"] = {};
+  for (const k of Object.keys(w.measures) as MeasureKey[])
+    validation[k] = w.sources[k] ? w.sources[k]!.validation : w.confirmed ? "user_confirmed" : "unconfirmed";
+  return { measures: w.measures, answers: w.answers, checks: w.checks, validation, confirmed: w.confirmed, shape: w.shape };
+}
+
+/** The order layer of a window: its rule applied to its measurements. */
+export function windowOrder(w: ProjectWindow, rule: MeasurementRuleSet): OrderResult {
+  return orderDimensions(productRule(rule.id)!, orderInputFor(w));
+}
+
+export function computeProject(project: Project): ProjectComputation {
   const rooms = project.rooms.map((r) => computeRoom(r, project));
 
   const overlaps: [string, string][] = [];
@@ -121,11 +146,12 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
 
   const roomNames = new Map(project.rooms.map((r) => [r.id, roomName(r)]));
   const windows = project.windows.map((w) => {
-    const rule = windowRule(w, rules);
+    const rule = windowRule(w);
     return {
       window: w,
       rule,
       evaluation: evaluateWindow(w, rule),
+      order: windowOrder(w, rule),
       roomName: w.roomId ? (roomNames.get(w.roomId) ?? null) : null,
     };
   });

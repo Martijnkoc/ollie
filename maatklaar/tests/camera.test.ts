@@ -4,7 +4,7 @@ import { evaluateWindow } from "@/lib/measurements/evaluate";
 import { project, type Marked, type Pt } from "@/lib/measurements/photo";
 import { defaultRuleFor } from "@/lib/measurements/protocols";
 import { newProject, newWindow } from "@/lib/projects/factory";
-import { computeProject } from "@/lib/projects/compute";
+import { computeProject, windowOrder } from "@/lib/projects/compute";
 import { buildReportModel, lowerBound } from "@/lib/reports/model";
 import { buildCsv } from "@/lib/reports/csv";
 
@@ -29,6 +29,10 @@ function shot(task: CameraShot["task"], points: Marked[], nudge: Pt = { x: 0, y:
     points: moved,
     snapped: [],
     values: r.values,
+    capture: { method: "upload", device: "desktop", browser: "test" },
+    photoChecks: [],
+    processed: true,
+    quality: { status: "ok", issues: [] },
   };
 }
 
@@ -60,7 +64,8 @@ describe("meten met de camera in plaats van een rolmaat", () => {
     expect(e.camera?.keys).toHaveLength(6);
     expect(e.warnings.some((x) => x.includes("met de camera gemeten"))).toBe(true);
     expect(e.warnings.some((x) => x.includes("ondergrens"))).toBe(true);
-    expect(e.order).toBeNull();
+    const checks = { grepen: false, ventilatierooster: false, raam_openen: false, vensterbank: false, tegels: false };
+    expect(windowOrder({ ...w, confirmed: true, checks }, rule).status).toBe("measuring_sheet");
   });
 
   it("twee foto's die het eens zijn worden gecombineerd; als ze verschillen, wordt niets ingevuld", () => {
