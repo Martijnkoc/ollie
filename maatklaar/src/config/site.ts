@@ -7,9 +7,9 @@ export const BRAND = {
   name: "MaatKlaar",
   /** Shown as a small note wherever the brand appears in drafts. */
   isWorkingTitle: true,
-  tagline: "Je plattegrond erin. Je bestellijst eruit.",
+  tagline: "Van plattegrond naar complete bestellijst.",
   promise:
-    "Upload je plattegrond, controleer de herkende kamers en bereken gratis hoeveel vloer je nodig hebt. Voor € 8,99 eenmalig krijg je ook een overzicht van plinten, ramen en de benodigde meetgegevens voor raamdecoratie — overzichtelijk in één persoonlijk PDF-rapport.",
+    "Upload je plattegrond, controleer je woning en bereken wat je nodig hebt. De basis is gratis. Voor € 8,99 eenmalig krijg je een compleet rapport met materiaalberekeningen, ramen, meetstatus en bestelinformatie.",
 };
 
 /**
@@ -67,27 +67,31 @@ export const MEASURE_DEVIATION_WARNING_MM = 3;
 
 export const FAQ = [
   {
-    q: "Hoe nauwkeurig is de herkenning?",
-    a: "De herkenning is een hulpmiddel, geen garantie. We lezen kamernamen, maatlabels en een schaalnotatie uit je tekening en laten je alles controleren. Elke maat krijgt een label: automatisch herkend, door jou bevestigd, berekend of nog te controleren. Ontbreekt er iets, dan blijft dat zichtbaar en vullen we niets zelf in.",
-  },
-  {
-    q: "Krijg ik exacte bestelmaten voor raamdecoratie?",
-    a: "Je krijgt een overzichtelijk meetblad met je ruwe maten per raam. Bestelmaten verschillen per product en leverancier. Zolang er geen gecontroleerde meetregel van jouw leverancier in MaatKlaar staat, rekenen we geen bestelmaat uit en zeggen we dat ook eerlijk. Een plattegrond van bovenaf vertelt bovendien niet hoe hoog een raam is; die maten meet je zelf, wij helpen je stap voor stap.",
+    q: "Hoe nauwkeurig is het?",
+    a: "Zo nauwkeurig als de tekening en jouw controle. We meten ruimtes langs de getekende wanden en halen de schaal uit de maatlijnen op de tekening; die moeten onderling kloppen, anders gebruiken we ze niet. Elke waarde krijgt een label (automatisch herkend, door jou bevestigd, berekend of nog te meten) en de foutmarge van de schaal staat erbij. Een nauwkeurigheidspercentage noemen we pas als we dat met een gedocumenteerde testset hebben gemeten.",
   },
   {
     q: "Welke bestanden kan ik gebruiken?",
-    a: "PDF (ook met meerdere pagina's), JPG, PNG en WEBP tot 20 MB. Een bouwtekening of makelaarsplattegrond met zichtbare maatvoering werkt het best. Gebruik alleen een bestand dat je zelf mag gebruiken, bijvoorbeeld de plattegrond die je van je makelaar hebt gekregen.",
+    a: "PDF (ook met meerdere pagina's), JPG, PNG en WEBP tot 20 MB. Het best werkt de plattegrond die je van je makelaar of uit de verkoopdocumentatie hebt: gevulde (donkere) muren, kamernamen en maatlijnen. Bij tekeningen met alleen dunne lijnen of zonder maten teken of kalibreer je zelf. Gebruik alleen een bestand dat je mag gebruiken; we halen niets van Funda of andere sites.",
   },
   {
-    q: "Wat gebeurt er met mijn plattegrond?",
-    a: "Je plattegrond wordt in je eigen browser verwerkt en op je eigen apparaat bewaard, zodat je verder kunt na verversen. We sturen hem niet naar onze server en niet naar een AI- of OCR-dienst. Je kunt het bestand en je project op elk moment verwijderen.",
+    q: "Hoe zit het met mijn ramen?",
+    a: "Op de plattegrond vinden we waar ramen zitten en geven we ze een code (R01, R02 …), met een indicatieve breedte. Hoe hoog een raam is en welke maat je bestelt, staat niet op een plattegrond. Je meet elk raam met een rolmaat; de begeleide meetstap vergelijkt de meetpunten en middelt niets weg. Met de foto-assistent (A4-vel op het glas) krijg je een schatting met foutmarge om je meting te controleren. Een bestelmaat rekenen we alleen uit met een gecontroleerde meetregel van een leverancier.",
+  },
+  {
+    q: "Wat gebeurt er met mijn plattegrond en foto's?",
+    a: "Je plattegrond en raamfoto's worden in je eigen browser verwerkt en op je eigen apparaat bewaard, zodat je verder kunt na verversen. We sturen ze niet naar onze server en niet naar een AI-, vision- of OCR-dienst. Alleen je adreszoekopdracht gaat via onze server naar PDOK, zonder dat we die bewaren. Je kunt je project met één knop verwijderen.",
+  },
+  {
+    q: "Wat kost het, en is het een abonnement?",
+    a: "De basis is gratis: vloeroppervlakte per ruimte, vloerhoeveelheid met snijverlies en pakken, en de verfcalculator. Het complete rapport voor één woningproject kost € 8,99, één keer. Er komt niets automatisch achteraan en je hebt geen account nodig.",
+  },
+  {
+    q: "Wat kan MaatKlaar (nog) niet?",
+    a: "We zien geen plafondhoogtes, raamhoogtes of montagediepte op een plattegrond. We verzinnen geen leveranciersregels en geen standaard aftrek voor raamdecoratie. Een adres onthult geen binnenmaten. Een foto zonder bekende referentie geeft geen maat in millimeters. Waar iets ontbreekt, staat dat er duidelijk bij.",
   },
   {
     q: "Waarom wijkt de som van mijn kamers af van de oppervlakte in de BAG?",
     a: "De gebruiksoppervlakte in de BAG is een officiële registratie voor de hele woning en wordt anders gemeten dan de vloer per kamer. Muren, kasten, trapgaten en ruimtes die je niet meetelt maken het verschil. We tonen ze daarom altijd apart.",
-  },
-  {
-    q: "Is het een abonnement?",
-    a: "Nee. De vloerberekening is gratis. Het volledige rapport voor één woningproject kost € 8,99, één keer. Er komt niets automatisch achteraan.",
   },
 ] as const;

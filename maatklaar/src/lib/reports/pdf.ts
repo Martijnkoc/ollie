@@ -74,6 +74,12 @@ class Layout {
       "\u2190": "<-",
       "\u202f": " ",
       "\u2009": " ",
+      "\u2308": "afgerond omhoog(",
+      "\u2309": ")",
+      "\u230a": "afgerond omlaag(",
+      "\u230b": ")",
+      "\u2248": "~",
+      "\u2026": "...",
     };
     let out = "";
     for (const ch of text.normalize("NFC")) {
@@ -81,6 +87,8 @@ class Layout {
       if (this.charset.has(cp)) out += ch;
       else if (map[ch]) out += map[ch];
       else if (cp === 10 || cp === 9) out += " ";
+      // Emoji and other symbols outside the font are left out rather than shown as "?".
+      else if (cp > 0xffff || /\p{Extended_Pictographic}/u.test(ch)) continue;
       else out += "?";
     }
     return out;
@@ -179,6 +187,39 @@ class Layout {
       this.y -= n * lh + 4;
     }
     this.y -= 4;
+  }
+
+  /** A card that is never split over two pages: optional photo on the left, label/value rows on the right. */
+  async card(title: string, photo: { jpg: Uint8Array; width: number; height: number } | null, rows: { label: string; value: string }[]) {
+    const size = 8.5;
+    const lh = size * 1.35;
+    const photoW = photo ? 130 : 0;
+    const photoH = photo ? Math.min(150, (photo.height / photo.width) * photoW) : 0;
+    const textX = M.left + (photo ? photoW + 14 : 0);
+    const textW = CONTENT_W - (textX - M.left);
+    const labelW = 105;
+    const wrapped = rows.map((r) => ({
+      label: this.wrap(r.label, this.regular, size, labelW - 6),
+      value: this.wrap(r.value, this.regular, size, textW - labelW),
+    }));
+    const textH = wrapped.reduce((h, r) => h + Math.max(r.label.length, r.value.length) * lh + 2, 0);
+    const h = 18 + Math.max(photoH, textH) + 10;
+    this.ensure(h);
+    const top = this.y;
+    this.page.drawRectangle({ x: M.left, y: top - h, width: CONTENT_W, height: h, borderColor: C.line, borderWidth: 0.6 });
+    this.drawText(title, M.left + 8, top - 13, 10, this.bold, C.brand);
+    if (photo) {
+      const img = await this.doc.embedJpg(photo.jpg);
+      this.page.drawImage(img, { x: M.left + 8, y: top - 18 - photoH, width: photoW - 8, height: photoH });
+    }
+    let y = top - 20;
+    for (const r of wrapped) {
+      const n = Math.max(r.label.length, r.value.length);
+      r.label.forEach((l, i) => this.drawText(l, textX + 4, y - size - i * lh, size, this.regular, C.muted));
+      r.value.forEach((l, i) => this.drawText(l, textX + labelW, y - size - i * lh, size, this.regular, C.ink));
+      y -= n * lh + 2;
+    }
+    this.y = top - h - 8;
   }
 
   table(t: ReportTable, size = 8) {
@@ -322,6 +363,29 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
     );
     if (model.windows.notes.length) L.bullets(model.windows.notes, 8);
   } else L.paragraph("Er staan nog geen ramen in het register.", { color: C.muted });
+
+  if (model.windows.cards.length) {
+    L.paragraph("Per raam", { font: L.bold, gap: 4 });
+    for (const card of model.windows.cards) await L.card(card.title, card.photo, card.rows);
+  }
+
+  // 6b. Materialen
+  if (model.materials.length) {
+    L.heading("Materialen");
+    for (const m of model.materials) {
+      L.ensure(80);
+      L.paragraph(`${m.label} — ${m.statusLabel}`, { font: L.bold, size: 10.5, color: STATUS_COLOR[m.status], gap: 2 });
+      L.table(m.table);
+      if (m.missing.length)
+        L.bullets(
+          m.missing.map((x) => `Ontbreekt: ${x}`),
+          8.5,
+        );
+      if (m.assumptions.length) L.bullets(m.assumptions, 8.5);
+      if (m.steps.length) L.bullets(m.steps, 8);
+      L.paragraph(m.rule, { size: 7.5, color: C.muted });
+    }
+  }
 
   // 7. Winkelchecklist
   L.heading("Winkelchecklist");

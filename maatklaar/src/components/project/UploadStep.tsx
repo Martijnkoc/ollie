@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ACCEPTED_FILES, LIMITS } from "@/config/site";
 import { inspectFile } from "@/lib/documents/render";
 import type { PlanDocument } from "@/lib/projects/schema";
+import { takeFile } from "@/lib/projects/handoff";
 import { deleteFile, keepFileForSession, saveFile } from "@/lib/projects/store";
 import { STAGE_LABEL, useAnalyzer } from "./useAnalyzer";
 import type { StepProps } from "./types";
@@ -53,6 +54,13 @@ export function UploadStep({ project, update, goTo }: StepProps) {
     update((p) => ({ ...p, document: doc, analyses: [], scales: [] }));
     await run(doc, 0, file);
   }
+
+  // A plan dropped on the landing page is handled as if it was chosen here.
+  useEffect(() => {
+    const f = takeFile(project.id);
+    if (f) void handle(f);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function removeFile() {
     await deleteFile(project.id);

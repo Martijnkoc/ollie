@@ -3,6 +3,7 @@ import { MEASURE_INFO } from "@/lib/measurements/schema";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
 import { STATUS_META } from "@/lib/projects/status";
 import { roomName } from "@/lib/projects/compute";
+import type { MaterialSection } from "./model";
 
 /** Dutch spreadsheet conventions: semicolon separator, decimal comma, UTF-8 with BOM. */
 const num = (n: number, decimals = 2) => n.toFixed(decimals).replace(".", ",");
@@ -14,7 +15,7 @@ function field(v: string | number | null) {
   return /[";\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-export function buildCsv(c: ProjectComputation, opts: { demo: boolean }): string {
+export function buildCsv(c: ProjectComputation, opts: { demo: boolean; materials?: MaterialSection[] }): string {
   const rows: (string | number | null)[][] = [["Categorie", "Omschrijving", "Hoeveelheid", "Eenheid", "Status", "Toelichting"]];
   if (opts.demo) rows.push(["Let op", "DEMO - niet betaald", null, null, null, "Gemaakt met een nagebootste betaling"]);
 
@@ -95,6 +96,20 @@ export function buildCsv(c: ProjectComputation, opts: { demo: boolean }): string
       WINDOW_STATUS_LABELS[e.status],
       e.order ? `${rule.title} v${rule.version}` : "volgens meetinstructie leverancier",
     ]);
+  }
+  for (const m of opts.materials ?? []) {
+    for (const row of m.table.rows) {
+      // "39,74 m²" → quantity and unit in their own columns, the decimal comma kept.
+      const [quantity, ...unit] = row[1]!.text.split(" ");
+      rows.push([
+        `Materiaal: ${m.label}`,
+        row[0]!.text,
+        quantity === "—" ? null : quantity!.replace(/\./g, ""),
+        unit.join(" ").replace("²", "2"),
+        m.statusLabel,
+        row[2]!.text,
+      ]);
+    }
   }
   return "﻿" + rows.map((r) => r.map(field).join(";")).join("\r\n") + "\r\n";
 }

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { SOURCES } from "@/config/site";
 import { addressSchema, buildingSchema, type AddressSuggestion } from "@/lib/address/types";
 import { formatM2 } from "@/lib/format";
+import { takeAddress } from "@/lib/projects/handoff";
 import { BuildingOutline } from "./BuildingOutline";
 import type { StepProps } from "./types";
 
@@ -104,6 +105,13 @@ export function AddressStep({ project, update, goTo }: StepProps) {
     steps.push({ key: "klaar", label: "Klaar om je plattegrond toe te voegen", state: "done" });
     setProgress([...steps]);
   }
+
+  // An address chosen on the landing page continues here, with the same real progress steps.
+  useEffect(() => {
+    const s = takeAddress(project.id);
+    if (s) void choose(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!open || !suggestions.length) return;

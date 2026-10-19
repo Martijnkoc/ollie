@@ -5,6 +5,8 @@ import type { Project, ProjectWindow } from "@/lib/projects/schema";
 import { buildCsv } from "@/lib/reports/csv";
 import { buildReportModel } from "@/lib/reports/model";
 import { PAGE, renderReportPdf } from "@/lib/reports/pdf";
+import { CATEGORY_KEYS } from "@/lib/materials/catalog";
+import { fixture } from "./support/pdf";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
 
@@ -113,6 +115,48 @@ describe("PDF-rapport", () => {
     const withRegister = pages.filter((p) => p.includes("volgens leverancier"));
     expect(withRegister.length).toBeGreaterThan(1);
     for (const p of withRegister) expect(p).toContain("Breedtes (ruw)");
+  });
+
+  it("met alle materiaalcategorieën, foto's en lange namen blijft alles binnen de pagina", async () => {
+    const p = project(12);
+    p.materials = {
+      selected: [...CATEGORY_KEYS],
+      rooms: { laminaat: p.rooms.filter((r) => r.name !== "Hal").map((r) => r.id) },
+      inputs: { laminaat: { snijverlies: 7, pak_m2: 2.131 }, verf: { plafondhoogte: 2.6, lagen: 2, dekking: 9, blik_l: 2.5 } },
+    };
+    p.windows[1] = {
+      ...p.windows[1]!,
+      planWidthMm: 1400,
+      photo: {
+        takenAt: NOW.toISOString(),
+        width: 1600,
+        height: 1700,
+        reference: [],
+        opening: [],
+        estimate: { topMm: 1201, bottomMm: 1198, leftMm: 1503, rightMm: 1499, uncertaintyMm: 9 },
+      },
+    };
+    const c = computeProject(p);
+    const jpg = fixture("raam-foto.jpg");
+    const model = buildReportModel(p, c, { now: NOW, plan: null, photos: { [p.windows[1]!.id]: { jpg, width: 1600, height: 1700 } } });
+    const { bytes, boxes } = await renderReportPdf(model);
+    expect(inside(boxes)).toEqual([]);
+    const text = (await pdfText(bytes)).join("\n");
+    expect(text).toContain("Materialen");
+    // The keuken size is still unconfirmed, so the laminate count is an estimate (and says so).
+    expect(text).toContain("Laminaat — Geschat");
+    expect(text).toContain("Pakken: afgerond omhoog(39,74 m² / 2,131 m²) = 19");
+    expect(text).toContain("Rolluiken — Niet genoeg gegevens");
+    expect(text).toContain("browser_scan_estimate");
+    expect(text).toContain("indicatief, geen raammaat");
+    expect(text).toContain("PDF_explicit_dimension");
+    expect(text).toMatch(/versie 1\.0/);
+    expect(text).toContain("afgerond omhoog(");
+    expect(text).not.toContain("Badkamer ?");
+    expect(model.materials).toHaveLength(CATEGORY_KEYS.length);
+    const csv = buildCsv(c, { demo: false, materials: model.materials });
+    expect(csv).toContain("Materiaal: Laminaat;Laminaat in pakken;19;pakken;Geschat");
+    expect(csv).toContain("Materiaal: Laminaat;Laminaat inclusief snijverlies;39,74;m2;Geschat");
   });
 
   it("toont herkomst, aannames en de disclaimer, en verzint geen maten", async () => {

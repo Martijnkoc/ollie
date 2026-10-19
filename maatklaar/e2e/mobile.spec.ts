@@ -10,7 +10,7 @@ test("landingpage op een telefoon: geen horizontale scroll, vaste CTA, skiplink"
   await page.goto("/");
   await noHorizontalScroll(page);
   await expect(page.locator(".mobile-cta")).toBeVisible();
-  await expect(page.locator(".mobile-cta").getByRole("link", { name: "Begin gratis" })).toBeVisible();
+  await expect(page.locator(".mobile-cta").getByRole("link", { name: "Starten" })).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Naar de inhoud" })).toBeFocused();
 });

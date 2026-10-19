@@ -1656,3 +1656,102 @@ dialog.sheet::backdrop {
     linear-gradient(#fff, #fff) bottom right / 3px 28px no-repeat;
   opacity: 0.85;
 }
+
+/* ---------- Landing V2 ---------- */
+
+.hero-start {
+  margin-top: 22px;
+  max-width: 34em;
+}
+
+.hero-start .hero-cta {
+  margin: 8px 0 4px;
+}
+
+.hero-drop {
+  padding: 18px;
+  text-align: left;
+}
+
+.price-line {
+  margin: 0;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.demo-interactive {
+  position: relative;
+  display: grid;
+  gap: 12px;
+}
+
+.demo-interactive .demo-tag {
+  position: static;
+  justify-self: start;
+}
+
+.demo-interactive .demo-list {
+  position: static;
+  width: auto;
+}
+
+.demo-rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.demo-rooms legend {
+  margin-bottom: 6px;
+}
+
+.demo-rooms label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-rooms input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+
+.compare th[scope="col"] {
+  vertical-align: bottom;
+}
+
+.compare th[scope="row"] {
+  font-weight: 500;
+}
+
+.compare td {
+  text-align: center;
+  width: 22%;
+}
+
+.compare-price {
+  display: block;
+  font-family: var(--font-display, inherit);
+  font-size: 1.3rem;
+  color: var(--ink);
+}
+
+.compare-yes {
+  color: var(--brand);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.compare-no {
+  color: var(--ink-3, #8a928d);
+}
+
+.audience {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}

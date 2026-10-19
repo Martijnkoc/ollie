@@ -37,9 +37,12 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
     setBusy(true);
     setError(null);
     try {
-      const [{ renderReportPdf }, { planThumbnail }] = await Promise.all([import("@/lib/reports/pdf"), import("@/lib/reports/thumbnail")]);
-      const plan = await planThumbnail(project);
-      const model = buildReportModel(project, computed, { now: new Date(), plan });
+      const [{ renderReportPdf }, { planThumbnail, windowPhotoCrops }] = await Promise.all([
+        import("@/lib/reports/pdf"),
+        import("@/lib/reports/thumbnail"),
+      ]);
+      const [plan, photos] = await Promise.all([planThumbnail(project), windowPhotoCrops(project)]);
+      const model = buildReportModel(project, computed, { now: new Date(), plan, photos });
       const { bytes } = await renderReportPdf(model);
       download(bytes as BlobPart, "application/pdf", `maatklaar-${slug(project.name)}.pdf`);
     } catch {
@@ -83,7 +86,7 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
                 className="btn btn-lg"
                 onClick={() =>
                   download(
-                    buildCsv(computed, { demo: project.payment?.mode === "demo" }),
+                    buildCsv(computed, { demo: project.payment?.mode === "demo", materials: preview.materials }),
                     "text/csv;charset=utf-8",
                     `maatklaar-${slug(project.name)}.csv`,
                   )
