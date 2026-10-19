@@ -85,7 +85,9 @@ export function buildCsv(c: ProjectComputation, opts: { demo: boolean; materials
         w.measures[k] ?? null,
         "mm",
         WINDOW_STATUS_LABELS[e.status],
-        "ruwe maat",
+        w.sources[k] && w.measures[k] !== undefined
+          ? `ruwe maat; camera ±${w.sources[k]!.uncertaintyMm} mm (${w.sources[k]!.shots} foto${w.sources[k]!.shots > 1 ? "'s" : ""})`
+          : "ruwe maat",
       ]);
     }
     rows.push([

@@ -7,13 +7,14 @@ test.use({
   permissions: ["camera"],
 });
 
-test("camera met toestemming: live beeld, foto maken en daarna hoeken aantikken", async ({ page }) => {
+test("camera met toestemming: live beeld, foto maken en daarna punten aantikken", async ({ page }) => {
   await paidProjectWithWindow(page);
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Camera starten" }).click();
+  await dialog.getByRole("button", { name: "Foto maken" }).first().click();
+  await dialog.getByRole("button", { name: "Camera in de browser" }).click();
   const video = dialog.getByLabel("Camerabeeld");
   await expect(video).toBeVisible();
   await expect.poll(() => video.evaluate((v) => (v as HTMLVideoElement).videoWidth)).toBeGreaterThan(0);
   await dialog.getByRole("button", { name: "Foto maken" }).click();
-  await expect(dialog.getByText("A4-vel: tik linksboven aan")).toBeVisible();
+  await expect(dialog.getByText("Tik aan: A4-vel 1 (links): linksboven")).toBeVisible();
 });

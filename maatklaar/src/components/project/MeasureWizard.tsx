@@ -53,20 +53,31 @@ function screensFor(rule: MeasurementRuleSet): Screen[] {
   return screens;
 }
 
+/** Where to continue after measuring with the camera: the first missing measurement, else the questions. */
+function resumeAt(screens: Screen[], w: ProjectWindow) {
+  const missing = screens.findIndex((s) => s.kind === "measure" && !s.optional && !w.measures[s.key]);
+  if (missing >= 0) return missing;
+  const rest = screens.findIndex((s) => s.kind === "checks" || s.kind === "fullness" || s.kind === "summary");
+  return Math.max(0, rest);
+}
+
 export function MeasureWizard({
   window: w,
   rule,
+  resume = false,
   onChange,
   onClose,
 }: {
   window: ProjectWindow;
   rule: MeasurementRuleSet;
+  /** Start where the camera left off instead of at the introduction. */
+  resume?: boolean;
   onChange: (w: ProjectWindow) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const screens = useMemo(() => screensFor(rule), [rule]);
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(() => (resume ? resumeAt(screens, w) : 0));
   const [text, setText] = useState("");
   const [invalid, setInvalid] = useState(false);
   const screen = screens[i]!;
@@ -89,8 +100,10 @@ export function MeasureWizard({
   function saveMeasure(key: MeasureKey): boolean {
     if (!text.trim()) {
       const measures = { ...w.measures };
+      const sources = { ...w.sources };
       delete measures[key];
-      onChange({ ...w, measures, confirmed: false });
+      delete sources[key];
+      onChange({ ...w, measures, sources, confirmed: false });
       return true;
     }
     const mm = parseWholeMm(text);
@@ -99,7 +112,12 @@ export function MeasureWizard({
       return false;
     }
     // A changed measurement needs a new confirmation; an acknowledged spread lapses by itself (signature).
-    if (w.measures[key] !== mm) onChange({ ...w, measures: { ...w.measures, [key]: mm }, confirmed: false });
+    // A value typed over a camera value is the user's own measurement from then on.
+    if (w.measures[key] !== mm) {
+      const sources = { ...w.sources };
+      delete sources[key];
+      onChange({ ...w, measures: { ...w.measures, [key]: mm }, sources, confirmed: false });
+    }
     return true;
   }
 
@@ -149,7 +167,8 @@ export function MeasureWizard({
             </div>
             <p style={{ margin: 0 }}>
               We vragen alleen de maten die nodig zijn voor <strong>{rule.title.toLowerCase()}</strong>. Meet met een stalen rolmaat in
-              millimeters, op elk punt opnieuw. We middelen niets weg: verschillen tussen meetpunten blijven zichtbaar.
+              millimeters, op elk punt opnieuw, of sluit dit venster en kies &ldquo;Meten met camera&rdquo;. We middelen niets weg:
+              verschillen tussen meetpunten blijven zichtbaar.
             </p>
             <div className="field">
               <label htmlFor="bron">Waar komen de maten vandaan?</label>
@@ -199,6 +218,8 @@ export function MeasureWizard({
               <span id="maat-hint" className="hint">
                 {invalid ? (
                   <span style={{ color: "var(--danger)" }}>Vul hele millimeters in, bijvoorbeeld 1250.</span>
+                ) : w.sources[screen.key] && String(w.measures[screen.key]) === text ? (
+                  `Met de camera gemeten: ± ${formatMm(w.sources[screen.key]!.uncertaintyMm)} (${w.sources[screen.key]!.shots} foto${w.sources[screen.key]!.shots > 1 ? "'s" : ""}). Meet je zelf iets anders, vul dat dan in.`
                 ) : (
                   MEASURE_INFO[screen.key].hint
                 )}
@@ -324,7 +345,13 @@ export function MeasureWizard({
                   {keys.map((k) => (
                     <tr key={k}>
                       <th scope="row">{MEASURE_INFO[k].label}</th>
-                      <td className="num">{w.measures[k] ? formatMm(w.measures[k]!) : rule.required.includes(k) ? "nog meten" : "—"}</td>
+                      <td className="num">
+                        {w.measures[k]
+                          ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ± ${w.sources[k]!.uncertaintyMm} (camera)` : ""}`
+                          : rule.required.includes(k)
+                            ? "nog meten"
+                            : "—"}
+                      </td>
                     </tr>
                   ))}
                   {evaluation.fabricWidthMm !== null && (

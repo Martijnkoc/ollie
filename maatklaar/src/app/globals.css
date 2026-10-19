@@ -1755,3 +1755,86 @@ dialog.sheet::backdrop {
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
+
+/* ---------- Camera measuring ---------- */
+
+@media (min-width: 720px) {
+  dialog.sheet.sheet-wide {
+    width: min(980px, 96vw);
+  }
+}
+
+.marker-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.marker-stage {
+  position: relative;
+  border-radius: 10px;
+  overflow: visible;
+  background: #111;
+}
+
+.marker-stage img,
+.marker-stage svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.marker-stage svg {
+  /* Placing and dragging points must not scroll the page. */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.marker-stage svg:focus-visible {
+  outline: 3px solid var(--brand-2);
+  outline-offset: 2px;
+}
+
+.loupe {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 45%);
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.loupe::before,
+.loupe::after {
+  content: "";
+  position: absolute;
+  background: #e0302a;
+}
+
+.loupe::before {
+  left: 50%;
+  top: 20%;
+  bottom: 20%;
+  width: 1px;
+}
+
+.loupe::after {
+  top: 50%;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}

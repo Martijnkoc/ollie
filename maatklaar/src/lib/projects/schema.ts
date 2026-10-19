@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { addressSchema, buildingSchema } from "@/lib/address/types";
 import { CATEGORY_KEYS } from "@/lib/materials/catalog";
+import { cameraShotSchema, measureSourceSchema } from "@/lib/measurements/camera";
 import { CHECK_KEYS, MEASURE_KEYS, MOUNTINGS, PRODUCT_FAMILIES } from "@/lib/measurements/schema";
 
 export const SCHEMA_VERSION = 1;
@@ -211,9 +212,14 @@ export const windowSchema = z.object({
    * an order size (a plan seen from above is not a window measurement).
    */
   planWidthMm: z.number().positive().max(100_000).nullable().default(null),
+  /** Camera measurements of this window: one entry per photo, the photos themselves stay on this device. */
+  camera: z.array(cameraShotSchema).max(30).default([]),
+  /** Per measurement that came from the camera: its uncertainty. A typed-in value has no entry. */
+  sources: z.partialRecord(z.enum(MEASURE_KEYS), measureSourceSchema).default({}),
   /**
-   * Photo of the window (kept on this device only) with the corners the user tapped and the size estimate
-   * from an A4 reference. An estimate ("browser_scan_estimate"), never a measurement or an order size.
+   * Photo of the first photo assistant (kept on this device only): corners tapped on an A4 sheet on the glass
+   * and the opening, with a size estimate. Only shown for windows that still have one; new photos are
+   * camera measurements (`camera`).
    */
   photo: z
     .object({
@@ -282,5 +288,7 @@ export const projectSchema = z.object({
       inputs: z.partialRecord(z.enum(CATEGORY_KEYS), z.record(z.string().max(40), z.number().finite().nullable())),
     })
     .default({ selected: ["verf"], rooms: {}, inputs: {} }),
+  /** Camera measurements for the whole home (the ceiling height); the photos stay on this device. */
+  camera: z.array(cameraShotSchema).max(20).default([]),
 });
 export type Project = z.infer<typeof projectSchema>;

@@ -65,6 +65,24 @@ export const SOURCES = {
 /** Default warning threshold between measuring points of one window. An adjustable check, not a supplier norm. */
 export const MEASURE_DEVIATION_WARNING_MM = 3;
 
+/**
+ * Measuring with the camera and a reference object (A4 sheet, bank card) in the measured plane.
+ * `systematicPercent` covers what a single photo cannot reveal (residual lens distortion, a reference just
+ * outside the measured plane). It is an assumption, shown with every result, until real windows measured
+ * both ways are in the validation set (docs/VALIDATIE.md).
+ */
+export const CAMERA_MEASURE = {
+  systematicPercent: 0.5,
+  /** Above this share of the value a camera measurement is not used. */
+  maxRelativeUncertainty: 0.05,
+  /** The shorter side of the reference must span at least this many photo pixels. */
+  minReferencePx: 60,
+  /** Two photos from slightly different spots catch a bad tap or a moved sheet. */
+  recommendedShots: 2,
+  /** Longest side of a stored photo; enough for sub-millimetre edges on a window, small enough for the device. */
+  maxPhotoSide: 3200,
+};
+
 export const FAQ = [
   {
     q: "Hoe nauwkeurig is het?",

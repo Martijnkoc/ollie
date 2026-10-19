@@ -506,11 +506,12 @@ async function wandenPlan() {
 }
 
 /**
- * A photo of a window seen at an angle, with an A4 sheet taped on the glass: for the photo measuring
- * assistant. The opening is 1200 × 1500 mm; the sheet (portrait) sits at 400–610 × 300–597 mm.
- * Projected with the fixed homography below (mm on the wall → photo pixels); tests use the same one.
+ * A photo of a window seen at an angle, with two A4 sheets taped on the wall on either side (the plane of the
+ * opening): for measuring with the camera. The opening is 1200 × 1500 mm; the sheets (portrait) sit at
+ * -380–-170 × 500–797 mm and 1360–1570 × 900–1197 mm. Projected with the fixed homography below (mm on the
+ * wall → photo pixels); tests use the same one.
  */
-export const RAAM_FOTO_H = [0.9, 0.1, 260, -0.05, 0.95, 90, 0.00008, 0.00002, 1];
+export const RAAM_FOTO_H = [0.9, 0.1, 460, -0.05, 0.95, 190, 0.00008, 0.00002, 1];
 async function raamFoto() {
   let chromium;
   try {
@@ -526,8 +527,8 @@ async function raamFoto() {
       return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w];
     };
     const c = document.createElement("canvas");
-    c.width = 1600;
-    c.height = 1700;
+    c.width = 2000;
+    c.height = 1900;
     const g = c.getContext("2d");
     const quad = (x0, y0, x1, y1, fill, stroke) => {
       g.beginPath();
@@ -552,7 +553,8 @@ async function raamFoto() {
     quad(-90, -90, 1290, 1590, "#f6f6f2", "#bdb6a8"); // frame
     quad(0, 0, 1200, 1500, "#8fa3ae"); // glass in the opening
     quad(590, 0, 610, 1500, "#f6f6f2"); // mullion
-    quad(400, 300, 610, 597, "#ffffff", "#9aa"); // A4 sheet
+    quad(-380, 500, -170, 797, "#ffffff"); // A4 sheet on the wall, left
+    quad(1360, 900, 1570, 1197, "#ffffff"); // A4 sheet on the wall, right
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9));
     return Array.from(new Uint8Array(await blob.arrayBuffer()));
   }, RAAM_FOTO_H);

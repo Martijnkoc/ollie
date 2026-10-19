@@ -57,6 +57,6 @@ export async function paidProjectWithWindow(page: Page) {
   await page.getByRole("button", { name: "Simuleer geslaagde betaling" }).click();
   await page.waitForURL(/#plinten-ramen$/);
   await page.getByRole("button", { name: "+ Raam toevoegen" }).click();
-  await page.locator(".window-card").last().getByRole("button", { name: "Foto-assistent" }).click();
-  await expect(page.getByRole("dialog", { name: "Raam schatten met een foto" })).toBeVisible();
+  await page.locator(".window-card").last().getByRole("button", { name: "Meten met camera" }).click();
+  await expect(page.getByRole("dialog", { name: "Meten met je camera" })).toBeVisible();
 }

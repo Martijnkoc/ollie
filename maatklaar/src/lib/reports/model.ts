@@ -2,6 +2,7 @@ import { BRAND, SOURCES } from "@/config/site";
 import { formatCount, formatM2, formatMFromMm, formatMm, formatPercent } from "@/lib/format";
 import { CATALOG, CATEGORY_STATUS_LABELS, computeCategory, type CategoryStatus } from "@/lib/materials/catalog";
 import { patternByKey } from "@/lib/materials/patterns";
+import { cameraResults, ceilingHeightM, type MeasureSource } from "@/lib/measurements/camera";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
 import { MEASURE_GROUPS, MEASURE_INFO, MOUNTING_SHORT, PRODUCT_LABELS, PRODUCT_SHORT, type MeasureKey } from "@/lib/measurements/schema";
 import { roomName, type ProjectComputation } from "@/lib/projects/compute";
@@ -82,10 +83,32 @@ const SOURCE_LABEL: Record<string, string> = { gebruiker: "zelf gemeten", tekeni
 
 export const statusText = (s: ReportStatus) => (s === "neutral" ? "" : STATUS_META[s].label);
 
-/** "boven 1203 · midden 1201 · onder 1202 mm": every point named, the unit once at the end. */
-function measureList(keys: readonly MeasureKey[], measures: Partial<Record<MeasureKey, number>>) {
-  const parts = keys.filter((k) => typeof measures[k] === "number").map((k) => `${k.split("_").pop()} ${measures[k]}`);
+type Sources = Partial<Record<MeasureKey, MeasureSource>>;
+
+/** "boven 1203 · midden 1201±8 · onder 1202 mm": every point named, camera values with their ±, the unit once at the end. */
+function measureList(keys: readonly MeasureKey[], measures: Partial<Record<MeasureKey, number>>, sources: Sources) {
+  const parts = keys
+    .filter((k) => typeof measures[k] === "number")
+    .map((k) => `${k.split("_").pop()} ${measures[k]}${sources[k] ? `±${sources[k]!.uncertaintyMm}` : ""}`);
   return parts.length ? `${parts.join(" · ")} mm` : "nog meten";
+}
+
+/** Provenance of one window measurement, as in the room sources: camera values are browser_scan_estimate. */
+function measureProvenance(source: MeasureSource | undefined, confirmed: boolean) {
+  const code = source
+    ? `browser_scan_estimate ±${source.uncertaintyMm} mm, ${source.shots} foto${source.shots > 1 ? "'s" : ""}`
+    : "user_input";
+  return confirmed ? `${code} · user_confirmed` : code;
+}
+
+/**
+ * Lower bound of a group of camera measurements: the smallest value minus its uncertainty. What still fits
+ * between two walls when every camera value is as far off as its margin allows.
+ */
+export function lowerBound(keys: readonly MeasureKey[], measures: Partial<Record<MeasureKey, number>>, sources: Sources) {
+  const values = keys.filter((k) => typeof measures[k] === "number");
+  if (!values.some((k) => sources[k])) return null;
+  return Math.min(...values.map((k) => measures[k]! - (sources[k]?.uncertaintyMm ?? 0)));
 }
 
 /**
@@ -187,7 +210,13 @@ export function buildReportModel(
     );
     const other = keys
       .filter((k) => !grouped.has(k))
-      .map((k) => `${MEASURE_INFO[k].label}: ${w.measures[k] ? formatMm(w.measures[k]!) : rule.required.includes(k) ? "nog meten" : "—"}`);
+      .map(
+        (k) =>
+          `${MEASURE_INFO[k].label}: ${w.measures[k] ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${w.sources[k]!.uncertaintyMm}` : ""}` : rule.required.includes(k) ? "nog meten" : "—"}`,
+      );
+    const camera = keys.some((k) => w.sources[k] && w.measures[k]);
+    const typed = keys.some((k) => !w.sources[k] && w.measures[k]);
+    const source = camera ? (typed ? "camera en zelf ingevuld" : "camera") : SOURCE_LABEL[w.measureSource];
     const status: Status = { "nog-meten": "missing", afwijking: "check", ingevoerd: "auto", bevestigd: "confirmed", bestelmaat: "derived" }[
       e.status
     ] as Status;
@@ -195,8 +224,8 @@ export function buildReportModel(
       { text: `${w.code}${w.label ? ` ${w.label}` : ""}` },
       { text: rn ?? "—" },
       { text: `${PRODUCT_SHORT[w.product]}, ${MOUNTING_SHORT[w.mounting]}` },
-      { text: width.length ? measureList(width, w.measures) : "—" },
-      { text: height.length ? measureList(height, w.measures) : "—" },
+      { text: width.length ? measureList(width, w.measures, w.sources) : "—" },
+      { text: height.length ? measureList(height, w.measures, w.sources) : "—" },
       {
         text:
           [
@@ -205,7 +234,7 @@ export function buildReportModel(
           ].join("; ") || "—",
       },
       { text: e.order ? `${formatMm(e.order.widthMm)} × ${formatMm(e.order.heightMm)}` : "volgens leverancier" },
-      { text: `${WINDOW_STATUS_LABELS[e.status]} (${SOURCE_LABEL[w.measureSource]})`, status },
+      { text: `${WINDOW_STATUS_LABELS[e.status]} (${source})`, status },
     ];
   });
   const windowNotes = [
@@ -275,20 +304,22 @@ export function buildReportModel(
     "De BAG-gebruiksoppervlakte is een andere meting dan de som van de kamers en is nergens in de berekening gebruikt.",
   ];
 
-  // Window cards: every window with its sources, photo estimate and what is still missing.
+  // Window cards: every window with its measurements and their sources, and what is still missing.
   const cards: WindowCard[] = c.windows.map(({ window: w, rule, evaluation: e, roomName: rn }) => {
     const rows = [
       { label: "Ruimte", value: rn ?? "niet gekoppeld" },
       { label: "Product en montage", value: `${PRODUCT_SHORT[w.product]}, ${MOUNTING_SHORT[w.mounting]}` },
-      {
-        label: "Gemeten maten",
-        value: Object.keys(w.measures).length
-          ? `${Object.entries(w.measures)
-              .map(([k, v]) => `${MEASURE_INFO[k as MeasureKey].label.toLowerCase()} ${v}`)
-              .join(" · ")} mm (bron: ${w.confirmed ? "user_confirmed" : "user_input, nog niet bevestigd"})`
-          : "nog niet gemeten",
-      },
-      ...(w.photo?.estimate
+      ...(Object.keys(w.measures).length
+        ? (Object.entries(w.measures) as [MeasureKey, number][]).map(([k, v]) => ({
+            label: MEASURE_INFO[k].label,
+            value: `${formatMm(v)}${w.sources[k] ? ` ± ${formatMm(w.sources[k]!.uncertaintyMm)}` : ""} (bron: ${measureProvenance(w.sources[k], w.confirmed)})`,
+          }))
+        : [{ label: "Gemeten maten", value: "nog niet gemeten" }]),
+      ...(["breedte", "hoogte"] as const).flatMap((g) => {
+        const lb = lowerBound(MEASURE_GROUPS[g], w.measures, w.sources);
+        return lb === null ? [] : [{ label: `Ondergrens ${g}`, value: `${formatMm(lb)} (kleinste ${g} min de foutmarge van de camera)` }];
+      }),
+      ...(w.photo?.estimate && !w.camera.length
         ? [
             {
               label: "Schatting uit foto",
@@ -311,6 +342,10 @@ export function buildReportModel(
   });
 
   // Material library: the categories the user chose, in catalogue order.
+  const ceilingResult = cameraResults(project.camera).find((r) => r.target === "plafondhoogte" && r.usable);
+  const ceiling = ceilingResult
+    ? { m: ceilingHeightM(ceilingResult.mm), uncertaintyMm: ceilingResult.uncertaintyMm, shots: ceilingResult.shots }
+    : null;
   const doorsOnPlan = project.analyses.reduce((n, a) => n + (a.auto?.doors ?? 0), 0);
   const materials: MaterialSection[] = CATALOG.filter((m) => project.materials.selected.includes(m.key)).map((m) => {
     const r = computeCategory(m, c, {
@@ -337,7 +372,15 @@ export function buildReportModel(
       },
       assumptions: r.assumptions,
       missing: r.missing,
-      steps: [...(r.used.length ? [`Voor: ${r.used.join(", ")}.`] : []), ...r.steps],
+      steps: [
+        ...(r.used.length ? [`Voor: ${r.used.join(", ")}.`] : []),
+        ...(ceiling && m.inputs.some((i) => i.key === "plafondhoogte") && project.materials.inputs[m.key]?.plafondhoogte === ceiling.m
+          ? [
+              `Plafondhoogte ${ceiling.m.toLocaleString("nl-NL")} m met de camera gemeten (± ${formatMm(ceiling.uncertaintyMm)}, ${ceiling.shots} foto${ceiling.shots > 1 ? "'s" : ""}; browser_scan_estimate).`,
+            ]
+          : []),
+        ...r.steps,
+      ],
     };
   });
   for (const m of materials) {

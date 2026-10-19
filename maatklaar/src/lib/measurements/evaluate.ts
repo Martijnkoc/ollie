@@ -8,6 +8,7 @@ import {
   type MeasurementRuleSet,
 } from "./schema";
 import { formatMm } from "@/lib/format";
+import type { MeasureSource } from "./camera";
 
 export type WindowMeasurements = {
   /** Raw measurements in whole millimetres, exactly as entered. */
@@ -23,6 +24,8 @@ export type WindowMeasurements = {
   confirmed: boolean;
   /** Curtains only: fullness factor chosen by the user (e.g. 2 for twice the rail width). Never a default. */
   fullness: number | null;
+  /** Measurements that came from the camera, with their uncertainty. Absent: typed in. */
+  sources?: Partial<Record<MeasureKey, MeasureSource>>;
 };
 
 export type WindowStatus = "nog-meten" | "afwijking" | "ingevoerd" | "bevestigd" | "bestelmaat";
@@ -64,6 +67,8 @@ export type WindowEvaluation = {
   orderBlocked: string[];
   /** Curtains: rail width × the fullness the user chose. Labelled as derived from their choice. */
   fabricWidthMm: number | null;
+  /** Measurements of this rule that came from the camera, and their largest uncertainty. */
+  camera: { keys: MeasureKey[]; maxUncertaintyMm: number } | null;
   warnings: string[];
 };
 
@@ -88,7 +93,9 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     if (values.length < 2) continue;
     const minMm = Math.min(...values.map((v) => v.mm));
     const maxMm = Math.max(...values.map((v) => v.mm));
-    const toleranceMm = rule.toleranceMm[group];
+    // Camera values differ by up to their uncertainty without the opening being uneven: never warn below it.
+    const cameraMm = Math.max(0, ...values.map((v) => input.sources?.[v.key]?.uncertaintyMm ?? 0));
+    const toleranceMm = Math.max(rule.toleranceMm[group], cameraMm);
     const exceeds = maxMm - minMm > toleranceMm;
     groups.push({
       group,
@@ -113,7 +120,21 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   const checksOpen = rule.checks.filter((c) => input.checks[c] === undefined);
   const checksPresent = rule.checks.filter((c) => input.checks[c] === true);
 
+  const cameraKeys = [...relevant].filter((k) => value(k) !== null && input.sources?.[k]);
+  const camera = cameraKeys.length
+    ? { keys: cameraKeys, maxUncertaintyMm: Math.max(...cameraKeys.map((k) => input.sources![k]!.uncertaintyMm)) }
+    : null;
+
   const warnings = [...rule.warnings];
+  if (camera) {
+    warnings.push(
+      `${camera.keys.length === 1 ? "Eén maat is" : `${camera.keys.length} maten zijn`} met de camera gemeten, met een foutmarge tot ±${formatMm(camera.maxUncertaintyMm)}. Geef je leverancier de maat én de foutmarge.`,
+    );
+    if (rule.mounting === "in-de-dag" || rule.mounting === "inbouw" || rule.mounting === "voorzet")
+      warnings.push(
+        "Moet het product tussen twee muren passen? Reken dan met de kleinste maat min de foutmarge (de ondergrens op je meetblad), of laat je leverancier dat beoordelen.",
+      );
+  }
   for (const g of groups.filter((x) => x.exceeds)) {
     warnings.push(
       g.acknowledged
@@ -139,6 +160,8 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   if (depth.ok === false) orderBlocked.push("De montagediepte is te klein voor deze regel.");
   if (rule.minDepthMm !== null && depth.mm === null) orderBlocked.push("De diepte van de dag ontbreekt.");
   if (!input.confirmed) orderBlocked.push("Je hebt de maten van dit raam nog niet bevestigd.");
+  if (rule.kind === "supplier" && camera)
+    orderBlocked.push("Deze leveranciersregel is niet gecontroleerd voor maten met een foutmarge uit de camera.");
 
   let order: WindowEvaluation["order"] = null;
   if (!orderBlocked.length && rule.conversion.kind === "formula") {
@@ -176,5 +199,5 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   else if (order) status = "bestelmaat";
   else status = "bevestigd";
 
-  return { status, missing, groups, depth, checksOpen, checksPresent, order, orderBlocked, fabricWidthMm, warnings };
+  return { status, missing, groups, depth, checksOpen, checksPresent, order, orderBlocked, fabricWidthMm, camera, warnings };
 }

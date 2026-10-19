@@ -3,7 +3,7 @@
 import { renderPageCanvas } from "@/lib/documents/render";
 import { centroid } from "@/lib/geometry/polygon";
 import type { Project } from "@/lib/projects/schema";
-import { loadFile, loadPhoto } from "@/lib/projects/store";
+import { loadFile, loadPhoto, shotPhotoKey } from "@/lib/projects/store";
 
 /**
  * Renders the selected plan page with numbered rooms and window codes for the PDF, in the browser.
@@ -62,20 +62,31 @@ export async function planThumbnail(project: Project): Promise<{ png: Uint8Array
 }
 
 /**
- * JPEG crops of the window photos for the report: the opening the user tapped plus a margin, or the
- * whole photo when no corners were tapped. Photos are read from this device only.
+ * JPEG crops of the window photos for the report: the measured opening (or all tapped points) plus a margin,
+ * or the whole photo when nothing was tapped. Photos are read from this device only.
  */
 export async function windowPhotoCrops(project: Project): Promise<Record<string, { jpg: Uint8Array; width: number; height: number }>> {
   const out: Record<string, { jpg: Uint8Array; width: number; height: number }> = {};
   for (const w of project.windows) {
-    if (!w.photo) continue;
-    const blob = await loadPhoto(project.id, w.id);
+    const shot = w.camera.find((s) => s.task === "opening") ?? w.camera[0];
+    const source = shot
+      ? {
+          key: shotPhotoKey(w.id, shot.id),
+          width: shot.width,
+          height: shot.height,
+          pts: shot.task === "opening" ? shot.points : [...shot.reference, ...shot.points],
+        }
+      : w.photo
+        ? { key: w.id, width: w.photo.width, height: w.photo.height, pts: w.photo.opening.length === 4 ? w.photo.opening : [] }
+        : null;
+    if (!source) continue;
+    const blob = await loadPhoto(project.id, source.key);
     if (!blob) continue;
     try {
       const bitmap = await createImageBitmap(blob);
-      const pts = w.photo.opening.length === 4 ? w.photo.opening : [];
-      const sx = bitmap.width / w.photo.width;
-      const sy = bitmap.height / w.photo.height;
+      const pts = source.pts;
+      const sx = bitmap.width / source.width;
+      const sy = bitmap.height / source.height;
       let x0 = 0;
       let y0 = 0;
       let x1 = bitmap.width;

@@ -32,6 +32,7 @@ export function newProject(now = new Date()): Project {
     payment: null,
     report: { includeAddress: false },
     materials: { selected: ["verf"], rooms: {}, inputs: {} },
+    camera: [],
   };
 }
 
@@ -98,6 +99,8 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     confirmed: false,
     fullness: null,
     planWidthMm: null,
+    camera: [],
+    sources: {},
     photo: null,
     ...extra,
   };

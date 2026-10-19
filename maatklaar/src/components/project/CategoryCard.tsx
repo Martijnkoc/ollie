@@ -1,8 +1,10 @@
 "use client";
 
-import { useId } from "react";
-import { formatCount, parseDecimal } from "@/lib/format";
+import { useId, useState } from "react";
+import { formatCount, formatMm, parseDecimal } from "@/lib/format";
+import { CAMERA_TASKS, cameraResults, ceilingHeightM } from "@/lib/measurements/camera";
 import {
+  CATALOG,
   CATEGORY_STATUS_LABELS,
   computeCategory,
   defaultRoomsFor,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/materials/catalog";
 import type { ProjectComputation } from "@/lib/projects/compute";
 import type { Project } from "@/lib/projects/schema";
+import { CameraMeasure } from "./CameraMeasure";
 
 const STATUS_STYLE: Record<CategoryStatus, { icon: string; data: string }> = {
   niet_genoeg_gegevens: { icon: "?", data: "missing" },
@@ -71,6 +74,20 @@ export function CategoryCard({
       ...p,
       materials: { ...p.materials, inputs: { ...p.materials.inputs, [key]: { ...(p.materials.inputs[key] ?? {}), [k]: v } } },
     }));
+  const [measuring, setMeasuring] = useState(false);
+  const ceiling = cameraResults(project.camera).find((r) => r.target === "plafondhoogte" && r.usable) ?? null;
+  // One ceiling height for the home: a camera measurement fills it in for every material that uses it.
+  const saveCeiling = (shots: Project["camera"]) =>
+    update((p) => {
+      const camera = [...p.camera.filter((s) => s.task !== "plafond"), ...shots];
+      const result = cameraResults(camera).find((r) => r.target === "plafondhoogte" && r.usable);
+      if (!result) return { ...p, camera };
+      const inputs = { ...p.materials.inputs };
+      for (const m of CATALOG)
+        if (m.inputs.some((i) => i.key === "plafondhoogte"))
+          inputs[m.key] = { ...(inputs[m.key] ?? {}), plafondhoogte: ceilingHeightM(result.mm) };
+      return { ...p, camera, materials: { ...p.materials, inputs } };
+    });
   const toggleRoom = (roomId: string, on: boolean) =>
     update((p) => {
       const current = p.materials.rooms[key] ?? defaultRoomsFor(module, p.rooms);
@@ -114,14 +131,21 @@ export function CategoryCard({
                   />
                   <span>{input.unit}</span>
                 </div>
+                {input.key === "plafondhoogte" && (
+                  <button type="button" className="btn btn-sm" style={{ justifySelf: "start" }} onClick={() => setMeasuring(true)}>
+                    {ceiling ? "Camerameting bekijken" : "Meten met camera"}
+                  </button>
+                )}
                 <span className="hint">
-                  {typeof own === "number"
-                    ? input.help
-                    : input.assumption
-                      ? `Nu een aanname: ${input.assumption.why}.`
-                      : input.required
-                        ? `Nodig voor de berekening. ${input.help}`
-                        : input.help}
+                  {input.key === "plafondhoogte" && ceiling && own === ceilingHeightM(ceiling.mm)
+                    ? `Met de camera gemeten: ± ${formatMm(ceiling.uncertaintyMm)} (${ceiling.shots} foto${ceiling.shots > 1 ? "'s" : ""}).`
+                    : typeof own === "number"
+                      ? input.help
+                      : input.assumption
+                        ? `Nu een aanname: ${input.assumption.why}.`
+                        : input.required
+                          ? `Nodig voor de berekening. ${input.help}`
+                          : input.help}
                 </span>
               </div>
             );
@@ -195,6 +219,17 @@ export function CategoryCard({
           </ol>
         )}
       </details>
+      {measuring && (
+        <CameraMeasure
+          projectId={project.id}
+          owner="woning"
+          heading="Plafondhoogte voor verf en behang"
+          tasks={[CAMERA_TASKS.plafond]}
+          shots={project.camera.filter((s) => s.task === "plafond")}
+          onSave={saveCeiling}
+          onClose={() => setMeasuring(false)}
+        />
+      )}
     </article>
   );
 }

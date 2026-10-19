@@ -6,6 +6,7 @@ import { formatMFromMm, formatMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, type WindowStatus } from "@/lib/measurements/evaluate";
 import { rulesFor } from "@/lib/measurements/protocols";
 import {
+  MEASURE_INFO,
   MOUNTING_LABELS,
   PRODUCT_FAMILIES,
   PRODUCT_LABELS,
@@ -17,9 +18,10 @@ import { defaultRuleFor } from "@/lib/measurements/protocols";
 import { newWindow } from "@/lib/projects/factory";
 import type { ProjectWindow } from "@/lib/projects/schema";
 import type { Status } from "@/lib/projects/status";
+import { applyCameraToWindow, tasksFor } from "@/lib/measurements/camera";
+import { findRule } from "@/lib/measurements/protocols";
+import { CameraMeasure } from "./CameraMeasure";
 import { MeasureWizard } from "./MeasureWizard";
-import { PhotoAssistant } from "./PhotoAssistant";
-import { compareWithPhoto } from "@/lib/measurements/photo";
 import { PlanCanvas } from "./PlanCanvas";
 import { usePlanImage } from "./usePlanImage";
 import type { StepProps } from "./types";
@@ -34,18 +36,22 @@ const STATUS_FOR: Record<WindowStatus, Status> = {
 
 export function WindowSection({ project, update, computed }: StepProps) {
   const id = useId();
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<{ id: string; resume: boolean } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
-  const [photoFor, setPhotoFor] = useState<string | null>(null);
+  const [cameraFor, setCameraFor] = useState<string | null>(null);
   const doc = project.document;
   const page = doc ? Math.min(doc.selectedPage, doc.pages.length - 1) : 0;
   const image = usePlanImage(project.id, doc, page, doc ? doc.sizeBytes : 0);
 
   const setWindow = (w: ProjectWindow) => update((p) => ({ ...p, windows: p.windows.map((x) => (x.id === w.id ? w : x)) }));
-  const setProduct = (w: ProjectWindow, product: ProductFamily, mounting: Mounting) =>
-    setWindow({ ...w, product, mounting, ruleId: defaultRuleFor(product, mounting).id, confirmed: false });
-  const opened = computed.windows.find((x) => x.window.id === open);
+  // A new rule may ask for other measurements: camera values follow it, typed values stay.
+  const setProduct = (w: ProjectWindow, product: ProductFamily, mounting: Mounting) => {
+    const rule = defaultRuleFor(product, mounting);
+    setWindow(applyCameraToWindow({ ...w, product, mounting, ruleId: rule.id, confirmed: false }, rule));
+  };
+  const opened = computed.windows.find((x) => x.window.id === open?.id);
+  const camera = computed.windows.find((x) => x.window.id === cameraFor);
 
   return (
     <section className="panel stack" aria-labelledby={`${id}-title`}>
@@ -55,8 +61,8 @@ export function WindowSection({ project, update, computed }: StepProps) {
             Raamregister
           </h2>
           <p className="muted" style={{ margin: 0 }}>
-            Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die maten meet je zelf, wij
-            begeleiden je per raam.
+            Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die meet je met je camera en een
+            A4-vel (of zelf met een rolmaat). Elke maat houdt zijn bron en foutmarge.
           </p>
         </div>
         <div className="row">
@@ -195,7 +201,10 @@ export function WindowSection({ project, update, computed }: StepProps) {
                     id={`${id}-${w.id}-rule`}
                     className="select"
                     value={rule.id}
-                    onChange={(e) => setWindow({ ...w, ruleId: e.target.value, confirmed: false })}
+                    onChange={(e) => {
+                      const next = findRule(e.target.value) ?? rule;
+                      setWindow(applyCameraToWindow({ ...w, ruleId: next.id, confirmed: false }, next));
+                    }}
                   >
                     {rules.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -213,25 +222,37 @@ export function WindowSection({ project, update, computed }: StepProps) {
                     : ""}
                 </p>
               )}
-              {w.photo?.estimate && (
+              {evaluation.camera ? (
                 <p className="small" style={{ margin: 0 }}>
-                  Foto-schatting (niet bevestigd): ca. {formatMm(Math.round(Math.max(w.photo.estimate.topMm, w.photo.estimate.bottomMm)))} ×{" "}
-                  {formatMm(Math.round(Math.max(w.photo.estimate.leftMm, w.photo.estimate.rightMm)))}, ±{" "}
-                  {formatMm(w.photo.estimate.uncertaintyMm)}. {photoCheck(w)}
+                  Met de camera gemeten: {evaluation.camera.keys.length} {evaluation.camera.keys.length === 1 ? "maat" : "maten"}, foutmarge
+                  tot ± {formatMm(evaluation.camera.maxUncertaintyMm)}.
                 </p>
+              ) : (
+                w.photo?.estimate && (
+                  <p className="small" style={{ margin: 0 }}>
+                    Oude foto-schatting: ca. {formatMm(Math.round(Math.max(w.photo.estimate.topMm, w.photo.estimate.bottomMm)))} ×{" "}
+                    {formatMm(Math.round(Math.max(w.photo.estimate.leftMm, w.photo.estimate.rightMm)))}, ±{" "}
+                    {formatMm(w.photo.estimate.uncertaintyMm)}. Meet opnieuw met de camera om er maten van te maken.
+                  </p>
+                )
               )}
               <p className="small muted" style={{ margin: 0 }}>
-                {raw.length ? raw.map((k) => formatMm(w.measures[k]!)).join(" · ") : "Nog geen maten."}{" "}
+                {raw.length
+                  ? raw.map((k) => `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${w.sources[k]!.uncertaintyMm}` : ""}`).join(" · ")
+                  : "Nog geen maten."}{" "}
+                {evaluation.missing.length > 0 && raw.length > 0
+                  ? `Nog nodig: ${evaluation.missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ")}. `
+                  : ""}
                 {evaluation.order
                   ? `Bestelmaat ${formatMm(evaluation.order.widthMm)} × ${formatMm(evaluation.order.heightMm)}.`
                   : "Bestelmaat: volgens je leverancier."}
               </p>
               <div className="row">
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => setOpen(w.id)}>
-                  {raw.length ? "Maten bekijken of aanpassen" : "Meten"}
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => setCameraFor(w.id)}>
+                  {w.camera.length ? "Camerameting bekijken" : "Meten met camera"}
                 </button>
-                <button type="button" className="btn btn-sm" onClick={() => setPhotoFor(w.id)}>
-                  {w.photo ? "Foto en schatting" : "Foto-assistent"}
+                <button type="button" className="btn btn-sm" onClick={() => setOpen({ id: w.id, resume: false })}>
+                  {raw.length ? "Maten nakijken en bevestigen" : "Zelf invullen (rolmaat)"}
                 </button>
                 <button
                   type="button"
@@ -246,37 +267,37 @@ export function WindowSection({ project, update, computed }: StepProps) {
         })}
       </div>
 
-      {opened && <MeasureWizard window={opened.window} rule={opened.rule} onChange={setWindow} onClose={() => setOpen(null)} />}
-      {photoFor && project.windows.some((x) => x.id === photoFor) && (
-        <PhotoAssistant
-          projectId={project.id}
-          window={project.windows.find((x) => x.id === photoFor)!}
+      {opened && (
+        <MeasureWizard
+          window={opened.window}
+          rule={opened.rule}
+          resume={open?.resume ?? false}
           onChange={setWindow}
-          onClose={() => setPhotoFor(null)}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {camera && (
+        <CameraMeasure
+          projectId={project.id}
+          owner={camera.window.id}
+          heading={`${camera.window.code}${camera.window.label ? ` · ${camera.window.label}` : ""} · ${camera.rule.title}`}
+          tasks={tasksFor(camera.rule)}
+          shots={camera.window.camera}
+          onSave={(shots) =>
+            update((p) => ({
+              ...p,
+              windows: p.windows.map((x) => (x.id === camera.window.id ? applyCameraToWindow({ ...x, camera: shots }, camera.rule) : x)),
+            }))
+          }
+          onClose={() => {
+            setCameraFor(null);
+            // Measured: on to the obstacle questions and the confirmation.
+            if (camera.window.camera.length) setOpen({ id: camera.window.id, resume: true });
+          }}
         />
       )}
     </section>
   );
-}
-
-/** A tape measurement far from the photo estimate means one of the two needs another look. */
-function photoCheck(w: ProjectWindow) {
-  const e = w.photo?.estimate;
-  if (!e) return "";
-  const pairs: [number | undefined, number][] = [
-    [w.measures.breedte_boven, e.topMm],
-    [w.measures.breedte_onder, e.bottomMm],
-    [w.measures.hoogte_links, e.leftMm],
-    [w.measures.hoogte_rechts, e.rightMm],
-  ];
-  const compared = pairs
-    .filter((p): p is [number, number] => typeof p[0] === "number")
-    .map(([m, est]) => compareWithPhoto(m, est, e.uncertaintyMm));
-  if (!compared.length) return "Meet het raam met een rolmaat; daarna vergelijken we.";
-  const off = compared.filter((c) => !c.agrees);
-  return off.length
-    ? `Je meting wijkt tot ${formatMm(Math.max(...off.map((c) => c.gapMm)))} af van de foto: meet die maat nog eens na.`
-    : "Je metingen passen bij de foto.";
 }
 
 function pageInfoOk(doc: NonNullable<StepProps["project"]["document"]>, page: number) {
