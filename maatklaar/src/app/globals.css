@@ -715,6 +715,19 @@ textarea.input {
   font-size: 0.82rem;
 }
 
+@media (max-width: 640px) {
+  .demo-stage {
+    padding-bottom: 0;
+  }
+  .demo-list {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    margin: -18px 14px 0;
+  }
+}
+
 .demo-list h4 {
   font-size: 0.85rem;
   margin: 0 0 8px;

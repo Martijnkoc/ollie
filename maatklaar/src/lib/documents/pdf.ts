@@ -41,7 +41,8 @@ export async function openPdf(bytes: Uint8Array): Promise<PdfDocument> {
     return await task.promise;
   } catch (err) {
     const name = err instanceof Error ? err.name : "";
-    if (name === "PasswordException") throw new PdfOpenError("Deze PDF is beveiligd met een wachtwoord. Sla hem op zonder wachtwoord en probeer het opnieuw.");
+    if (name === "PasswordException")
+      throw new PdfOpenError("Deze PDF is beveiligd met een wachtwoord. Sla hem op zonder wachtwoord en probeer het opnieuw.");
     throw new PdfOpenError("Deze PDF kunnen we niet openen. Het bestand is mogelijk beschadigd of geen echte PDF.");
   }
 }

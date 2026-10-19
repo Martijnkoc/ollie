@@ -126,7 +126,8 @@ export function polygonsOverlap(a: readonly Point[], b: readonly Point[]) {
   if (a.some((p) => pointInPolygon(p, b) === "inside")) return true;
   if (b.some((p) => pointInPolygon(p, a) === "inside")) return true;
   // Edges that start and end on the other's boundary but run through its interior (e.g. collinear walls).
-  const midpoints = (poly: readonly Point[]) => poly.map((p, i) => ({ x: (p.x + poly[(i + 1) % poly.length]!.x) / 2, y: (p.y + poly[(i + 1) % poly.length]!.y) / 2 }));
+  const midpoints = (poly: readonly Point[]) =>
+    poly.map((p, i) => ({ x: (p.x + poly[(i + 1) % poly.length]!.x) / 2, y: (p.y + poly[(i + 1) % poly.length]!.y) / 2 }));
   if (midpoints(a).some((p) => pointInPolygon(p, b) === "inside")) return true;
   if (midpoints(b).some((p) => pointInPolygon(p, a) === "inside")) return true;
   // Same outline, or one fully on the other's boundary: compare centroids.

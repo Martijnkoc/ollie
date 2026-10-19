@@ -92,7 +92,13 @@ export async function listProjects(): Promise<ProjectSummary[]> {
     .map(parse)
     .filter((p): p is Project => p !== null)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((p) => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, address: p.address?.weergavenaam ?? null, paid: p.payment?.status === "paid" }));
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      updatedAt: p.updatedAt,
+      address: p.address?.weergavenaam ?? null,
+      paid: p.payment?.status === "paid",
+    }));
 }
 
 export async function findProjectByOrder(orderId: string): Promise<Project | null> {

@@ -18,7 +18,17 @@ function join(parts: TextItem[]): TextLine {
     text += p.text.trim();
   }
   const confs = parts.map((p) => p.confidence).filter((c): c is number => c !== null);
-  return { text, x: x1, y: y1, w: x2 - x1, h: y2 - y1, source: parts[0]!.source, confidence: confs.length ? Math.min(...confs) : null, vertical: false, parts };
+  return {
+    text,
+    x: x1,
+    y: y1,
+    w: x2 - x1,
+    h: y2 - y1,
+    source: parts[0]!.source,
+    confidence: confs.length ? Math.min(...confs) : null,
+    vertical: false,
+    parts,
+  };
 }
 
 /**
@@ -31,7 +41,9 @@ export function mergeLines(items: readonly TextItem[]): TextLine[] {
   const rows: { cy: number; h: number; items: TextItem[] }[] = [];
   for (const item of horizontal) {
     const cy = item.y + item.h / 2;
-    const row = rows.find((r) => Math.abs(r.cy - cy) < Math.min(r.h, item.h) * 0.5 && Math.max(r.h, item.h) / Math.max(1e-6, Math.min(r.h, item.h)) < 1.8);
+    const row = rows.find(
+      (r) => Math.abs(r.cy - cy) < Math.min(r.h, item.h) * 0.5 && Math.max(r.h, item.h) / Math.max(1e-6, Math.min(r.h, item.h)) < 1.8,
+    );
     if (row) {
       row.items.push(item);
       row.cy = row.items.reduce((s, i) => s + i.y + i.h / 2, 0) / row.items.length;

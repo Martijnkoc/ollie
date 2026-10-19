@@ -23,7 +23,16 @@ function fakeMollie() {
     if (headers.get("authorization") !== "Bearer test_abcdefghijklmnopqrstuvwxyz") return new Response("{}", { status: 401 });
     if (init?.method === "POST" && url.endsWith("/payments")) {
       const id = `tr_test${++n}`;
-      const p = { resource: "payment", id, mode: "test", status: "open", amount: body.amount, description: body.description, metadata: body.metadata, _links: { checkout: { href: `https://checkout.mollie.test/${id}` } } };
+      const p = {
+        resource: "payment",
+        id,
+        mode: "test",
+        status: "open",
+        amount: body.amount,
+        description: body.description,
+        metadata: body.metadata,
+        _links: { checkout: { href: `https://checkout.mollie.test/${id}` } },
+      };
       payments.set(id, p);
       return Response.json(p, { status: 201 });
     }
@@ -145,7 +154,20 @@ describe("betaalstatus", () => {
     const { store, deps } = setup();
     const o = await createOrder(REF, urls, deps);
     const stored = (await store.get(o.orderId)) as Order;
-    expect(Object.keys(stored).sort()).toEqual(["amountCents", "createdAt", "currency", "id", "mode", "paidAt", "projectRef", "provider", "providerPaymentId", "secretHash", "status", "updatedAt"]);
+    expect(Object.keys(stored).sort()).toEqual([
+      "amountCents",
+      "createdAt",
+      "currency",
+      "id",
+      "mode",
+      "paidAt",
+      "projectRef",
+      "provider",
+      "providerPaymentId",
+      "secretHash",
+      "status",
+      "updatedAt",
+    ]);
     expect(JSON.stringify(stored)).not.toContain(o.orderSecret);
   });
 
@@ -189,14 +211,18 @@ describe("configuratie", () => {
 
   it("echte betalingen in productie vereisen een database", () => {
     expect(storeConfig({ NODE_ENV: "production", MOLLIE_API_KEY: "live_abcdefghijklmnopqrstuvwxyz" }).kind).toBe("missing");
-    expect(storeConfig({ NODE_ENV: "production", MOLLIE_API_KEY: "live_abcdefghijklmnopqrstuvwxyz", DATABASE_URL: "postgres://x" }).kind).toBe("postgres");
+    expect(
+      storeConfig({ NODE_ENV: "production", MOLLIE_API_KEY: "live_abcdefghijklmnopqrstuvwxyz", DATABASE_URL: "postgres://x" }).kind,
+    ).toBe("postgres");
     expect(storeConfig({ NODE_ENV: "development" }).kind).toBe("file");
   });
 
   it("webhook-URL en basis-URL", () => {
     expect(webhookUrlFor("http://localhost:3000")).toBeNull();
     expect(webhookUrlFor("https://maatklaar.nl")).toBe("https://maatklaar.nl/api/betalingen/mollie");
-    expect(appUrl(new Request("http://localhost:3000/api/bestellingen"), { APP_URL: "https://maatklaar.nl/" })).toBe("https://maatklaar.nl");
+    expect(appUrl(new Request("http://localhost:3000/api/bestellingen"), { APP_URL: "https://maatklaar.nl/" })).toBe(
+      "https://maatklaar.nl",
+    );
   });
 });
 

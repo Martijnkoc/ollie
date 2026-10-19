@@ -10,8 +10,29 @@ const PAND = "0000100000000034";
 const POINT = { lon: 5.1214, lat: 52.0907 };
 
 const addresses = {
-  [ID]: { id: ID, type: "adres", weergavenaam: "Voorbeeldstraat 12, 1234AB Voorbeeldstad", straatnaam: "Voorbeeldstraat", huisnummer: 12, postcode: "1234AB", woonplaatsnaam: "Voorbeeldstad", gemeentenaam: "Voorbeeldgemeente", centroide_ll: `POINT(${POINT.lon} ${POINT.lat})`, adresseerbaarobject_id: VBO },
-  [ID2]: { id: ID2, type: "adres", weergavenaam: "Voorbeeldstraat 14, 1234AB Voorbeeldstad", straatnaam: "Voorbeeldstraat", huisnummer: 14, postcode: "1234AB", woonplaatsnaam: "Voorbeeldstad", centroide_ll: `POINT(${POINT.lon + 0.0004} ${POINT.lat})`, adresseerbaarobject_id: "0000010000000013" },
+  [ID]: {
+    id: ID,
+    type: "adres",
+    weergavenaam: "Voorbeeldstraat 12, 1234AB Voorbeeldstad",
+    straatnaam: "Voorbeeldstraat",
+    huisnummer: 12,
+    postcode: "1234AB",
+    woonplaatsnaam: "Voorbeeldstad",
+    gemeentenaam: "Voorbeeldgemeente",
+    centroide_ll: `POINT(${POINT.lon} ${POINT.lat})`,
+    adresseerbaarobject_id: VBO,
+  },
+  [ID2]: {
+    id: ID2,
+    type: "adres",
+    weergavenaam: "Voorbeeldstraat 14, 1234AB Voorbeeldstad",
+    straatnaam: "Voorbeeldstraat",
+    huisnummer: 14,
+    postcode: "1234AB",
+    woonplaatsnaam: "Voorbeeldstad",
+    centroide_ll: `POINT(${POINT.lon + 0.0004} ${POINT.lat})`,
+    adresseerbaarobject_id: "0000010000000013",
+  },
 };
 
 const json = (res, status, body) => {
@@ -38,7 +59,9 @@ createServer(async (req, res) => {
     if (q.includes("traag")) return setTimeout(() => json(res, 200, { response: { numFound: 0, docs: [] } }), 15000);
     if (q.includes("drukte")) return json(res, 429, {});
     if (q.includes("storing")) return json(res, 503, {});
-    const docs = q.includes("bestaatniet") ? [] : Object.values(addresses).map(({ id, weergavenaam, type }) => ({ id, weergavenaam, type }));
+    const docs = q.includes("bestaatniet")
+      ? []
+      : Object.values(addresses).map(({ id, weergavenaam, type }) => ({ id, weergavenaam, type }));
     return json(res, 200, { response: { numFound: docs.length, start: 0, docs } });
   }
   if (p === "/ls/lookup") {
@@ -49,7 +72,22 @@ createServer(async (req, res) => {
   // ---- BAG OGC API ----
   if (p === "/bag/collections/verblijfsobject/items") {
     const id = url.searchParams.get("identificatie");
-    const features = id === VBO ? [{ type: "Feature", properties: { identificatie: VBO, oppervlakte: 86, gebruiksdoel: "woonfunctie", status: "Verblijfsobject in gebruik", pand: [{ href: `${url.origin}/bag/collections/pand/items/x`, title: PAND }] }, geometry: { type: "Point", coordinates: [POINT.lon, POINT.lat] } }] : [];
+    const features =
+      id === VBO
+        ? [
+            {
+              type: "Feature",
+              properties: {
+                identificatie: VBO,
+                oppervlakte: 86,
+                gebruiksdoel: "woonfunctie",
+                status: "Verblijfsobject in gebruik",
+                pand: [{ href: `${url.origin}/bag/collections/pand/items/x`, title: PAND }],
+              },
+              geometry: { type: "Point", coordinates: [POINT.lon, POINT.lat] },
+            },
+          ]
+        : [];
     return json(res, 200, { type: "FeatureCollection", features });
   }
   if (p === "/bag/collections/pand/items") {
@@ -62,7 +100,16 @@ createServer(async (req, res) => {
       [POINT.lon - 2 * d, POINT.lat + d],
       [POINT.lon - 2 * d, POINT.lat - d],
     ];
-    return json(res, 200, { type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: PAND, bouwjaar: 1931, status: "Pand in gebruik" }, geometry: { type: "Polygon", coordinates: [ring] } }] });
+    return json(res, 200, {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { identificatie: PAND, bouwjaar: 1931, status: "Pand in gebruik" },
+          geometry: { type: "Polygon", coordinates: [ring] },
+        },
+      ],
+    });
   }
 
   // ---- Mollie Payments API (test double) ----
@@ -70,7 +117,17 @@ createServer(async (req, res) => {
     if (req.headers.authorization !== "Bearer test_e2emollieabcdefghijklmnop") return json(res, 401, {});
     const b = JSON.parse(await body(req));
     const id = `tr_e2e${++n}`;
-    const payment = { resource: "payment", id, mode: "test", status: "open", amount: b.amount, description: b.description, metadata: b.metadata, redirectUrl: b.redirectUrl, _links: { checkout: { href: `${url.origin}/mollie/checkout/${id}` } } };
+    const payment = {
+      resource: "payment",
+      id,
+      mode: "test",
+      status: "open",
+      amount: b.amount,
+      description: b.description,
+      metadata: b.metadata,
+      redirectUrl: b.redirectUrl,
+      _links: { checkout: { href: `${url.origin}/mollie/checkout/${id}` } },
+    };
     payments.set(id, payment);
     return json(res, 201, payment);
   }

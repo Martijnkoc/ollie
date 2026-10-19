@@ -7,7 +7,9 @@ export const metadata: Metadata = { title: "Contact" };
 export default function ContactPage() {
   return (
     <div className="container section-tight legal">
-      <DraftBanner checklist={["Contactgegevens invullen in src/config/site.ts (COMPANY)", "Reactietermijn voor vragen en verzoeken bepalen"]} />
+      <DraftBanner
+        checklist={["Contactgegevens invullen in src/config/site.ts (COMPANY)", "Reactietermijn voor vragen en verzoeken bepalen"]}
+      />
       <h1>Contact</h1>
       <p>Vragen over {BRAND.name}, je betaling of je gegevens?</p>
       <dl className="dl">
@@ -29,7 +31,8 @@ export default function ContactPage() {
         </dd>
       </dl>
       <p className="small muted" style={{ marginTop: 20 }}>
-        Noem bij vragen over een betaling je betaalreferentie (begint met ord_). Je plattegrond hebben wij niet; die staat alleen op je eigen apparaat.
+        Noem bij vragen over een betaling je betaalreferentie (begint met ord_). Je plattegrond hebben wij niet; die staat alleen op je
+        eigen apparaat.
       </p>
     </div>
   );

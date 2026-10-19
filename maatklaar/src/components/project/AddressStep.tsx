@@ -67,7 +67,11 @@ export function AddressStep({ project, update, goTo }: StepProps) {
     const a = await getJson(`/api/adres/${encodeURIComponent(s.id)}`);
     const address = addressSchema.safeParse(a.body.address);
     if (!a.ok || !address.success) {
-      steps[0] = { ...steps[0]!, state: "failed", detail: typeof a.body.error === "string" ? a.body.error : "Dit adres kunnen we nu niet ophalen." };
+      steps[0] = {
+        ...steps[0]!,
+        state: "failed",
+        detail: typeof a.body.error === "string" ? a.body.error : "Dit adres kunnen we nu niet ophalen.",
+      };
       setProgress([...steps]);
       return;
     }
@@ -86,10 +90,16 @@ export function AddressStep({ project, update, goTo }: StepProps) {
     const building = buildingSchema.safeParse(b.body.building);
     if (b.ok && building.success) {
       steps[1] = { ...steps[1]!, state: "done" };
-      const street = address.data.straat ? `${address.data.straat} ${address.data.huisnummer ?? ""}${address.data.huisletter ?? ""}`.trim() : null;
+      const street = address.data.straat
+        ? `${address.data.straat} ${address.data.huisnummer ?? ""}${address.data.huisletter ?? ""}`.trim()
+        : null;
       update((p) => ({ ...p, building: building.data, name: p.name === "Mijn woning" && street ? street : p.name }));
     } else {
-      steps[1] = { ...steps[1]!, state: "failed", detail: typeof b.body.error === "string" ? b.body.error : "Gebouwgegevens zijn nu niet beschikbaar. Je kunt gewoon verder." };
+      steps[1] = {
+        ...steps[1]!,
+        state: "failed",
+        detail: typeof b.body.error === "string" ? b.body.error : "Gebouwgegevens zijn nu niet beschikbaar. Je kunt gewoon verder.",
+      };
     }
     steps.push({ key: "klaar", label: "Klaar om je plattegrond toe te voegen", state: "done" });
     setProgress([...steps]);
@@ -168,7 +178,10 @@ export function AddressStep({ project, update, goTo }: StepProps) {
           </ul>
         )}
         <span className="hint" aria-live="polite">
-          {searching ? "Zoeken…" : (searchError ?? `Je zoekopdracht gaat via onze server naar de ${SOURCES.locatieserver} van het Kadaster. We bewaren of loggen hem niet.`)}
+          {searching
+            ? "Zoeken…"
+            : (searchError ??
+              `Je zoekopdracht gaat via onze server naar de ${SOURCES.locatieserver} van het Kadaster. We bewaren of loggen hem niet.`)}
         </span>
       </div>
 
@@ -223,8 +236,8 @@ export function AddressStep({ project, update, goTo }: StepProps) {
               <p className="small muted">Nog geen gebouwgegevens opgehaald.</p>
             )}
             <p className="notice small" style={{ marginTop: 8 }}>
-              De officiële gebruiksoppervlakte geldt voor de hele woning en wordt anders gemeten dan de vloer per kamer. Hij bepaalt dus niet de oppervlakte van je kamers;
-              die halen we uit je plattegrond.
+              De officiële gebruiksoppervlakte geldt voor de hele woning en wordt anders gemeten dan de vloer per kamer. Hij bepaalt dus
+              niet de oppervlakte van je kamers; die halen we uit je plattegrond.
             </p>
             {building?.notes.length ? (
               <ul className="small muted" style={{ margin: 0, paddingLeft: 18 }}>
@@ -238,10 +251,19 @@ export function AddressStep({ project, update, goTo }: StepProps) {
               {building ? `, opgehaald ${new Date(building.fetchedAt).toLocaleDateString("nl-NL")}` : ""}.
             </p>
             <label className="check small">
-              <input type="checkbox" checked={project.report.includeAddress} onChange={(e) => update((p) => ({ ...p, report: { ...p.report, includeAddress: e.target.checked } }))} />
+              <input
+                type="checkbox"
+                checked={project.report.includeAddress}
+                onChange={(e) => update((p) => ({ ...p, report: { ...p.report, includeAddress: e.target.checked } }))}
+              />
               <span>Zet mijn adres in het rapport (standaard uit)</span>
             </label>
-            <button type="button" className="btn btn-sm btn-ghost" style={{ justifySelf: "start" }} onClick={() => update((p) => ({ ...p, address: null, building: null, report: { ...p.report, includeAddress: false } }))}>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              style={{ justifySelf: "start" }}
+              onClick={() => update((p) => ({ ...p, address: null, building: null, report: { ...p.report, includeAddress: false } }))}
+            >
               Adres verwijderen
             </button>
           </div>

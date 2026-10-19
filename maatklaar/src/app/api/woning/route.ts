@@ -4,7 +4,10 @@ import { clientKey, json, logError } from "@/lib/server/http";
 import { allow } from "@/lib/server/ratelimit";
 
 const query = z.object({
-  vbo: z.string().regex(/^\d{16}$/).nullable(),
+  vbo: z
+    .string()
+    .regex(/^\d{16}$/)
+    .nullable(),
   lat: z.coerce.number().min(50).max(54).nullable(),
   lon: z.coerce.number().min(3).max(8).nullable(),
 });
@@ -17,7 +20,10 @@ export async function GET(req: Request) {
   if (!parsed.success) return json({ error: "Ongeldige aanvraag." }, 400);
   const { vbo, lat, lon } = parsed.data;
   try {
-    const building = await fetchBuilding({ verblijfsobjectId: vbo, point: lat !== null && lon !== null ? { lat, lon } : null }, { fetch, config: pdokConfig() });
+    const building = await fetchBuilding(
+      { verblijfsobjectId: vbo, point: lat !== null && lon !== null ? { lat, lon } : null },
+      { fetch, config: pdokConfig() },
+    );
     return json({ building });
   } catch (err) {
     if (err instanceof PdokError) return json({ error: PDOK_ERROR_TEXT[err.kind].message }, PDOK_ERROR_TEXT[err.kind].status);

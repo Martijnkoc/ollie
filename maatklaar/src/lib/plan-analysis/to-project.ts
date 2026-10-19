@@ -13,7 +13,9 @@ export function roomsFromAnalysis(result: AnalysisResult, page: number): Room[] 
     const auto = (mm: number, text: string): Length => ({ mm, status: "auto", source, sourceText: text });
     let room: Room;
     if (c.dims) {
-      notes.unshift(`Vorm aangenomen als rechthoek op basis van het label "${c.dims.text}". Pas de vorm aan als de ruimte niet rechthoekig is.`);
+      notes.unshift(
+        `Vorm aangenomen als rechthoek op basis van het label "${c.dims.text}". Pas de vorm aan als de ruimte niet rechthoekig is.`,
+      );
       room = newRoom(c.name, { kind: "rect", length: auto(c.dims.lengthMm, c.dims.text), width: auto(c.dims.widthMm, c.dims.text) });
     } else if (c.areaM2) {
       notes.unshift(`Alleen de oppervlakte "${c.areaM2.text}" staat bij deze ruimte.`);
@@ -26,10 +28,23 @@ export function roomsFromAnalysis(result: AnalysisResult, page: number): Room[] 
   });
 }
 
-export function windowsFromAnalysis(result: AnalysisResult, page: number, existing: readonly ProjectWindow[], make: (w: readonly ProjectWindow[], extra: Partial<ProjectWindow>) => ProjectWindow) {
+export function windowsFromAnalysis(
+  result: AnalysisResult,
+  page: number,
+  existing: readonly ProjectWindow[],
+  make: (w: readonly ProjectWindow[], extra: Partial<ProjectWindow>) => ProjectWindow,
+) {
   const out: ProjectWindow[] = [];
   for (const label of result.windowLabels) {
-    out.push(make([...existing, ...out], { origin: "auto", page, position: center(label.box), label: label.text, note: `Gevonden als label "${label.text}" op de tekening.` }));
+    out.push(
+      make([...existing, ...out], {
+        origin: "auto",
+        page,
+        position: center(label.box),
+        label: label.text,
+        note: `Gevonden als label "${label.text}" op de tekening.`,
+      }),
+    );
   }
   return out;
 }
@@ -52,7 +67,8 @@ export function scaleFromNotation(result: AnalysisResult, page: number, kind: "p
 
 export function analysisSummary(result: AnalysisResult, page: number, ranAt: Date): PageAnalysis {
   const findings: string[] = [];
-  if (result.rooms.length) findings.push(`${result.rooms.length} ${result.rooms.length === 1 ? "mogelijke ruimte" : "mogelijke ruimtes"} gevonden.`);
+  if (result.rooms.length)
+    findings.push(`${result.rooms.length} ${result.rooms.length === 1 ? "mogelijke ruimte" : "mogelijke ruimtes"} gevonden.`);
   const withDims = result.rooms.filter((r) => r.dims).length;
   if (withDims) findings.push(`${withDims} met lengte × breedte op de tekening.`);
   if (result.scaleNotation) findings.push(`Schaalnotatie ${result.scaleNotation.text} gevonden.`);
@@ -76,4 +92,3 @@ export function analysisSummary(result: AnalysisResult, page: number, ranAt: Dat
     lengthLabels: result.lengthLabels.slice(0, 300).map((l) => ({ mm: l.mm, text: l.text.slice(0, 40), box: l.box })),
   };
 }
-

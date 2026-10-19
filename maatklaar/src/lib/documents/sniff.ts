@@ -5,7 +5,16 @@ export type FileKind = "pdf" | "png" | "jpeg" | "webp";
 const ascii = (bytes: Uint8Array, start: number, length: number) => String.fromCharCode(...bytes.subarray(start, start + length));
 
 export function sniffKind(bytes: Uint8Array): FileKind | null {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && ascii(bytes, 1, 3) === "PNG" && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return "png";
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    ascii(bytes, 1, 3) === "PNG" &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  )
+    return "png";
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpeg";
   if (bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 4) === "WEBP") return "webp";
   // The PDF header may be preceded by a little junk; readers accept it within the first 1024 bytes.

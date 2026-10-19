@@ -17,8 +17,8 @@ export default function Home() {
             <p className="eyebrow">Voor verhuizen, verbouwen en opnieuw inrichten</p>
             <h1>{BRAND.tagline}</h1>
             <p className="hero-lead">
-              Bereken gratis je vloer per kamer. Ontvang voor {PRICE.label} een compleet meet- en bestelrapport voor plinten en raamdecoratie. Geen afspraak, geen
-              abonnement.
+              Bereken gratis je vloer per kamer. Ontvang voor {PRICE.label} een compleet meet- en bestelrapport voor plinten en
+              raamdecoratie. Geen afspraak, geen abonnement.
             </p>
             <div className="hero-cta">
               <Link href="/project/nieuw" className="btn btn-primary btn-lg">
@@ -65,8 +65,8 @@ export default function Home() {
               </p>
             </div>
             <figcaption className="visually-hidden">
-              Voorbeeldweergave: {included.length} geselecteerde ruimtes, samen {formatM2(floor.selectedNetM2)}, met {formatPercent(EXAMPLE_WASTE)} snijverlies{" "}
-              {formatM2(floor.requiredM2 ?? 0)}.
+              Voorbeeldweergave: {included.length} geselecteerde ruimtes, samen {formatM2(floor.selectedNetM2)}, met{" "}
+              {formatPercent(EXAMPLE_WASTE)} snijverlies {formatM2(floor.requiredM2 ?? 0)}.
             </figcaption>
           </figure>
         </div>
@@ -83,20 +83,22 @@ export default function Home() {
             <li>
               <h3>Adres invoeren</h3>
               <p className="muted">
-                We zoeken je woning op in de officiële registratie (BAG) en tonen wat daar bekend is, zoals bouwjaar en gebruiksoppervlakte. Een adres is optioneel.
+                We zoeken je woning op in de officiële registratie (BAG) en tonen wat daar bekend is, zoals bouwjaar en gebruiksoppervlakte.
+                Een adres is optioneel.
               </p>
             </li>
             <li>
               <h3>Plattegrond uploaden en controleren</h3>
               <p className="muted">
-                Upload de PDF of foto van je makelaar of bouwtekening. We zoeken kamernamen, maten en de schaal. Jij bevestigt of corrigeert elke kamer, of tekent hem zelf.
+                Upload de PDF of foto van je makelaar of bouwtekening. We zoeken kamernamen, maten en de schaal. Jij bevestigt of corrigeert
+                elke kamer, of tekent hem zelf.
               </p>
             </li>
             <li>
               <h3>Gratis berekenen of volledig rapport</h3>
               <p className="muted">
-                Zie direct de vloer per kamer en het totaal met snijverlies. Voor {PRICE.label} krijg je er plinten, een raamregister en een meetblad voor raamdecoratie bij, in
-                één PDF.
+                Zie direct de vloer per kamer en het totaal met snijverlies. Voor {PRICE.label} krijg je er plinten, een raamregister en een
+                meetblad voor raamdecoratie bij, in één PDF.
               </p>
             </li>
           </ol>
@@ -109,8 +111,8 @@ export default function Home() {
             <p className="eyebrow">Het rapport</p>
             <h2>Een rapport dat je meeneemt naar de winkel</h2>
             <p className="muted">
-              Per ruimte de vloer, per wand de plinten, per raam je ruwe maten en wat er nog gemeten moet worden. Met een winkelchecklist, de gebruikte aannames en bij elk
-              getal waar het vandaan komt.
+              Per ruimte de vloer, per wand de plinten, per raam je ruwe maten en wat er nog gemeten moet worden. Met een winkelchecklist,
+              de gebruikte aannames en bij elk getal waar het vandaan komt.
             </p>
             <ul className="ticks">
               <li>Vloertabel met snijverlies en pakken (als je de pakinhoud opgeeft)</li>
@@ -227,7 +229,8 @@ export default function Home() {
               </Link>
               <p className="tiny muted" style={{ margin: 0 }}>
                 {PRICE.vatNote}
-                {PRICE.vatNoteVerified ? "" : " (concept: btw-behandeling wordt vóór de lancering bevestigd)"} Betalen met iDEAL en andere methoden via Mollie.
+                {PRICE.vatNoteVerified ? "" : " (concept: btw-behandeling wordt vóór de lancering bevestigd)"} Betalen met iDEAL en andere
+                methoden via Mollie.
               </p>
             </article>
           </div>
@@ -240,8 +243,8 @@ export default function Home() {
             <p className="eyebrow">Eerlijk over nauwkeurigheid</p>
             <h2>We bluffen niet over maten</h2>
             <p className="muted">
-              Een plattegrond van bovenaf vertelt niet hoe hoog je ramen zijn, en een adres onthult geen kamers. Daarom labelen we elk getal, vullen we nooit zelf iets in en
-              zeggen we het als iets gemeten moet worden.
+              Een plattegrond van bovenaf vertelt niet hoe hoog je ramen zijn, en een adres onthult geen kamers. Daarom labelen we elk
+              getal, vullen we nooit zelf iets in en zeggen we het als iets gemeten moet worden.
             </p>
           </div>
           <div className="status-legend">
@@ -275,7 +278,9 @@ export default function Home() {
       <section className="section">
         <div className="container" style={{ textAlign: "center" }}>
           <h2>Bespaar jezelf een uur meet- en rekenwerk</h2>
-          <p className="muted">Begin met je adres of direct met je plattegrond. Je kunt altijd stoppen; je project blijft op je eigen apparaat.</p>
+          <p className="muted">
+            Begin met je adres of direct met je plattegrond. Je kunt altijd stoppen; je project blijft op je eigen apparaat.
+          </p>
           <Link href="/project/nieuw" className="btn btn-primary btn-lg">
             Begin gratis met mijn woning
           </Link>

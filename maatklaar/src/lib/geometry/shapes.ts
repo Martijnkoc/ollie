@@ -13,7 +13,14 @@ export type ShapeGeometry = {
   issues: string[];
 };
 
-const none = (status: Status, issues: string[]): ShapeGeometry => ({ polygonMm: null, areaMm2: null, edgesMm: null, perimeterMm: null, status, issues });
+const none = (status: Status, issues: string[]): ShapeGeometry => ({
+  polygonMm: null,
+  areaMm2: null,
+  edgesMm: null,
+  perimeterMm: null,
+  status,
+  issues,
+});
 
 function fromPolygon(points: Point[], status: Status, issues: string[] = []): ShapeGeometry {
   const problems = validatePolygon(points);

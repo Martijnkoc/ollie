@@ -71,7 +71,8 @@ export function UploadStep({ project, update, goTo }: StepProps) {
             Voeg je plattegrond toe
           </h2>
           <p className="muted" style={{ margin: 0 }}>
-            Upload de plattegrond die je bijvoorbeeld van de makelaar hebt ontvangen. Een bouwtekening met zichtbare maatvoering werkt het best.
+            Upload de plattegrond die je bijvoorbeeld van de makelaar hebt ontvangen. Een bouwtekening met zichtbare maatvoering werkt het
+            best.
           </p>
         </div>
       </div>
@@ -97,7 +98,8 @@ export function UploadStep({ project, update, goTo }: StepProps) {
         </svg>
         <strong>Sleep je bestand hierheen of kies een bestand</strong>
         <span className="small muted">
-          {ACCEPTED_FILES.label} · maximaal {Math.round(LIMITS.maxUploadBytes / 1024 / 1024)} MB · PDF tot {LIMITS.maxPdfPages} pagina&apos;s
+          {ACCEPTED_FILES.label} · maximaal {Math.round(LIMITS.maxUploadBytes / 1024 / 1024)} MB · PDF tot {LIMITS.maxPdfPages}{" "}
+          pagina&apos;s
         </span>
         <span className="btn btn-sm">Bestand kiezen</span>
         <input
@@ -119,14 +121,15 @@ export function UploadStep({ project, update, goTo }: StepProps) {
         <li>Foto of scan van een tekening</li>
       </ul>
       <p className="small muted" style={{ margin: 0 }}>
-        Niet elk bestand is automatisch goed te lezen. Je kunt alles controleren en aanpassen, of de kamers zelf invoeren. Gebruik alleen een bestand dat je mag gebruiken.
+        Niet elk bestand is automatisch goed te lezen. Je kunt alles controleren en aanpassen, of de kamers zelf invoeren. Gebruik alleen
+        een bestand dat je mag gebruiken.
       </p>
 
       <label className="check small">
         <input type="checkbox" checked={keepOnDevice} onChange={(e) => setKeepOnDevice(e.target.checked)} />
         <span>
-          Bewaar het bestand op dit apparaat, zodat je na verversen of betalen verder kunt. Het gaat nooit naar onze server en wordt na {LIMITS.projectExpiryDays} dagen
-          zonder wijzigingen gewist.
+          Bewaar het bestand op dit apparaat, zodat je na verversen of betalen verder kunt. Het gaat nooit naar onze server en wordt na{" "}
+          {LIMITS.projectExpiryDays} dagen zonder wijzigingen gewist.
         </span>
       </label>
 
@@ -161,7 +164,9 @@ export function UploadStep({ project, update, goTo }: StepProps) {
                   <span className="progress-dot" aria-hidden="true" />
                   <span>
                     {STAGE_LABEL[analysis.stage.stage]}
-                    {analysis.stage.stage === "ocr" && analysis.stage.fraction !== undefined ? ` — ${Math.round(analysis.stage.fraction * 100)}%` : ""}
+                    {analysis.stage.stage === "ocr" && analysis.stage.fraction !== undefined
+                      ? ` — ${Math.round(analysis.stage.fraction * 100)}%`
+                      : ""}
                   </span>
                 </li>
               )}

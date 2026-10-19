@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PdokError, fetchBuilding, lookupAddress, normalizeQuery, parseWktPoint, suggestAddresses, type PdokConfig } from "@/lib/address/pdok";
+import {
+  PdokError,
+  fetchBuilding,
+  lookupAddress,
+  normalizeQuery,
+  parseWktPoint,
+  suggestAddresses,
+  type PdokConfig,
+} from "@/lib/address/pdok";
 import { GET as zoek } from "@/app/api/adres/zoek/route";
 import { GET as woning } from "@/app/api/woning/route";
 import { resetRateLimits } from "@/lib/server/ratelimit";
@@ -62,9 +70,15 @@ describe("Locatieserver", () => {
   });
 
   it("429 en 5xx worden herkend", async () => {
-    await expect(suggestAddresses("damrak", { fetch: fakeFetch(() => ok({}, 429)).fetch, config })).rejects.toMatchObject({ kind: "rate-limit" });
-    await expect(suggestAddresses("damrak", { fetch: fakeFetch(() => ok({}, 503)).fetch, config })).rejects.toMatchObject({ kind: "unavailable" });
-    await expect(suggestAddresses("damrak", { fetch: fakeFetch(() => new Response("<html>", { status: 200 })).fetch, config })).rejects.toBeInstanceOf(PdokError);
+    await expect(suggestAddresses("damrak", { fetch: fakeFetch(() => ok({}, 429)).fetch, config })).rejects.toMatchObject({
+      kind: "rate-limit",
+    });
+    await expect(suggestAddresses("damrak", { fetch: fakeFetch(() => ok({}, 503)).fetch, config })).rejects.toMatchObject({
+      kind: "unavailable",
+    });
+    await expect(
+      suggestAddresses("damrak", { fetch: fakeFetch(() => new Response("<html>", { status: 200 })).fetch, config }),
+    ).rejects.toBeInstanceOf(PdokError);
   });
 
   it("lookup leest velden en het punt; een ongeldige id wordt niet opgevraagd", async () => {
@@ -87,7 +101,13 @@ describe("Locatieserver", () => {
       ),
     );
     const a = await lookupAddress(id, { fetch, config });
-    expect(a).toMatchObject({ huisnummer: 12, huisletter: "A", toevoeging: null, point: { lon: 4.8952, lat: 52.3702 }, verblijfsobjectId: VBO });
+    expect(a).toMatchObject({
+      huisnummer: 12,
+      huisletter: "A",
+      toevoeging: null,
+      point: { lon: 4.8952, lat: 52.3702 },
+      verblijfsobjectId: VBO,
+    });
     expect(await lookupAddress("adr-x", { fetch, config })).toBeNull();
     expect(calls).toHaveLength(1);
     expect(parseWktPoint("POINT(155000 463000)")).toBeNull(); // RD coordinates are not WGS84
@@ -100,13 +120,42 @@ describe("BAG OGC API", () => {
   it("haalt oppervlakte, bouwjaar en contour op en controleert de identificatie", async () => {
     const { fetch } = fakeFetch((url) => {
       if (url.pathname.endsWith("/verblijfsobject/items"))
-        return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: VBO, oppervlakte: 85, gebruiksdoel: "woonfunctie", status: "Verblijfsobject in gebruik", pand: [{ href: `https://pdok.test/bag/collections/pand/items/x`, title: PAND }] }, geometry: null }] });
+        return ok({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: {
+                identificatie: VBO,
+                oppervlakte: 85,
+                gebruiksdoel: "woonfunctie",
+                status: "Verblijfsobject in gebruik",
+                pand: [{ href: `https://pdok.test/bag/collections/pand/items/x`, title: PAND }],
+              },
+              geometry: null,
+            },
+          ],
+        });
       if (url.pathname.endsWith("/pand/items"))
-        return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: PAND, bouwjaar: 1932, status: "Pand in gebruik" }, geometry: { type: "Polygon", coordinates: [square(point.lon, point.lat)] } }] });
+        return ok({
+          type: "FeatureCollection",
+          features: [
+            {
+              type: "Feature",
+              properties: { identificatie: PAND, bouwjaar: 1932, status: "Pand in gebruik" },
+              geometry: { type: "Polygon", coordinates: [square(point.lon, point.lat)] },
+            },
+          ],
+        });
       return ok({}, 404);
     });
     const b = await fetchBuilding({ verblijfsobjectId: VBO, point }, { fetch, config });
-    expect(b.verblijfsobject).toEqual({ id: VBO, oppervlakteM2: 85, gebruiksdoelen: ["woonfunctie"], status: "Verblijfsobject in gebruik" });
+    expect(b.verblijfsobject).toEqual({
+      id: VBO,
+      oppervlakteM2: 85,
+      gebruiksdoelen: ["woonfunctie"],
+      status: "Verblijfsobject in gebruik",
+    });
     expect(b.pand).toMatchObject({ id: PAND, bouwjaar: 1932 });
     expect(b.pand!.outline![0]).toHaveLength(5);
     expect(b.notes.join(" ")).toMatch(/hele gebouw/);
@@ -124,10 +173,20 @@ describe("BAG OGC API", () => {
   it("valt terug op een ruimtelijke zoekvraag rond het adrespunt", async () => {
     const { fetch, calls } = fakeFetch((url) => {
       if (url.pathname.endsWith("/verblijfsobject/items")) {
-        if (url.searchParams.has("bbox")) return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: VBO, oppervlakte: 61 } }] });
+        if (url.searchParams.has("bbox"))
+          return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: VBO, oppervlakte: 61 } }] });
         return ok({ type: "FeatureCollection", features: [] });
       }
-      return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: PAND, bouwjaar: "2004" }, geometry: { type: "Polygon", coordinates: [square(point.lon, point.lat)] } }] });
+      return ok({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { identificatie: PAND, bouwjaar: "2004" },
+            geometry: { type: "Polygon", coordinates: [square(point.lon, point.lat)] },
+          },
+        ],
+      });
     });
     const b = await fetchBuilding({ verblijfsobjectId: VBO, point }, { fetch, config });
     expect(b.verblijfsobject?.oppervlakteM2).toBe(61);
@@ -137,8 +196,31 @@ describe("BAG OGC API", () => {
 
   it("tekent geen contour in een ander coördinatenstelsel", async () => {
     const { fetch } = fakeFetch((url) => {
-      if (url.pathname.endsWith("/verblijfsobject/items")) return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: VBO, pand_identificatie: PAND } }] });
-      return ok({ type: "FeatureCollection", features: [{ type: "Feature", properties: { identificatie: PAND }, geometry: { type: "Polygon", coordinates: [[[121000, 487000], [121010, 487000], [121010, 487010], [121000, 487000]]] } }] });
+      if (url.pathname.endsWith("/verblijfsobject/items"))
+        return ok({
+          type: "FeatureCollection",
+          features: [{ type: "Feature", properties: { identificatie: VBO, pand_identificatie: PAND } }],
+        });
+      return ok({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { identificatie: PAND },
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [121000, 487000],
+                  [121010, 487000],
+                  [121010, 487010],
+                  [121000, 487000],
+                ],
+              ],
+            },
+          },
+        ],
+      });
     });
     const b = await fetchBuilding({ verblijfsobjectId: VBO, point }, { fetch, config });
     expect(b.pand?.id).toBe(PAND);
@@ -149,7 +231,11 @@ describe("BAG OGC API", () => {
 
 describe("API-routes", () => {
   it("adres zoeken: time-out wordt 504 met Nederlandse uitleg", async () => {
-    vi.stubGlobal("fetch", (async (_: string, init: RequestInit) => new Promise((_r, reject) => init.signal?.addEventListener("abort", () => reject(init.signal!.reason)))) as unknown as typeof fetch);
+    vi.stubGlobal(
+      "fetch",
+      (async (_: string, init: RequestInit) =>
+        new Promise((_r, reject) => init.signal?.addEventListener("abort", () => reject(init.signal!.reason)))) as unknown as typeof fetch,
+    );
     vi.stubEnv("PDOK_TIMEOUT_MS", "50");
     const res = await zoek(new Request("http://localhost/api/adres/zoek?q=damrak"));
     expect(res.status).toBe(504);
@@ -161,7 +247,9 @@ describe("API-routes", () => {
   it("adres zoeken: begrenst het aantal verzoeken", async () => {
     vi.stubGlobal("fetch", (async () => ok(docs([]))) as unknown as typeof fetch);
     let last = 200;
-    for (let i = 0; i < 61; i++) last = (await zoek(new Request("http://localhost/api/adres/zoek?q=damrak", { headers: { "x-forwarded-for": "203.0.113.9" } }))).status;
+    for (let i = 0; i < 61; i++)
+      last = (await zoek(new Request("http://localhost/api/adres/zoek?q=damrak", { headers: { "x-forwarded-for": "203.0.113.9" } })))
+        .status;
     expect(last).toBe(429);
   });
 

@@ -1,4 +1,12 @@
-import { isNotToScale, isWindowLabel, matchRoomName, parseArea, parseDimensionPair, parseScaleNotation, parseSingleLength } from "./classify";
+import {
+  isNotToScale,
+  isWindowLabel,
+  matchRoomName,
+  parseArea,
+  parseDimensionPair,
+  parseScaleNotation,
+  parseSingleLength,
+} from "./classify";
 import { mergeLines, type TextLine } from "./lines";
 import { center, type Box, type LengthLabel, type RoomCandidate, type ScaleNotation, type TextItem } from "./types";
 
@@ -49,7 +57,10 @@ function pair(roomLines: TextLine[], measurements: Measurement[]) {
     const second = candidates[1];
     if (second && second.d < best.d * 1.35) {
       for (const c of [best, second]) {
-        ambiguous.set(c.r, [...(ambiguous.get(c.r) ?? []), `Het label "${m.line.text}" ligt tussen twee ruimtes en is niet automatisch gekoppeld.`]);
+        ambiguous.set(c.r, [
+          ...(ambiguous.get(c.r) ?? []),
+          `Het label "${m.line.text}" ligt tussen twee ruimtes en is niet automatisch gekoppeld.`,
+        ]);
       }
       continue;
     }
@@ -61,7 +72,9 @@ function pair(roomLines: TextLine[], measurements: Measurement[]) {
 function pickClosest(room: TextLine, ms: Measurement[]): { m: Measurement | null; ambiguous: boolean } {
   if (!ms.length) return { m: null, ambiguous: false };
   const rc = center(room);
-  const sorted = [...ms].sort((a, b) => Math.hypot(center(a.line).x - rc.x, center(a.line).y - rc.y) - Math.hypot(center(b.line).x - rc.x, center(b.line).y - rc.y));
+  const sorted = [...ms].sort(
+    (a, b) => Math.hypot(center(a.line).x - rc.x, center(a.line).y - rc.y) - Math.hypot(center(b.line).x - rc.x, center(b.line).y - rc.y),
+  );
   if (sorted.length > 1) {
     const d0 = Math.hypot(center(sorted[0]!.line).x - rc.x, center(sorted[0]!.line).y - rc.y);
     const d1 = Math.hypot(center(sorted[1]!.line).x - rc.x, center(sorted[1]!.line).y - rc.y);
@@ -166,7 +179,10 @@ export function analyzeText(
 
     const linked = assigned.get(line) ?? [];
     if (!dims) {
-      const pick = pickClosest(line, linked.filter((m) => m.kind === "dims"));
+      const pick = pickClosest(
+        line,
+        linked.filter((m) => m.kind === "dims"),
+      );
       if (pick.ambiguous) notes.push("Bij deze ruimte staan meerdere maatlabels; kies zelf de juiste maten.");
       if (pick.m) {
         dims = parseDimensionPair(pick.m.line.text);
@@ -175,7 +191,10 @@ export function analyzeText(
       }
     }
     if (!areaM2) {
-      const pick = pickClosest(line, linked.filter((m) => m.kind === "area"));
+      const pick = pickClosest(
+        line,
+        linked.filter((m) => m.kind === "area"),
+      );
       if (pick.m) {
         areaM2 = parseArea(pick.m.line.text);
         if (pairing === "geen") pairing = "dichtbij";
@@ -196,11 +215,15 @@ export function analyzeText(
     if (dims && areaM2) {
       const rect = (dims.lengthMm * dims.widthMm) / 1_000_000;
       if (Math.abs(rect - areaM2.value) / areaM2.value > 0.05) {
-        notes.push(`Op de tekening staat ${areaM2.text}, maar ${dims.text} geeft een andere oppervlakte. Mogelijk is de ruimte niet rechthoekig.`);
+        notes.push(
+          `Op de tekening staat ${areaM2.text}, maar ${dims.text} geeft een andere oppervlakte. Mogelijk is de ruimte niet rechthoekig.`,
+        );
       }
     }
 
-    const duplicate = rooms.find((r) => r.name === match.name && Math.hypot(center(r.box).x - center(line).x, center(r.box).y - center(line).y) < line.h * 3);
+    const duplicate = rooms.find(
+      (r) => r.name === match.name && Math.hypot(center(r.box).x - center(line).x, center(r.box).y - center(line).y) < line.h * 3,
+    );
     if (duplicate) {
       if (!duplicate.dims && dims) Object.assign(duplicate, { dims, pairing });
       continue;
@@ -217,7 +240,8 @@ export function analyzeText(
     roomCount: rooms.length,
     measurementCount: measurements.length + lengthLabels.length,
   });
-  if (notToScale) reasons.push('Op de tekening staat dat hij niet op schaal is. Gebruik maatlabels of kalibreer met een maat die je zelf hebt gemeten.');
+  if (notToScale)
+    reasons.push("Op de tekening staat dat hij niet op schaal is. Gebruik maatlabels of kalibreer met een maat die je zelf hebt gemeten.");
 
   // With insufficient quality nothing exact is generated: names stay as suggestions, values are dropped.
   if (quality === "onvoldoende") {
@@ -228,5 +252,17 @@ export function analyzeText(
     }
   }
 
-  return { method: ctx.method, lines, rooms, lengthLabels, areaLabels, windowLabels, scaleNotation, notToScale, quality, reasons, meanConfidence };
+  return {
+    method: ctx.method,
+    lines,
+    rooms,
+    lengthLabels,
+    areaLabels,
+    windowLabels,
+    scaleNotation,
+    notToScale,
+    quality,
+    reasons,
+    meanConfidence,
+  };
 }

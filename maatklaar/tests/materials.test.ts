@@ -101,7 +101,15 @@ describe("plinten", () => {
   });
 
   it("marge en handelslengtes alleen als opgegeven", () => {
-    const input = { id: "w", name: "Woonkamer", edgesMm: rect, geometryStatus: "derived" as const, wallsWithoutPlinth: [], doors: [], obstaclePerimetersMm: [] };
+    const input = {
+      id: "w",
+      name: "Woonkamer",
+      edgesMm: rect,
+      geometryStatus: "derived" as const,
+      wallsWithoutPlinth: [],
+      doors: [],
+      obstaclePerimetersMm: [],
+    };
     const noLength = computePlinths([input], { marginPercent: 10, pieceLengthMm: null });
     expect(noLength.requiredMm).toBeCloseTo(20_900, 6);
     expect(noLength.piecesByTotal).toBeNull();

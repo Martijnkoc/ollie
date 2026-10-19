@@ -11,7 +11,13 @@ export const PRODUCT_LABELS: Record<ProductFamily, string> = {
   onbekend: "Ik weet het nog niet",
 };
 
-export const PRODUCT_SHORT: Record<ProductFamily, string> = { gordijn: "Gordijn", rolgordijn: "Rolgordijn", plisse: "Plissé", jaloezie: "Jaloezie", onbekend: "Product nog niet gekozen" };
+export const PRODUCT_SHORT: Record<ProductFamily, string> = {
+  gordijn: "Gordijn",
+  rolgordijn: "Rolgordijn",
+  plisse: "Plissé",
+  jaloezie: "Jaloezie",
+  onbekend: "Product nog niet gekozen",
+};
 
 export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "onbekend"] as const;
 export type Mounting = (typeof MOUNTINGS)[number];
@@ -24,7 +30,13 @@ export const MOUNTING_LABELS: Record<Mounting, string> = {
   onbekend: "Weet ik nog niet",
 };
 
-export const MOUNTING_SHORT: Record<Mounting, string> = { "in-de-dag": "in de dag", "op-de-dag": "op de dag", plafond: "rail aan plafond", wand: "rail/roede aan wand", onbekend: "montage nog niet gekozen" };
+export const MOUNTING_SHORT: Record<Mounting, string> = {
+  "in-de-dag": "in de dag",
+  "op-de-dag": "op de dag",
+  plafond: "rail aan plafond",
+  wand: "rail/roede aan wand",
+  onbekend: "montage nog niet gekozen",
+};
 
 /** Which mountings make sense for a product family. Curtains hang from a rail; the others sit in or on the opening. */
 export function mountingsFor(family: ProductFamily): Mounting[] {
@@ -80,9 +92,18 @@ export type CheckKey = (typeof CHECK_KEYS)[number];
 export const CHECK_INFO: Record<CheckKey, { question: string; why: string }> = {
   grepen: { question: "Steken er raamgrepen of klinken uit?", why: "Een greep kan een rolgordijn, plissé of jaloezie in de dag raken." },
   vensterbank: { question: "Is er een vensterbank die uitsteekt of in de weg zit?", why: "Bepaalt waar het product kan eindigen." },
-  radiator: { question: "Staat er een radiator of convector onder of naast het raam?", why: "Stof of lamellen mogen de warmteafgifte niet blokkeren." },
-  ventilatierooster: { question: "Zit er een ventilatierooster in of boven het kozijn?", why: "Het rooster moet vrij blijven en kan montage boven in de dag hinderen." },
-  raam_openen: { question: "Moet het raam kunnen openen of kantelen terwijl het product hangt?", why: "Een draai-kiepraam kan tegen het product slaan." },
+  radiator: {
+    question: "Staat er een radiator of convector onder of naast het raam?",
+    why: "Stof of lamellen mogen de warmteafgifte niet blokkeren.",
+  },
+  ventilatierooster: {
+    question: "Zit er een ventilatierooster in of boven het kozijn?",
+    why: "Het rooster moet vrij blijven en kan montage boven in de dag hinderen.",
+  },
+  raam_openen: {
+    question: "Moet het raam kunnen openen of kantelen terwijl het product hangt?",
+    why: "Een draai-kiepraam kan tegen het product slaan.",
+  },
 };
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Gebruik JJJJ-MM-DD");
@@ -134,17 +155,23 @@ export const measurementRuleSetSchema = z
   })
   .superRefine((rule, ctx) => {
     if (rule.kind === "supplier") {
-      if (!rule.source.url) ctx.addIssue({ code: "custom", message: "Een leveranciersregel heeft een bron-URL nodig.", path: ["source", "url"] });
-      if (!rule.manufacturer) ctx.addIssue({ code: "custom", message: "Een leveranciersregel noemt de fabrikant.", path: ["manufacturer"] });
-      if (!rule.source.retrievedAt) ctx.addIssue({ code: "custom", message: "Leg vast wanneer de bron is geraadpleegd.", path: ["source", "retrievedAt"] });
+      if (!rule.source.url)
+        ctx.addIssue({ code: "custom", message: "Een leveranciersregel heeft een bron-URL nodig.", path: ["source", "url"] });
+      if (!rule.manufacturer)
+        ctx.addIssue({ code: "custom", message: "Een leveranciersregel noemt de fabrikant.", path: ["manufacturer"] });
+      if (!rule.source.retrievedAt)
+        ctx.addIssue({ code: "custom", message: "Leg vast wanneer de bron is geraadpleegd.", path: ["source", "retrievedAt"] });
     }
     if (rule.kind === "protocol") {
-      if (rule.conversion.kind !== "none") ctx.addIssue({ code: "custom", message: "Een algemeen protocol rekent geen bestelmaten uit.", path: ["conversion"] });
-      if (rule.minDepthMm !== null) ctx.addIssue({ code: "custom", message: "Een minimale diepte is productspecifiek.", path: ["minDepthMm"] });
+      if (rule.conversion.kind !== "none")
+        ctx.addIssue({ code: "custom", message: "Een algemeen protocol rekent geen bestelmaten uit.", path: ["conversion"] });
+      if (rule.minDepthMm !== null)
+        ctx.addIssue({ code: "custom", message: "Een minimale diepte is productspecifiek.", path: ["minDepthMm"] });
     }
     if (rule.conversion.kind === "formula") {
       for (const key of [...rule.conversion.width.of, ...rule.conversion.height.of]) {
-        if (!rule.required.includes(key)) ctx.addIssue({ code: "custom", message: `Formule gebruikt ${key}, maar die maat is niet verplicht.`, path: ["conversion"] });
+        if (!rule.required.includes(key))
+          ctx.addIssue({ code: "custom", message: `Formule gebruikt ${key}, maar die maat is niet verplicht.`, path: ["conversion"] });
       }
     }
   });

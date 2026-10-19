@@ -9,7 +9,19 @@ import { MISSING, type Length } from "@/lib/projects/schema";
  * Length field in metres (rooms) or millimetres (windows). Typing a value means the user states it, so it is
  * stored as confirmed. A recognised value shows where it came from and can be accepted with one click.
  */
-export function LengthInput({ label, value, onChange, unit = "m", hint }: { label: string; value: Length; onChange: (l: Length) => void; unit?: "m" | "mm"; hint?: string }) {
+export function LengthInput({
+  label,
+  value,
+  onChange,
+  unit = "m",
+  hint,
+}: {
+  label: string;
+  value: Length;
+  onChange: (l: Length) => void;
+  unit?: "m" | "mm";
+  hint?: string;
+}) {
   const id = useId();
   const toText = (mm: number | null) => (mm === null ? "" : unit === "m" ? mmToMetresInput(mm) : String(Math.round(mm)));
   const [text, setText] = useState(toText(value.mm));
@@ -61,12 +73,19 @@ export function LengthInput({ label, value, onChange, unit = "m", hint }: { labe
       </div>
       <span id={`${id}-hint`} className="hint">
         {invalid ? (
-          <span style={{ color: "var(--danger)" }}>{unit === "m" ? "Gebruik meters, bijvoorbeeld 4,25" : "Gebruik hele millimeters, bijvoorbeeld 1250"}</span>
+          <span style={{ color: "var(--danger)" }}>
+            {unit === "m" ? "Gebruik meters, bijvoorbeeld 4,25" : "Gebruik hele millimeters, bijvoorbeeld 1250"}
+          </span>
         ) : value.status === "auto" ? (
           <span className="row" style={{ gap: 6 }}>
             <StatusBadge status="auto" />
             {value.sourceText ? <span>uit &ldquo;{value.sourceText}&rdquo;</span> : null}
-            <button type="button" className="btn btn-sm btn-ghost" style={{ minHeight: 28, padding: "2px 8px" }} onClick={() => onChange({ ...value, status: "confirmed" })}>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              style={{ minHeight: 28, padding: "2px 8px" }}
+              onClick={() => onChange({ ...value, status: "confirmed" })}
+            >
               Klopt
             </button>
           </span>

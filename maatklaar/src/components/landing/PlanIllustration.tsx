@@ -10,7 +10,8 @@ export function PlanIllustration() {
     <svg viewBox="-60 -70 1320 940" role="img" aria-labelledby="plan-title plan-desc">
       <title id="plan-title">Voorbeeld: plattegrond met herkende kamers</title>
       <desc id="plan-desc">
-        Een fictief appartement van 12 bij 8 meter. Zes ruimtes zijn geselecteerd voor de vloer, de badkamer, het toilet en de berging niet. Vijf ramen zijn genummerd R01 tot en met R05.
+        Een fictief appartement van 12 bij 8 meter. Zes ruimtes zijn geselecteerd voor de vloer, de badkamer, het toilet en de berging niet.
+        Vijf ramen zijn genummerd R01 tot en met R05.
       </desc>
       <defs>
         <pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -34,7 +35,11 @@ export function PlanIllustration() {
         const horizontal = y === 0 || y === 8000;
         return (
           <g key={w.code} transform={`translate(${x * S} ${y * S})`}>
-            {horizontal ? <rect x="-70" y="-6" width="140" height="12" fill="#fff" stroke="#1c2420" strokeWidth="2" /> : <rect x="-6" y="-70" width="12" height="140" fill="#fff" stroke="#1c2420" strokeWidth="2" />}
+            {horizontal ? (
+              <rect x="-70" y="-6" width="140" height="12" fill="#fff" stroke="#1c2420" strokeWidth="2" />
+            ) : (
+              <rect x="-6" y="-70" width="12" height="140" fill="#fff" stroke="#1c2420" strokeWidth="2" />
+            )}
             <g transform={horizontal ? `translate(0 ${y === 0 ? -34 : 34})` : "translate(48 0)"}>
               <rect x="-40" y="-20" width="80" height="40" rx="20" fill="#b98c3c" />
               <text x="0" y="8" textAnchor="middle" fontSize="23" fontWeight="700" fill="#fff" fontFamily="ui-monospace, monospace">

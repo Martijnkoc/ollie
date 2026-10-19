@@ -65,7 +65,16 @@ class Layout {
 
   /** Standard PDF fonts only cover WinAnsi; anything else is replaced instead of crashing the export. */
   clean(text: string) {
-    const map: Record<string, string> = { "\u2212": "-", "\u2713": "v", "\u2265": ">=", "\u2264": "<=", "\u2192": "->", "\u2190": "<-", "\u202f": " ", "\u2009": " " };
+    const map: Record<string, string> = {
+      "\u2212": "-",
+      "\u2713": "v",
+      "\u2265": ">=",
+      "\u2264": "<=",
+      "\u2192": "->",
+      "\u2190": "<-",
+      "\u202f": " ",
+      "\u2009": " ",
+    };
     let out = "";
     for (const ch of text.normalize("NFC")) {
       const cp = ch.codePointAt(0)!;
@@ -131,7 +140,12 @@ class Layout {
     this.drawText(text, M.left, this.y - size, size, this.bold, level === 1 ? C.brand : C.ink);
     this.y -= size * 1.5;
     if (level === 2) {
-      this.page.drawLine({ start: { x: M.left, y: this.y + 4 }, end: { x: A4[0] - M.right, y: this.y + 4 }, thickness: 0.6, color: C.line });
+      this.page.drawLine({
+        start: { x: M.left, y: this.y + 4 },
+        end: { x: A4[0] - M.right, y: this.y + 4 },
+        thickness: 0.6,
+        color: C.line,
+      });
       this.y -= 6;
     }
   }
@@ -237,8 +251,23 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   L.paragraph(`${model.address ? `${model.address} · ` : ""}Gemaakt op ${formatDate(model.createdAt)}`, { color: C.muted });
   if (model.demo) {
     L.ensure(40);
-    L.page.drawRectangle({ x: M.left, y: L.y - 30, width: CONTENT_W, height: 30, color: rgb(1, 0.95, 0.82), borderColor: C.demo, borderWidth: 1 });
-    L.drawText("DEMO-RAPPORT — niet betaald. Gemaakt met een nagebootste betaling om de app te testen.", M.left + 10, L.y - 19, 9.5, L.bold, rgb(0.4, 0.28, 0.02));
+    L.page.drawRectangle({
+      x: M.left,
+      y: L.y - 30,
+      width: CONTENT_W,
+      height: 30,
+      color: rgb(1, 0.95, 0.82),
+      borderColor: C.demo,
+      borderWidth: 1,
+    });
+    L.drawText(
+      "DEMO-RAPPORT — niet betaald. Gemaakt met een nagebootste betaling om de app te testen.",
+      M.left + 10,
+      L.y - 19,
+      9.5,
+      L.bold,
+      rgb(0.4, 0.28, 0.02),
+    );
     L.y -= 40;
   }
   L.bullets(model.summary);
@@ -247,7 +276,10 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   if (model.building) {
     L.heading("Woningoverzicht");
     L.keyValues(model.building);
-    L.paragraph(`Bron: ${model.buildingSource}. De gebruiksoppervlakte geldt voor de hele woning en is een andere meting dan de vloer per kamer.`, { size: 8.5, color: C.muted });
+    L.paragraph(
+      `Bron: ${model.buildingSource}. De gebruiksoppervlakte geldt voor de hele woning en is een andere meting dan de vloer per kamer.`,
+      { size: 8.5, color: C.muted },
+    );
   }
 
   // 3. Plattegrond
@@ -284,7 +316,10 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   L.heading("Raamregister");
   if (model.windows.table.rows.length) {
     L.table(model.windows.table, 7.5);
-    L.paragraph("Ruwe maten staan apart van bestelmaten. Een bestelmaat staat er alleen als een gecontroleerde meetregel van een leverancier is gekozen.", { size: 8, color: C.muted });
+    L.paragraph(
+      "Ruwe maten staan apart van bestelmaten. Een bestelmaat staat er alleen als een gecontroleerde meetregel van een leverancier is gekozen.",
+      { size: 8, color: C.muted },
+    );
     if (model.windows.notes.length) L.bullets(model.windows.notes, 8);
   } else L.paragraph("Er staan nog geen ramen in het register.", { color: C.muted });
 
@@ -310,8 +345,15 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
     page.drawLine({ start: { x: M.left, y: M.bottom - 16 }, end: { x: A4[0] - M.right, y: M.bottom - 16 }, thickness: 0.4, color: C.line });
     page.drawText(footer.slice(0, 90), { x: M.left, y: M.bottom - 30, size: 7.5, font: L.regular, color: C.faint });
     const num = `Pagina ${i + 1} van ${total}`;
-    page.drawText(num, { x: A4[0] - M.right - L.regular.widthOfTextAtSize(num, 7.5), y: M.bottom - 30, size: 7.5, font: L.regular, color: C.faint });
-    if (model.demo) page.drawText("DEMO - NIET BETAALD", { x: 120, y: 300, size: 54, font: L.bold, color: C.demo, opacity: 0.12, rotate: degrees(35) });
+    page.drawText(num, {
+      x: A4[0] - M.right - L.regular.widthOfTextAtSize(num, 7.5),
+      y: M.bottom - 30,
+      size: 7.5,
+      font: L.regular,
+      color: C.faint,
+    });
+    if (model.demo)
+      page.drawText("DEMO - NIET BETAALD", { x: 120, y: 300, size: 54, font: L.bold, color: C.demo, opacity: 0.12, rotate: degrees(35) });
   });
 
   return { bytes: await doc.save(), pages: total, boxes: L.boxes };

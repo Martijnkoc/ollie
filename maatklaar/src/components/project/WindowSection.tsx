@@ -5,7 +5,14 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, type WindowStatus } from "@/lib/measurements/evaluate";
 import { rulesFor } from "@/lib/measurements/protocols";
-import { MOUNTING_LABELS, PRODUCT_FAMILIES, PRODUCT_LABELS, mountingsFor, type Mounting, type ProductFamily } from "@/lib/measurements/schema";
+import {
+  MOUNTING_LABELS,
+  PRODUCT_FAMILIES,
+  PRODUCT_LABELS,
+  mountingsFor,
+  type Mounting,
+  type ProductFamily,
+} from "@/lib/measurements/schema";
 import { defaultRuleFor } from "@/lib/measurements/protocols";
 import { newWindow } from "@/lib/projects/factory";
 import type { ProjectWindow } from "@/lib/projects/schema";
@@ -15,7 +22,13 @@ import { PlanCanvas } from "./PlanCanvas";
 import { usePlanImage } from "./usePlanImage";
 import type { StepProps } from "./types";
 
-const STATUS_FOR: Record<WindowStatus, Status> = { "nog-meten": "missing", afwijking: "check", ingevoerd: "auto", bevestigd: "confirmed", bestelmaat: "derived" };
+const STATUS_FOR: Record<WindowStatus, Status> = {
+  "nog-meten": "missing",
+  afwijking: "check",
+  ingevoerd: "auto",
+  bevestigd: "confirmed",
+  bestelmaat: "derived",
+};
 
 export function WindowSection({ project, update, computed }: StepProps) {
   const id = useId();
@@ -26,7 +39,8 @@ export function WindowSection({ project, update, computed }: StepProps) {
   const image = usePlanImage(project.id, doc, page, doc ? doc.sizeBytes : 0);
 
   const setWindow = (w: ProjectWindow) => update((p) => ({ ...p, windows: p.windows.map((x) => (x.id === w.id ? w : x)) }));
-  const setProduct = (w: ProjectWindow, product: ProductFamily, mounting: Mounting) => setWindow({ ...w, product, mounting, ruleId: defaultRuleFor(product, mounting).id, confirmed: false });
+  const setProduct = (w: ProjectWindow, product: ProductFamily, mounting: Mounting) =>
+    setWindow({ ...w, product, mounting, ruleId: defaultRuleFor(product, mounting).id, confirmed: false });
   const opened = computed.windows.find((x) => x.window.id === open);
 
   return (
@@ -37,16 +51,26 @@ export function WindowSection({ project, update, computed }: StepProps) {
             Raamregister
           </h2>
           <p className="muted" style={{ margin: 0 }}>
-            Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die maten meet je zelf, wij begeleiden je per raam.
+            Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die maten meet je zelf, wij
+            begeleiden je per raam.
           </p>
         </div>
         <div className="row">
           {doc && pageInfoOk(doc, page) && (
-            <button type="button" className={`btn btn-sm ${placing ? "btn-primary" : ""}`} aria-pressed={placing} onClick={() => setPlacing((x) => !x)}>
+            <button
+              type="button"
+              className={`btn btn-sm ${placing ? "btn-primary" : ""}`}
+              aria-pressed={placing}
+              onClick={() => setPlacing((x) => !x)}
+            >
               {placing ? "Klaar met aanwijzen" : "Ramen aanwijzen op plattegrond"}
             </button>
           )}
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => update((p) => ({ ...p, windows: [...p.windows, newWindow(p.windows)] }))}>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={() => update((p) => ({ ...p, windows: [...p.windows, newWindow(p.windows)] }))}
+          >
             + Raam toevoegen
           </button>
         </div>
@@ -59,7 +83,9 @@ export function WindowSection({ project, update, computed }: StepProps) {
           status={image.missing ? "Het bestand staat niet meer op dit apparaat." : image.error}
           tool="window"
           rooms={[]}
-          windows={project.windows.filter((w) => w.page === page && w.position).map((w) => ({ id: w.id, code: w.code, position: w.position!, active: false }))}
+          windows={project.windows
+            .filter((w) => w.page === page && w.position)
+            .map((w) => ({ id: w.id, code: w.code, position: w.position!, active: false }))}
           draft={[]}
           line={null}
           labels={[]}
@@ -98,7 +124,12 @@ export function WindowSection({ project, update, computed }: StepProps) {
               <div className="room-fields" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", marginTop: 0 }}>
                 <div className="field">
                   <label htmlFor={`${id}-${w.id}-room`}>Ruimte</label>
-                  <select id={`${id}-${w.id}-room`} className="select" value={w.roomId ?? ""} onChange={(e) => setWindow({ ...w, roomId: e.target.value || null })}>
+                  <select
+                    id={`${id}-${w.id}-room`}
+                    className="select"
+                    value={w.roomId ?? ""}
+                    onChange={(e) => setWindow({ ...w, roomId: e.target.value || null })}
+                  >
                     <option value="">Niet gekoppeld</option>
                     {project.rooms.map((r, i) => (
                       <option key={r.id} value={r.id}>
@@ -128,7 +159,12 @@ export function WindowSection({ project, update, computed }: StepProps) {
                 </div>
                 <div className="field">
                   <label htmlFor={`${id}-${w.id}-mount`}>Montage</label>
-                  <select id={`${id}-${w.id}-mount`} className="select" value={w.mounting} onChange={(e) => setProduct(w, w.product, e.target.value as Mounting)}>
+                  <select
+                    id={`${id}-${w.id}-mount`}
+                    className="select"
+                    value={w.mounting}
+                    onChange={(e) => setProduct(w, w.product, e.target.value as Mounting)}
+                  >
                     {mountingsFor(w.product).map((m) => (
                       <option key={m} value={m}>
                         {MOUNTING_LABELS[m]}
@@ -138,7 +174,12 @@ export function WindowSection({ project, update, computed }: StepProps) {
                 </div>
                 <div className="field">
                   <label htmlFor={`${id}-${w.id}-rule`}>Meetregel</label>
-                  <select id={`${id}-${w.id}-rule`} className="select" value={rule.id} onChange={(e) => setWindow({ ...w, ruleId: e.target.value, confirmed: false })}>
+                  <select
+                    id={`${id}-${w.id}-rule`}
+                    className="select"
+                    value={rule.id}
+                    onChange={(e) => setWindow({ ...w, ruleId: e.target.value, confirmed: false })}
+                  >
                     {rules.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.kind === "supplier" ? `${r.manufacturer} — ${r.title}` : "Algemeen meetblad (geen leveranciersregel)"}
@@ -149,13 +190,19 @@ export function WindowSection({ project, update, computed }: StepProps) {
               </div>
               <p className="small muted" style={{ margin: 0 }}>
                 {raw.length ? raw.map((k) => formatMm(w.measures[k]!)).join(" · ") : "Nog geen maten."}{" "}
-                {evaluation.order ? `Bestelmaat ${formatMm(evaluation.order.widthMm)} × ${formatMm(evaluation.order.heightMm)}.` : "Bestelmaat: volgens je leverancier."}
+                {evaluation.order
+                  ? `Bestelmaat ${formatMm(evaluation.order.widthMm)} × ${formatMm(evaluation.order.heightMm)}.`
+                  : "Bestelmaat: volgens je leverancier."}
               </p>
               <div className="row">
                 <button type="button" className="btn btn-sm btn-primary" onClick={() => setOpen(w.id)}>
                   {raw.length ? "Maten bekijken of aanpassen" : "Meten"}
                 </button>
-                <button type="button" className="btn btn-sm btn-ghost" onClick={() => update((p) => ({ ...p, windows: p.windows.filter((x) => x.id !== w.id) }))}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => update((p) => ({ ...p, windows: p.windows.filter((x) => x.id !== w.id) }))}
+                >
                   Verwijderen
                 </button>
               </div>

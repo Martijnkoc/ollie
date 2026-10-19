@@ -21,7 +21,10 @@ test("een redirect met status=paid geeft niets vrij zonder verificatie bij de pr
 test("zonder ordergeheim geen status, en de demo-simulatie vraagt het geheim", async ({ request }) => {
   const status = await request.get("/api/bestellingen/ord_000000000000000000000000");
   expect(status.status()).toBe(404);
-  const demo = await request.post("/api/demo/betalingen", { data: { orderId: "ord_000000000000000000000000", secret: "x", outcome: "paid" }, headers: { origin: "http://localhost:3100" } });
+  const demo = await request.post("/api/demo/betalingen", {
+    data: { orderId: "ord_000000000000000000000000", secret: "x", outcome: "paid" },
+    headers: { origin: "http://localhost:3100" },
+  });
   expect(demo.status()).toBe(404);
 });
 
@@ -60,6 +63,9 @@ test("Mollie-webhook: alleen een geldig id, onbekende ids worden zonder details 
 });
 
 test("bestelling vanaf een ander domein wordt geweigerd", async ({ request }) => {
-  const res = await request.post("/api/bestellingen", { data: { projectRef: "abcdefghijkmnpqrstuvw" }, headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" } });
+  const res = await request.post("/api/bestellingen", {
+    data: { projectRef: "abcdefghijkmnpqrstuvw" },
+    headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" },
+  });
   expect(res.status()).toBe(403);
 });

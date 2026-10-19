@@ -20,7 +20,12 @@ const common = {
   PDOK_BAG_URL: "http://localhost:3201/bag",
   PDOK_TIMEOUT_MS: "1500",
 };
-run("npx", ["next", "start", "-p", "3100"], { ...common, APP_URL: "http://localhost:3100", ALLOW_DEMO_PAYMENTS: "true", ORDERS_FILE: path.join(data, "demo.json") });
+run("npx", ["next", "start", "-p", "3100"], {
+  ...common,
+  APP_URL: "http://localhost:3100",
+  ALLOW_DEMO_PAYMENTS: "true",
+  ORDERS_FILE: path.join(data, "demo.json"),
+});
 run("npx", ["next", "start", "-p", "3101"], {
   ...common,
   APP_URL: "http://localhost:3101",

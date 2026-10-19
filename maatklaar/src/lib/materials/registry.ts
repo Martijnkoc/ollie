@@ -32,9 +32,28 @@ const floor: MaterialCalculator = {
   lines: (c) => {
     const f = c.floor;
     const lines: MaterialLine[] = [
-      { key: "vloer-m2", label: "Vloer inclusief snijverlies", quantity: f.requiredM2, unit: "m²", status: f.status, estimate: false, basis: f.steps, paid: false },
+      {
+        key: "vloer-m2",
+        label: "Vloer inclusief snijverlies",
+        quantity: f.requiredM2,
+        unit: "m²",
+        status: f.status,
+        estimate: false,
+        basis: f.steps,
+        paid: false,
+      },
     ];
-    if (f.packs !== null) lines.push({ key: "vloer-pakken", label: "Vloer in pakken", quantity: f.packs, unit: "pakken", status: f.status, estimate: false, basis: f.steps, paid: false });
+    if (f.packs !== null)
+      lines.push({
+        key: "vloer-pakken",
+        label: "Vloer in pakken",
+        quantity: f.packs,
+        unit: "pakken",
+        status: f.status,
+        estimate: false,
+        basis: f.steps,
+        paid: false,
+      });
     return lines;
   },
 };
@@ -46,10 +65,28 @@ const plinths: MaterialCalculator = {
   lines: (c) => {
     const p = c.plinths;
     const lines: MaterialLine[] = [
-      { key: "plint-m", label: "Plinten inclusief marge", quantity: p.requiredMm === null ? null : p.requiredMm / 1000, unit: "m", status: p.status, estimate: false, basis: p.steps, paid: true },
+      {
+        key: "plint-m",
+        label: "Plinten inclusief marge",
+        quantity: p.requiredMm === null ? null : p.requiredMm / 1000,
+        unit: "m",
+        status: p.status,
+        estimate: false,
+        basis: p.steps,
+        paid: true,
+      },
     ];
     if (p.piecesByTotal !== null)
-      lines.push({ key: "plint-stuks", label: "Plinten in handelslengtes", quantity: p.piecesByTotal, unit: "stuks", status: p.status, estimate: false, basis: p.steps, paid: true });
+      lines.push({
+        key: "plint-stuks",
+        label: "Plinten in handelslengtes",
+        quantity: p.piecesByTotal,
+        unit: "stuks",
+        status: p.status,
+        estimate: false,
+        basis: p.steps,
+        paid: true,
+      });
     return lines;
   },
 };

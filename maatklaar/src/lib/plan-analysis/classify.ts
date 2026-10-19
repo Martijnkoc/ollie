@@ -2,12 +2,7 @@ import type { DimensionPair, ScaleNotation } from "./types";
 
 /** Lowercase, without accents and with abbreviation dots removed, for matching only. */
 export function normalize(text: string) {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -100,7 +95,11 @@ function explicitToMm(value: string, unit: string) {
  * A bare integer is ambiguous (cm or mm); it is only resolved when exactly one unit gives plausible
  * values for every number of the label. Otherwise the unit stays "onzeker" and the value is not used.
  */
-export function resolveLengths(values: string[], units: (string | undefined)[], range: [number, number]): { mm: number[]; unit: DimensionPair["unit"] } | null {
+export function resolveLengths(
+  values: string[],
+  units: (string | undefined)[],
+  range: [number, number],
+): { mm: number[]; unit: DimensionPair["unit"] } | null {
   const explicit = units.find((u) => u);
   if (explicit) {
     const mm = values.map((v, i) => explicitToMm(v, (units[i] ?? explicit).toLowerCase()));

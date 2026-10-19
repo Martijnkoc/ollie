@@ -1,4 +1,12 @@
-import { CHECK_INFO, MEASURE_GROUPS, MEASURE_INFO, type CheckKey, type MeasureGroup, type MeasureKey, type MeasurementRuleSet } from "./schema";
+import {
+  CHECK_INFO,
+  MEASURE_GROUPS,
+  MEASURE_INFO,
+  type CheckKey,
+  type MeasureGroup,
+  type MeasureKey,
+  type MeasurementRuleSet,
+} from "./schema";
 import { formatMm } from "@/lib/format";
 
 export type WindowMeasurements = {
@@ -82,7 +90,16 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     const maxMm = Math.max(...values.map((v) => v.mm));
     const toleranceMm = rule.toleranceMm[group];
     const exceeds = maxMm - minMm > toleranceMm;
-    groups.push({ group, values, minMm, maxMm, spreadMm: maxMm - minMm, toleranceMm, exceeds, acknowledged: exceeds && input.acknowledged[group] === groupSignature(values) });
+    groups.push({
+      group,
+      values,
+      minMm,
+      maxMm,
+      spreadMm: maxMm - minMm,
+      toleranceMm,
+      exceeds,
+      acknowledged: exceeds && input.acknowledged[group] === groupSignature(values),
+    });
   }
   const deviating = groups.filter((g) => g.exceeds && !g.acknowledged);
 
@@ -105,11 +122,16 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     );
   }
   for (const c of checksPresent) warnings.push(`${CHECK_INFO[c].question} Ja — ${CHECK_INFO[c].why}`);
-  if (depth.ok === false) warnings.push(`De diepte (${formatMm(depth.mm!)}) is kleiner dan de minimale montagediepte van deze regel (${formatMm(depth.minMm!)}).`);
+  if (depth.ok === false)
+    warnings.push(
+      `De diepte (${formatMm(depth.mm!)}) is kleiner dan de minimale montagediepte van deze regel (${formatMm(depth.minMm!)}).`,
+    );
 
   const orderBlocked: string[] = [];
   if (rule.kind !== "supplier" || rule.conversion.kind !== "formula") {
-    orderBlocked.push("Er is geen gecontroleerde meetregel van een leverancier gekozen. Bevestig de bestelmaat volgens de instructie van je leverancier.");
+    orderBlocked.push(
+      "Er is geen gecontroleerde meetregel van een leverancier gekozen. Bevestig de bestelmaat volgens de instructie van je leverancier.",
+    );
   }
   if (missing.length) orderBlocked.push(`Nog te meten: ${missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ")}.`);
   if (deviating.length) orderBlocked.push("Er is een afwijking tussen meetpunten die nog niet is gecontroleerd.");
@@ -143,7 +165,9 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
 
   const rail = value("rail_breedte");
   const fabricWidthMm =
-    relevant.has("rail_breedte") && rail !== null && input.fullness !== null && input.fullness > 0 ? Math.round(rail * input.fullness) : null;
+    relevant.has("rail_breedte") && rail !== null && input.fullness !== null && input.fullness > 0
+      ? Math.round(rail * input.fullness)
+      : null;
 
   let status: WindowStatus;
   if (missing.length) status = "nog-meten";

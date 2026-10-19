@@ -213,6 +213,7 @@ export class PostgresOrderStore implements OrderStore {
   }
   async setDemo(pid: string, status: string) {
     await this.migrate();
-    await this.sql`insert into maatklaar_demo_payments (id, status) values (${pid}, ${status}) on conflict (id) do update set status = excluded.status`;
+    await this
+      .sql`insert into maatklaar_demo_payments (id, status) values (${pid}, ${status}) on conflict (id) do update set status = excluded.status`;
   }
 }

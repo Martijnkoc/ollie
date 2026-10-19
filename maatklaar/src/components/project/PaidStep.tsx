@@ -19,7 +19,8 @@ const STATUS_TEXT: Record<string, string> = {
 export function DemoNotice() {
   return (
     <p className="notice notice-demo" role="note">
-      DEMO-modus: er is niet echt betaald. Dit project is ontgrendeld met een nagebootste betaling om de app te testen. Het rapport krijgt een DEMO-stempel.
+      DEMO-modus: er is niet echt betaald. Dit project is ontgrendeld met een nagebootste betaling om de app te testen. Het rapport krijgt
+      een DEMO-stempel.
     </p>
   );
 }
@@ -35,7 +36,16 @@ function Checkout(props: StepProps) {
     setError(null);
     try {
       const order = await startCheckout(project.id);
-      update((prev) => ({ ...prev, payment: { orderId: order.orderId, orderSecret: order.orderSecret, status: "open", mode: order.mode, checkedAt: new Date().toISOString() } }));
+      update((prev) => ({
+        ...prev,
+        payment: {
+          orderId: order.orderId,
+          orderSecret: order.orderSecret,
+          status: "open",
+          mode: order.mode,
+          checkedAt: new Date().toISOString(),
+        },
+      }));
       // The project must be on disk before we leave the page for the payment provider.
       await flush();
       window.location.assign(order.checkoutUrl);
@@ -72,14 +82,24 @@ function Checkout(props: StepProps) {
       <div className="grid-2">
         <div className="stack-sm">
           <ul className="ticks">
-            <li>Plinten voor {roomsWithShape > 0 ? `${roomsWithShape} ${roomsWithShape === 1 ? "ruimte" : "ruimtes"} met een bekende vorm` : "elke ruimte met een bekende vorm"}: per wand, met deuren en marge</li>
-            <li>Raamregister{project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""} met begeleid meetprotocol en afwijkingscontrole</li>
+            <li>
+              Plinten voor{" "}
+              {roomsWithShape > 0
+                ? `${roomsWithShape} ${roomsWithShape === 1 ? "ruimte" : "ruimtes"} met een bekende vorm`
+                : "elke ruimte met een bekende vorm"}
+              : per wand, met deuren en marge
+            </li>
+            <li>
+              Raamregister
+              {project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""} met
+              begeleid meetprotocol en afwijkingscontrole
+            </li>
             <li>Persoonlijk PDF-rapport (A4) met winkelchecklist, aannames en bronnen</li>
             <li>CSV-bestellijst voor je eigen overzicht of de winkel</li>
           </ul>
           <p className="small muted" style={{ margin: 0 }}>
-            Wat je krijgt is zo betrouwbaar als de maten die je invult en bevestigt. Bestelmaten voor raamdecoratie volgen de meetinstructie van je leverancier; die verzinnen
-            wij niet.
+            Wat je krijgt is zo betrouwbaar als de maten die je invult en bevestigt. Bestelmaten voor raamdecoratie volgen de meetinstructie
+            van je leverancier; die verzinnen wij niet.
           </p>
         </div>
         <div className="card stack-sm">
@@ -91,9 +111,15 @@ function Checkout(props: StepProps) {
             {PRICE.vatNote}
             {PRICE.vatNoteVerified ? "" : " (concept)"}
           </p>
-          {payment.mode === "demo" && <p className="notice notice-demo small">DEMO-modus: je doorloopt een nagebootste betaling. Er wordt geen geld afgeschreven.</p>}
+          {payment.mode === "demo" && (
+            <p className="notice notice-demo small">DEMO-modus: je doorloopt een nagebootste betaling. Er wordt geen geld afgeschreven.</p>
+          )}
           {payment.mode === "test" && <p className="notice notice-warn small">{payment.label}</p>}
-          {p && p.status !== "paid" && <p className="notice small" role="status">{STATUS_TEXT[p.status] ?? ""}</p>}
+          {p && p.status !== "paid" && (
+            <p className="notice small" role="status">
+              {STATUS_TEXT[p.status] ?? ""}
+            </p>
+          )}
           {error && (
             <p className="notice notice-error small" role="alert">
               {error}

@@ -23,8 +23,15 @@ describe("bestandssignatuur", () => {
 
 describe("uploadvalidatie", () => {
   it("accepteert geldige bestanden", () => {
-    expect(checkUpload({ type: "application/pdf", size: 3000 }, fixture("appartement.pdf"), limits)).toMatchObject({ ok: true, kind: "pdf" });
-    expect(checkUpload({ type: "image/png", size: 30000 }, fixture("scan-helder.png"), limits)).toMatchObject({ ok: true, kind: "png", width: 1600 });
+    expect(checkUpload({ type: "application/pdf", size: 3000 }, fixture("appartement.pdf"), limits)).toMatchObject({
+      ok: true,
+      kind: "pdf",
+    });
+    expect(checkUpload({ type: "image/png", size: 30000 }, fixture("scan-helder.png"), limits)).toMatchObject({
+      ok: true,
+      kind: "png",
+      width: 1600,
+    });
     // Mobile pickers without a type: content decides.
     expect(checkUpload({ type: "", size: 30000 }, fixture("scan-helder.jpg"), limits)).toMatchObject({ ok: true, kind: "jpeg" });
   });

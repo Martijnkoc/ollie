@@ -51,7 +51,9 @@ export function computeFloor(rows: readonly FloorRow[], settings: FloorSettings)
   let requiredM2: number | null = null;
   let packs: number | null = null;
   if (incompleteRooms.length) {
-    steps.push(`Onvolledig: ${incompleteRooms.join(", ")} ${incompleteRooms.length === 1 ? "heeft" : "hebben"} nog geen oppervlakte. Daarom rekenen we nog geen bestelhoeveelheid uit.`);
+    steps.push(
+      `Onvolledig: ${incompleteRooms.join(", ")} ${incompleteRooms.length === 1 ? "heeft" : "hebben"} nog geen oppervlakte. Daarom rekenen we nog geen bestelhoeveelheid uit.`,
+    );
   } else if (included.length) {
     requiredM2 = selectedNetM2 * (1 + settings.wastePercent / 100);
     steps.push(`Met snijverlies: ${formatM2(selectedNetM2)} × (1 + ${formatPercent(settings.wastePercent)}) = ${formatM2(requiredM2)}`);
@@ -64,7 +66,12 @@ export function computeFloor(rows: readonly FloorRow[], settings: FloorSettings)
   }
 
   const statuses = included.map((r) => r.status);
-  const status: Status = incompleteRooms.length || !included.length ? "missing" : statuses.some((s) => s !== "derived" && s !== "confirmed") ? "check" : "derived";
+  const status: Status =
+    incompleteRooms.length || !included.length
+      ? "missing"
+      : statuses.some((s) => s !== "derived" && s !== "confirmed")
+        ? "check"
+        : "derived";
 
   return {
     rows: withM2,

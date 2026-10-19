@@ -24,7 +24,12 @@ function WallDiagram({ polygon }: { polygon: { x: number; y: number }[] }) {
   const fs = Math.max(w, h) / 9;
   return (
     <svg viewBox={`${minX - pad} ${minY - pad} ${w + 2 * pad} ${h + 2 * pad}`} style={{ width: 120, height: 100 }} aria-hidden="true">
-      <polygon points={polygon.map((p) => `${p.x},${p.y}`).join(" ")} fill="rgba(43,106,80,0.12)" stroke="#1f4d3a" strokeWidth={Math.max(w, h) / 60} />
+      <polygon
+        points={polygon.map((p) => `${p.x},${p.y}`).join(" ")}
+        fill="rgba(43,106,80,0.12)"
+        stroke="#1f4d3a"
+        strokeWidth={Math.max(w, h) / 60}
+      />
       {polygon.map((p, i) => {
         const q = polygon[(i + 1) % polygon.length]!;
         const mx = (p.x + q.x) / 2;
@@ -34,7 +39,15 @@ function WallDiagram({ polygon }: { polygon: { x: number; y: number }[] }) {
         const dy = my - c.y;
         const d = Math.hypot(dx, dy) || 1;
         return (
-          <text key={i} x={mx + (dx / d) * fs * 0.9} y={my + (dy / d) * fs * 0.9 + fs * 0.35} fontSize={fs} textAnchor="middle" fontWeight={700} fill="#1c2420">
+          <text
+            key={i}
+            x={mx + (dx / d) * fs * 0.9}
+            y={my + (dy / d) * fs * 0.9 + fs * 0.35}
+            fontSize={fs}
+            textAnchor="middle"
+            fontWeight={700}
+            fill="#1c2420"
+          >
             {String.fromCharCode(65 + (i % 26))}
           </text>
         );
@@ -93,7 +106,8 @@ export function PlinthSection({ project, update, computed }: StepProps) {
               key={`l-${project.plinth.pieceLengthMm}`}
               onBlur={(e) => {
                 const v = e.target.value.trim() ? Number(e.target.value.replace(/\s/g, "")) : null;
-                if (v === null || (Number.isInteger(v) && v > 0 && v <= 10_000)) update((p) => ({ ...p, plinth: { ...p.plinth, pieceLengthMm: v } }));
+                if (v === null || (Number.isInteger(v) && v > 0 && v <= 10_000))
+                  update((p) => ({ ...p, plinth: { ...p.plinth, pieceLengthMm: v } }));
               }}
             />
             <span>mm</span>
@@ -111,14 +125,26 @@ export function PlinthSection({ project, update, computed }: StepProps) {
             <div key={room.id} className="room-card stack-sm">
               <div className="room-card-head">
                 <label className="check" style={{ alignItems: "center" }}>
-                  <input type="checkbox" checked={room.includePlinth} onChange={(e) => setRoom({ ...room, includePlinth: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={room.includePlinth}
+                    onChange={(e) => setRoom({ ...room, includePlinth: e.target.checked })}
+                  />
                   <span style={{ fontWeight: 650 }}>
                     {n + 1}. {room.name.trim() || "Naamloze ruimte"}
                   </span>
                 </label>
-                {room.includePlinth && res ? <StatusBadge status={res.status} /> : <span className="badge badge-neutral">Geen plinten</span>}
+                {room.includePlinth && res ? (
+                  <StatusBadge status={res.status} />
+                ) : (
+                  <span className="badge badge-neutral">Geen plinten</span>
+                )}
               </div>
-              {room.includePlinth && !edges && <p className="small muted" style={{ margin: 0 }}>{res?.issues[0] ?? "De vorm van deze ruimte is nog onbekend."}</p>}
+              {room.includePlinth && !edges && (
+                <p className="small muted" style={{ margin: 0 }}>
+                  {res?.issues[0] ?? "De vorm van deze ruimte is nog onbekend."}
+                </p>
+              )}
               {room.includePlinth && edges && r.geometry.polygonMm && (
                 <div className="row" style={{ alignItems: "flex-start", flexWrap: "nowrap", gap: 16 }}>
                   <WallDiagram polygon={r.geometry.polygonMm} />
@@ -129,12 +155,21 @@ export function PlinthSection({ project, update, computed }: StepProps) {
                       </legend>
                       <div className="row" style={{ gap: 6 }}>
                         {edges.map((len, i) => (
-                          <label key={i} className="check small" style={{ alignItems: "center", gap: 6, padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 8 }}>
+                          <label
+                            key={i}
+                            className="check small"
+                            style={{ alignItems: "center", gap: 6, padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 8 }}
+                          >
                             <input
                               type="checkbox"
                               checked={!room.wallsWithoutPlinth.includes(i)}
                               onChange={(e) =>
-                                setRoom({ ...room, wallsWithoutPlinth: e.target.checked ? room.wallsWithoutPlinth.filter((w) => w !== i) : [...room.wallsWithoutPlinth, i] })
+                                setRoom({
+                                  ...room,
+                                  wallsWithoutPlinth: e.target.checked
+                                    ? room.wallsWithoutPlinth.filter((w) => w !== i)
+                                    : [...room.wallsWithoutPlinth, i],
+                                })
                               }
                             />
                             <span>
@@ -155,7 +190,12 @@ export function PlinthSection({ project, update, computed }: StepProps) {
                             className="select"
                             style={{ width: "auto" }}
                             value={d.wall}
-                            onChange={(e) => setRoom({ ...room, doors: room.doors.map((x) => (x.id === d.id ? { ...x, wall: Number(e.target.value) } : x)) })}
+                            onChange={(e) =>
+                              setRoom({
+                                ...room,
+                                doors: room.doors.map((x) => (x.id === d.id ? { ...x, wall: Number(e.target.value) } : x)),
+                              })
+                            }
                           >
                             {edges.map((_, w) => (
                               <option key={w} value={w}>
@@ -165,9 +205,18 @@ export function PlinthSection({ project, update, computed }: StepProps) {
                           </select>
                         </div>
                         <div style={{ width: 170 }}>
-                          <LengthInput label="Breedte" unit="mm" value={d.width} onChange={(width) => setRoom({ ...room, doors: room.doors.map((x) => (x.id === d.id ? { ...x, width } : x)) })} />
+                          <LengthInput
+                            label="Breedte"
+                            unit="mm"
+                            value={d.width}
+                            onChange={(width) => setRoom({ ...room, doors: room.doors.map((x) => (x.id === d.id ? { ...x, width } : x)) })}
+                          />
                         </div>
-                        <button type="button" className="btn btn-sm btn-ghost" onClick={() => setRoom({ ...room, doors: room.doors.filter((x) => x.id !== d.id) })}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => setRoom({ ...room, doors: room.doors.filter((x) => x.id !== d.id) })}
+                        >
                           Verwijderen
                         </button>
                       </div>

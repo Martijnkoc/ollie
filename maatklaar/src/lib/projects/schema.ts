@@ -133,13 +133,24 @@ export const analysisSchema = z.object({
   quality: z.enum(["goed", "matig", "onvoldoende"]),
   reasons: z.array(z.string().max(300)),
   meanConfidence: z.number().nullable(),
-  counts: z.object({ textItems: z.number().int(), roomNames: z.number().int(), dimensionLabels: z.number().int(), areaLabels: z.number().int() }),
+  counts: z.object({
+    textItems: z.number().int(),
+    roomNames: z.number().int(),
+    dimensionLabels: z.number().int(),
+    areaLabels: z.number().int(),
+  }),
   scaleNotation: z.object({ denominator: z.number().int().positive(), text: z.string().max(60) }).nullable(),
   notToScale: z.boolean(),
   findings: z.array(z.string().max(300)),
   /** Single length labels with their position, offered as suggestions when calibrating. */
   lengthLabels: z
-    .array(z.object({ mm: z.number().positive().nullable(), text: z.string().max(40), box: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }) }))
+    .array(
+      z.object({
+        mm: z.number().positive().nullable(),
+        text: z.string().max(40),
+        box: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }),
+      }),
+    )
     .max(300),
 });
 export type PageAnalysis = z.infer<typeof analysisSchema>;

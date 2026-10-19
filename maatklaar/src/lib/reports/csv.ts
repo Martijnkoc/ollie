@@ -29,18 +29,63 @@ export function buildCsv(c: ProjectComputation, opts: { demo: boolean }): string
     ]);
   }
   const f = c.floor;
-  rows.push(["Vloer totaal", "Geselecteerd netto", num(f.selectedNetM2), "m2", STATUS_META[f.status].label, f.incompleteRooms.length ? `onvolledig: ${f.incompleteRooms.join(", ")}` : ""]);
-  rows.push(["Vloer totaal", `Benodigd met ${num(f.wastePercent, 1)}% snijverlies`, f.requiredM2 === null ? null : num(f.requiredM2), "m2", STATUS_META[f.status].label, ""]);
-  if (f.packs !== null && f.packM2 !== null) rows.push(["Vloer totaal", `Pakken van ${num(f.packM2, 3)} m2`, f.packs, "pakken", STATUS_META[f.status].label, "naar boven afgerond"]);
+  rows.push([
+    "Vloer totaal",
+    "Geselecteerd netto",
+    num(f.selectedNetM2),
+    "m2",
+    STATUS_META[f.status].label,
+    f.incompleteRooms.length ? `onvolledig: ${f.incompleteRooms.join(", ")}` : "",
+  ]);
+  rows.push([
+    "Vloer totaal",
+    `Benodigd met ${num(f.wastePercent, 1)}% snijverlies`,
+    f.requiredM2 === null ? null : num(f.requiredM2),
+    "m2",
+    STATUS_META[f.status].label,
+    "",
+  ]);
+  if (f.packs !== null && f.packM2 !== null)
+    rows.push(["Vloer totaal", `Pakken van ${num(f.packM2, 3)} m2`, f.packs, "pakken", STATUS_META[f.status].label, "naar boven afgerond"]);
 
   const p = c.plinths;
-  for (const r of p.rooms) rows.push(["Plinten per ruimte", r.name, r.netMm === null ? null : num(r.netMm / 1000), "m", STATUS_META[r.status].label, r.unconfirmedDoors ? "deuropening(en) niet bevestigd" : ""]);
-  rows.push(["Plinten totaal", `Benodigd met ${num(p.marginPercent, 1)}% marge`, p.requiredMm === null ? null : num(p.requiredMm / 1000), "m", STATUS_META[p.status].label, ""]);
-  if (p.piecesByTotal !== null && p.pieceLengthMm !== null) rows.push(["Plinten totaal", `Lengtes van ${num(p.pieceLengthMm / 1000)} m`, p.piecesByTotal, "stuks", STATUS_META[p.status].label, ""]);
+  for (const r of p.rooms)
+    rows.push([
+      "Plinten per ruimte",
+      r.name,
+      r.netMm === null ? null : num(r.netMm / 1000),
+      "m",
+      STATUS_META[r.status].label,
+      r.unconfirmedDoors ? "deuropening(en) niet bevestigd" : "",
+    ]);
+  rows.push([
+    "Plinten totaal",
+    `Benodigd met ${num(p.marginPercent, 1)}% marge`,
+    p.requiredMm === null ? null : num(p.requiredMm / 1000),
+    "m",
+    STATUS_META[p.status].label,
+    "",
+  ]);
+  if (p.piecesByTotal !== null && p.pieceLengthMm !== null)
+    rows.push([
+      "Plinten totaal",
+      `Lengtes van ${num(p.pieceLengthMm / 1000)} m`,
+      p.piecesByTotal,
+      "stuks",
+      STATUS_META[p.status].label,
+      "",
+    ]);
 
   for (const { window: w, rule, evaluation: e, roomName: rn } of c.windows) {
     for (const k of [...rule.required, ...rule.optional]) {
-      rows.push([`Raam ${w.code}`, `${MEASURE_INFO[k].label}${rn ? ` (${rn})` : ""}`, w.measures[k] ?? null, "mm", WINDOW_STATUS_LABELS[e.status], "ruwe maat"]);
+      rows.push([
+        `Raam ${w.code}`,
+        `${MEASURE_INFO[k].label}${rn ? ` (${rn})` : ""}`,
+        w.measures[k] ?? null,
+        "mm",
+        WINDOW_STATUS_LABELS[e.status],
+        "ruwe maat",
+      ]);
     }
     rows.push([
       `Raam ${w.code}`,

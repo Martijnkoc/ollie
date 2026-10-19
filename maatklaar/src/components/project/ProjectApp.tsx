@@ -64,8 +64,8 @@ export function ProjectApp({ id, payment }: { id: string; payment: PaymentInfo }
         <div className="panel stack">
           <h1>Project niet gevonden op dit apparaat</h1>
           <p className="muted">
-            Projecten staan alleen in de browser waarin je ze maakte, en worden na een tijd zonder wijzigingen automatisch gewist. Open MaatKlaar in die browser, of begin
-            een nieuw project.
+            Projecten staan alleen in de browser waarin je ze maakte, en worden na een tijd zonder wijzigingen automatisch gewist. Open
+            MaatKlaar in die browser, of begin een nieuw project.
           </p>
           <div className="row">
             <Link className="btn btn-primary" href="/project/nieuw">
@@ -106,13 +106,25 @@ export function ProjectApp({ id, payment }: { id: string; payment: PaymentInfo }
           <input
             id="project-name"
             className="input"
-            style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 560, border: "none", background: "transparent", padding: "4px 0", minHeight: 0 }}
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "1.5rem",
+              fontWeight: 560,
+              border: "none",
+              background: "transparent",
+              padding: "4px 0",
+              minHeight: 0,
+            }}
             value={project.name}
             maxLength={80}
             onChange={(e) => update((p) => ({ ...p, name: e.target.value || "Mijn woning" }))}
           />
           <p className="tiny muted" role="status" style={{ margin: 0 }}>
-            {saveState === "error" ? "Opslaan mislukt. Je wijzigingen staan alleen in dit venster." : saveState === "saving" ? "Opslaan…" : "Opgeslagen op dit apparaat"}
+            {saveState === "error"
+              ? "Opslaan mislukt. Je wijzigingen staan alleen in dit venster."
+              : saveState === "saving"
+                ? "Opslaan…"
+                : "Opgeslagen op dit apparaat"}
             {!persistent ? " · Let op: je browser staat lokaal opslaan niet toe; bij verversen gaat je project verloren." : ""}
           </p>
         </div>

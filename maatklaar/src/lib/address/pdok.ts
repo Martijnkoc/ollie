@@ -31,7 +31,10 @@ export class PdokError extends Error {
 
 export const PDOK_ERROR_TEXT: Record<PdokErrorKind, { status: number; message: string }> = {
   timeout: { status: 504, message: "PDOK reageert nu niet op tijd. Probeer het zo nog eens; je kunt ook zonder adres verder." },
-  "rate-limit": { status: 429, message: "Er worden nu te veel zoekopdrachten tegelijk gedaan. Wacht een paar seconden en probeer het opnieuw." },
+  "rate-limit": {
+    status: 429,
+    message: "Er worden nu te veel zoekopdrachten tegelijk gedaan. Wacht een paar seconden en probeer het opnieuw.",
+  },
   unavailable: { status: 502, message: "De adresgegevens van PDOK zijn tijdelijk niet beschikbaar. Je kunt zonder adres verder." },
   "invalid-response": { status: 502, message: "PDOK gaf een onverwacht antwoord. Je kunt zonder adres verder." },
 };
@@ -41,7 +44,11 @@ type Deps = { fetch: typeof fetch; config: PdokConfig };
 async function getJson(url: string, deps: Deps): Promise<unknown> {
   let res: Response;
   try {
-    res = await deps.fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(deps.config.timeoutMs), cache: "no-store" });
+    res = await deps.fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(deps.config.timeoutMs),
+      cache: "no-store",
+    });
   } catch (err) {
     const name = err instanceof Error ? err.name : "";
     if (name === "TimeoutError" || name === "AbortError") throw new PdokError("timeout", "timeout");
@@ -95,12 +102,18 @@ export function parseWktPoint(v: unknown) {
 
 export async function lookupAddress(id: string, deps: Deps): Promise<Address | null> {
   if (!LOCATIESERVER_ID.test(id)) return null;
-  const fl = "id,type,weergavenaam,straatnaam,huisnummer,huisletter,huisnummertoevoeging,postcode,woonplaatsnaam,gemeentenaam,centroide_ll,adresseerbaarobject_id";
+  const fl =
+    "id,type,weergavenaam,straatnaam,huisnummer,huisletter,huisnummertoevoeging,postcode,woonplaatsnaam,gemeentenaam,centroide_ll,adresseerbaarobject_id";
   const parsed = docsSchema.safeParse(await getJson(`${deps.config.locatieserverUrl}/lookup?id=${encodeURIComponent(id)}&fl=${fl}`, deps));
   if (!parsed.success) throw new PdokError("invalid-response", "lookup");
   const d = parsed.data.response.docs.find((doc) => doc.id === id);
   if (!d || typeof d.weergavenaam !== "string") return null;
-  const huisnummer = typeof d.huisnummer === "number" ? d.huisnummer : Number.isInteger(Number(d.huisnummer)) && d.huisnummer !== undefined ? Number(d.huisnummer) : null;
+  const huisnummer =
+    typeof d.huisnummer === "number"
+      ? d.huisnummer
+      : Number.isInteger(Number(d.huisnummer)) && d.huisnummer !== undefined
+        ? Number(d.huisnummer)
+        : null;
   const vbo = str(d.adresseerbaarobject_id);
   return {
     id,
@@ -160,11 +173,16 @@ async function findById(collection: "verblijfsobject" | "pand", id: string, poin
   return nearby.find((f) => idOf(f) === id) ?? null;
 }
 
-const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : typeof v === "string" && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : null);
+const num = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) ? v : typeof v === "string" && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : null;
 
 function list(v: unknown): string[] {
   if (Array.isArray(v)) return v.flatMap((x) => (typeof x === "string" && x.trim() ? [x.trim()] : []));
-  if (typeof v === "string" && v.trim()) return v.split(",").map((s) => s.trim()).filter(Boolean);
+  if (typeof v === "string" && v.trim())
+    return v
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   return [];
 }
 
@@ -182,11 +200,18 @@ type Ring = [number, number][];
 
 function outlineOf(geometry: Feature["geometry"]): Ring[] | null {
   if (!geometry) return null;
-  const polygons: unknown[] = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.type === "MultiPolygon" && Array.isArray(geometry.coordinates) ? geometry.coordinates : [];
+  const polygons: unknown[] =
+    geometry.type === "Polygon"
+      ? [geometry.coordinates]
+      : geometry.type === "MultiPolygon" && Array.isArray(geometry.coordinates)
+        ? geometry.coordinates
+        : [];
   const rings: Ring[] = [];
   for (const poly of polygons) {
     if (!Array.isArray(poly) || !Array.isArray(poly[0])) continue;
-    const ring = (poly[0] as unknown[]).flatMap((c) => (Array.isArray(c) && typeof c[0] === "number" && typeof c[1] === "number" ? [[c[0], c[1]] as [number, number]] : []));
+    const ring = (poly[0] as unknown[]).flatMap((c) =>
+      Array.isArray(c) && typeof c[0] === "number" && typeof c[1] === "number" ? [[c[0], c[1]] as [number, number]] : [],
+    );
     // Only WGS84 lon/lat within the Netherlands; anything else (e.g. RD metres) is not drawn.
     if (ring.length >= 4 && ring.every(([lon, lat]) => lon > 3 && lon < 8 && lat > 50 && lat < 54)) rings.push(ring);
   }
@@ -203,7 +228,11 @@ function contains(ring: Ring, p: { lon: number; lat: number }) {
   return inside;
 }
 
-export async function fetchBuilding(address: Pick<Address, "verblijfsobjectId" | "point">, deps: Deps, now = new Date()): Promise<Building> {
+export async function fetchBuilding(
+  address: Pick<Address, "verblijfsobjectId" | "point">,
+  deps: Deps,
+  now = new Date(),
+): Promise<Building> {
   const notes: string[] = [];
   let verblijfsobject: Building["verblijfsobject"] = null;
   let pand: Building["pand"] = null;
@@ -213,7 +242,12 @@ export async function fetchBuilding(address: Pick<Address, "verblijfsobjectId" |
     const vbo = await findById("verblijfsobject", address.verblijfsobjectId, address.point, deps);
     if (vbo?.properties) {
       const p = vbo.properties;
-      verblijfsobject = { id: address.verblijfsobjectId, oppervlakteM2: num(p.oppervlakte), gebruiksdoelen: list(p.gebruiksdoel), status: str(p.status) };
+      verblijfsobject = {
+        id: address.verblijfsobjectId,
+        oppervlakteM2: num(p.oppervlakte),
+        gebruiksdoelen: list(p.gebruiksdoel),
+        status: str(p.status),
+      };
       ids = pandIds(p);
       if (verblijfsobject.oppervlakteM2 === null) notes.push("De BAG gaf geen gebruiksoppervlakte voor dit adres.");
     } else notes.push("Het verblijfsobject van dit adres is niet gevonden in de BAG.");
@@ -232,7 +266,12 @@ export async function fetchBuilding(address: Pick<Address, "verblijfsobjectId" |
   if (pandFeature?.properties) {
     const p = pandFeature.properties;
     const bouwjaar = num(p.oorspronkelijk_bouwjaar ?? p.bouwjaar);
-    pand = { id: idOf(pandFeature), bouwjaar: bouwjaar !== null && Number.isInteger(bouwjaar) ? bouwjaar : null, status: str(p.status), outline: outlineOf(pandFeature.geometry) };
+    pand = {
+      id: idOf(pandFeature),
+      bouwjaar: bouwjaar !== null && Number.isInteger(bouwjaar) ? bouwjaar : null,
+      status: str(p.status),
+      outline: outlineOf(pandFeature.geometry),
+    };
     if (pand.outline) notes.push("De contour is van het hele gebouw (pand). Bij een appartement horen daar meerdere woningen bij.");
   } else notes.push("Het gebouw (pand) is niet gevonden in de BAG.");
 

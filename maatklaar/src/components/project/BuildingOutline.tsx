@@ -4,7 +4,13 @@ import type { Building } from "@/lib/address/types";
  * Draws the BAG outline of the building (WGS84) as a simple shape, projected locally to metres.
  * No map tiles and no invented interior: just the registered contour and the address point.
  */
-export function BuildingOutline({ outline, point }: { outline: NonNullable<NonNullable<Building["pand"]>["outline"]>; point: { lat: number; lon: number } | null }) {
+export function BuildingOutline({
+  outline,
+  point,
+}: {
+  outline: NonNullable<NonNullable<Building["pand"]>["outline"]>;
+  point: { lat: number; lon: number } | null;
+}) {
   const all = outline.flat();
   const lat0 = all.reduce((s, [, lat]) => s + lat, 0) / all.length;
   const lon0 = all.reduce((s, [lon]) => s + lon, 0) / all.length;
@@ -25,13 +31,27 @@ export function BuildingOutline({ outline, point }: { outline: NonNullable<NonNu
   const dot = point ? project([point.lon, point.lat]) : null;
   return (
     <figure style={{ margin: 0 }}>
-      <svg viewBox={view} role="img" aria-label={`Contour van het gebouw, ongeveer ${Math.round(w)} bij ${Math.round(h)} meter`} style={{ width: "100%", maxHeight: 220 }}>
+      <svg
+        viewBox={view}
+        role="img"
+        aria-label={`Contour van het gebouw, ongeveer ${Math.round(w)} bij ${Math.round(h)} meter`}
+        style={{ width: "100%", maxHeight: 220 }}
+      >
         {outline.map((ring, i) => (
-          <polygon key={i} points={ring.map((c) => project(c).join(",")).join(" ")} fill="rgba(43,106,80,0.16)" stroke="#1f4d3a" strokeWidth={stroke} strokeLinejoin="round" />
+          <polygon
+            key={i}
+            points={ring.map((c) => project(c).join(",")).join(" ")}
+            fill="rgba(43,106,80,0.16)"
+            stroke="#1f4d3a"
+            strokeWidth={stroke}
+            strokeLinejoin="round"
+          />
         ))}
         {dot ? <circle cx={dot[0]} cy={dot[1]} r={stroke * 3} fill="#b98c3c" /> : null}
       </svg>
-      <figcaption className="tiny muted">Contour van het hele gebouw (BAG). Het punt is je adres. Dit zegt niets over de indeling binnen.</figcaption>
+      <figcaption className="tiny muted">
+        Contour van het hele gebouw (BAG). Het punt is je adres. Dit zegt niets over de indeling binnen.
+      </figcaption>
     </figure>
   );
 }

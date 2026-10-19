@@ -16,9 +16,14 @@ export function applyAnalysis(project: Project, page: number, result: AnalysisRe
 
   const existingScale = project.scales.find((s) => s.page === page);
   const candidate = scaleFromNotation(result, page, kind);
-  const scales = existingScale && existingScale.status === "confirmed" ? project.scales : [...project.scales.filter((s) => s.page !== page), ...(candidate ? [candidate] : [])];
+  const scales =
+    existingScale && existingScale.status === "confirmed"
+      ? project.scales
+      : [...project.scales.filter((s) => s.page !== page), ...(candidate ? [candidate] : [])];
 
-  const keptWindows = project.windows.filter((w) => !(w.origin === "auto" && w.page === page && !w.confirmed && Object.keys(w.measures).length === 0));
+  const keptWindows = project.windows.filter(
+    (w) => !(w.origin === "auto" && w.page === page && !w.confirmed && Object.keys(w.measures).length === 0),
+  );
   const windows = [...keptWindows, ...windowsFromAnalysis(result, page, keptWindows, newWindow)];
 
   return {

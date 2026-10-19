@@ -57,7 +57,13 @@ export async function createOrder(projectRef: string, urls: { redirectBase: stri
     await deps.store.update(id, (o) => ({ ...o, status: "failed", updatedAt: now }));
     throw err;
   }
-  await deps.store.update(id, (o) => ({ ...o, providerPaymentId: created.providerPaymentId, mode: created.mode, status: "open", updatedAt: now }));
+  await deps.store.update(id, (o) => ({
+    ...o,
+    providerPaymentId: created.providerPaymentId,
+    mode: created.mode,
+    status: "open",
+    updatedAt: now,
+  }));
   return { orderId: id, orderSecret: secret, checkoutUrl: created.checkoutUrl, mode: created.mode };
 }
 
@@ -76,7 +82,13 @@ export async function syncFromProvider(order: Order, deps: Deps): Promise<Order>
   const updated = await deps.store.update(order.id, (current) => {
     const status = nextStatus(current.status, incoming);
     if (status === current.status && current.mode === p.mode) return null; // idempotent: nothing changes
-    return { ...current, status, mode: p.mode, updatedAt: now, paidAt: status === "paid" ? (current.paidAt ?? p.paidAt ?? now) : current.paidAt };
+    return {
+      ...current,
+      status,
+      mode: p.mode,
+      updatedAt: now,
+      paidAt: status === "paid" ? (current.paidAt ?? p.paidAt ?? now) : current.paidAt,
+    };
   });
   return updated ?? order;
 }
@@ -110,7 +122,8 @@ export async function handleWebhook(providerPaymentId: string, deps: Deps) {
 export async function simulateDemoPayment(orderId: string, secret: string, outcome: "paid" | "canceled", deps: Deps) {
   if (deps.provider.name !== "demo") throw new PaymentError(403, "Alleen beschikbaar in DEMO-modus.");
   const order = ORDER_ID.test(orderId) ? await deps.store.get(orderId) : null;
-  if (!order || order.provider !== "demo" || !order.providerPaymentId || !secretMatches(order, secret)) throw new PaymentError(404, "Bestelling niet gevonden.");
+  if (!order || order.provider !== "demo" || !order.providerPaymentId || !secretMatches(order, secret))
+    throw new PaymentError(404, "Bestelling niet gevonden.");
   await deps.store.setDemo(order.providerPaymentId, outcome);
   return syncFromProvider(order, deps);
 }

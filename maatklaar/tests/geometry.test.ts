@@ -111,13 +111,33 @@ describe("vormen naar oppervlakte", () => {
   });
 
   it("L-vorm met een te grote uitsparing wordt geweigerd", () => {
-    const g = shapeGeometry({ kind: "l", length: confirmed(3000), width: confirmed(3000), notchLength: confirmed(3000), notchWidth: confirmed(1000), corner: "ne" }, []);
+    const g = shapeGeometry(
+      {
+        kind: "l",
+        length: confirmed(3000),
+        width: confirmed(3000),
+        notchLength: confirmed(3000),
+        notchWidth: confirmed(1000),
+        corner: "ne",
+      },
+      [],
+    );
     expect(g.areaMm2).toBeNull();
     expect(g.status).toBe("missing");
   });
 
   it("getekende kamer zonder schaal krijgt geen oppervlakte", () => {
-    const shape = { kind: "drawn" as const, page: 0, status: "confirmed" as const, points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }] };
+    const shape = {
+      kind: "drawn" as const,
+      page: 0,
+      status: "confirmed" as const,
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 50 },
+        { x: 0, y: 50 },
+      ],
+    };
     const g = shapeGeometry(shape, []);
     expect(g.areaMm2).toBeNull();
     expect(g.status).toBe("missing");
@@ -126,7 +146,17 @@ describe("vormen naar oppervlakte", () => {
 
   it("getekende kamer met bevestigde schaal: px → mm → m²", () => {
     const scale: Scale = { page: 0, mmPerUnit: 40, method: "kalibratie", status: "confirmed", reference: null, notation: null };
-    const shape = { kind: "drawn" as const, page: 0, status: "confirmed" as const, points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }] };
+    const shape = {
+      kind: "drawn" as const,
+      page: 0,
+      status: "confirmed" as const,
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 50 },
+        { x: 0, y: 50 },
+      ],
+    };
     const g = shapeGeometry(shape, [scale]);
     expect(g.areaMm2).toBe(4000 * 2000);
     expect(g.status).toBe("derived");

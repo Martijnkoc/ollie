@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { analyzeText } from "@/lib/plan-analysis/analyze";
-import { matchRoomName, parseArea, parseDimensionPair, parseScaleNotation, parseSingleLength, isNotToScale } from "@/lib/plan-analysis/classify";
+import {
+  matchRoomName,
+  parseArea,
+  parseDimensionPair,
+  parseScaleNotation,
+  parseSingleLength,
+  isNotToScale,
+} from "@/lib/plan-analysis/classify";
 import { roomsFromAnalysis, scaleFromNotation } from "@/lib/plan-analysis/to-project";
 import type { TextItem } from "@/lib/plan-analysis/types";
 import { computeProject } from "@/lib/projects/compute";
@@ -72,7 +79,11 @@ describe("koppeling van labels", () => {
   });
 
   it("bij onvoldoende kwaliteit worden geen exacte maten gegenereerd", () => {
-    const r = analyzeText([item("Woonkamer", 100, 100, 10, 30), item("6.00 x 8.00", 98, 113, 9, 35)], { method: "ocr", imageWidthPx: 400, minImageWidthPx: 800 });
+    const r = analyzeText([item("Woonkamer", 100, 100, 10, 30), item("6.00 x 8.00", 98, 113, 9, 35)], {
+      method: "ocr",
+      imageWidthPx: 400,
+      minImageWidthPx: 800,
+    });
     expect(r.quality).toBe("onvoldoende");
     expect(r.rooms.every((room) => room.dims === null && room.areaM2 === null)).toBe(true);
   });

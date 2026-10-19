@@ -66,14 +66,29 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
         {paid ? (
           <>
             <label className="check">
-              <input type="checkbox" checked={project.report.includeAddress} disabled={!project.address} onChange={(e) => update((p) => ({ ...p, report: { ...p.report, includeAddress: e.target.checked } }))} />
+              <input
+                type="checkbox"
+                checked={project.report.includeAddress}
+                disabled={!project.address}
+                onChange={(e) => update((p) => ({ ...p, report: { ...p.report, includeAddress: e.target.checked } }))}
+              />
               <span>Zet mijn adres in het rapport{project.address ? "" : " (geen adres ingevuld)"}</span>
             </label>
             <div className="row">
               <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={() => void pdf()}>
                 {busy ? "Rapport maken…" : "Download PDF-rapport"}
               </button>
-              <button type="button" className="btn btn-lg" onClick={() => download(buildCsv(computed, { demo: project.payment?.mode === "demo" }), "text/csv;charset=utf-8", `maatklaar-${slug(project.name)}.csv`)}>
+              <button
+                type="button"
+                className="btn btn-lg"
+                onClick={() =>
+                  download(
+                    buildCsv(computed, { demo: project.payment?.mode === "demo" }),
+                    "text/csv;charset=utf-8",
+                    `maatklaar-${slug(project.name)}.csv`,
+                  )
+                }
+              >
                 Download CSV-bestellijst
               </button>
             </div>
@@ -105,7 +120,10 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
           <div className="card-flat">
             <h3>Nog te meten of te bevestigen</h3>
             <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
-              {(paid ? preview.checklist.todo : preview.checklist.todo.filter((x) => x.startsWith("Vloer") || x.startsWith("Controleer"))).map((x) => (
+              {(paid
+                ? preview.checklist.todo
+                : preview.checklist.todo.filter((x) => x.startsWith("Vloer") || x.startsWith("Controleer"))
+              ).map((x) => (
                 <li key={x}>{x}</li>
               ))}
               {preview.checklist.todo.length === 0 && <li>Niets openstaand.</li>}
@@ -119,8 +137,8 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
           Je gegevens
         </h2>
         <p className="small muted" style={{ margin: 0 }}>
-          Dit project staat alleen in deze browser. Je plattegrond is nooit naar onze server gestuurd. Op de server staat bij een betaling alleen een ordernummer, het bedrag en
-          de status.
+          Dit project staat alleen in deze browser. Je plattegrond is nooit naar onze server gestuurd. Op de server staat bij een betaling
+          alleen een ordernummer, het bedrag en de status.
         </p>
         <div className="row">
           {project.document?.storedOnDevice && (
@@ -142,11 +160,7 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
           ) : (
             <span className="row" role="group" aria-label="Bevestig verwijderen">
               <span className="small">Project en bestand definitief verwijderen?</span>
-              <button
-                type="button"
-                className="btn btn-sm btn-danger"
-                onClick={() => void remove()}
-              >
+              <button type="button" className="btn btn-sm btn-danger" onClick={() => void remove()}>
                 Ja, verwijderen
               </button>
               <button type="button" className="btn btn-sm" onClick={() => setConfirmDelete(false)}>

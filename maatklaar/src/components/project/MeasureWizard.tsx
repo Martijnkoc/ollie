@@ -3,11 +3,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMm, parseWholeMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, evaluateWindow, groupSignature } from "@/lib/measurements/evaluate";
-import { CHECK_INFO, MEASURE_GROUPS, MEASURE_INFO, MOUNTING_LABELS, PRODUCT_LABELS, type CheckKey, type MeasureGroup, type MeasureKey, type MeasurementRuleSet } from "@/lib/measurements/schema";
+import {
+  CHECK_INFO,
+  MEASURE_GROUPS,
+  MEASURE_INFO,
+  MOUNTING_LABELS,
+  PRODUCT_LABELS,
+  type CheckKey,
+  type MeasureGroup,
+  type MeasureKey,
+  type MeasurementRuleSet,
+} from "@/lib/measurements/schema";
 import type { ProjectWindow } from "@/lib/projects/schema";
 import { MeasureDiagram } from "./MeasureDiagram";
 
-type Screen = { kind: "intro" } | { kind: "measure"; key: MeasureKey; optional: boolean } | { kind: "group"; group: MeasureGroup } | { kind: "checks" } | { kind: "fullness" } | { kind: "summary" };
+type Screen =
+  | { kind: "intro" }
+  | { kind: "measure"; key: MeasureKey; optional: boolean }
+  | { kind: "group"; group: MeasureGroup }
+  | { kind: "checks" }
+  | { kind: "fullness" }
+  | { kind: "summary" };
 
 const GROUP_LABEL: Record<MeasureGroup, string> = { breedte: "breedte", hoogte: "hoogte", ophanghoogte: "ophanghoogte" };
 
@@ -37,7 +53,17 @@ function screensFor(rule: MeasurementRuleSet): Screen[] {
   return screens;
 }
 
-export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: ProjectWindow; rule: MeasurementRuleSet; onChange: (w: ProjectWindow) => void; onClose: () => void }) {
+export function MeasureWizard({
+  window: w,
+  rule,
+  onChange,
+  onClose,
+}: {
+  window: ProjectWindow;
+  rule: MeasurementRuleSet;
+  onChange: (w: ProjectWindow) => void;
+  onClose: () => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const screens = useMemo(() => screensFor(rule), [rule]);
   const [i, setI] = useState(0);
@@ -122,12 +148,17 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
               <MeasureDiagram active={null} keys={keys} />
             </div>
             <p style={{ margin: 0 }}>
-              We vragen alleen de maten die nodig zijn voor <strong>{rule.title.toLowerCase()}</strong>. Meet met een stalen rolmaat in millimeters, op elk punt opnieuw. We
-              middelen niets weg: verschillen tussen meetpunten blijven zichtbaar.
+              We vragen alleen de maten die nodig zijn voor <strong>{rule.title.toLowerCase()}</strong>. Meet met een stalen rolmaat in
+              millimeters, op elk punt opnieuw. We middelen niets weg: verschillen tussen meetpunten blijven zichtbaar.
             </p>
             <div className="field">
               <label htmlFor="bron">Waar komen de maten vandaan?</label>
-              <select id="bron" className="select" value={w.measureSource} onChange={(e) => onChange({ ...w, measureSource: e.target.value as ProjectWindow["measureSource"] })}>
+              <select
+                id="bron"
+                className="select"
+                value={w.measureSource}
+                onChange={(e) => onChange({ ...w, measureSource: e.target.value as ProjectWindow["measureSource"] })}
+              >
                 <option value="gebruiker">Zelf gemeten</option>
                 <option value="tekening">Overgenomen van een tekening</option>
                 <option value="scan">Uit een scan of opmeting</option>
@@ -166,7 +197,11 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
                 <span>mm</span>
               </div>
               <span id="maat-hint" className="hint">
-                {invalid ? <span style={{ color: "var(--danger)" }}>Vul hele millimeters in, bijvoorbeeld 1250.</span> : MEASURE_INFO[screen.key].hint}
+                {invalid ? (
+                  <span style={{ color: "var(--danger)" }}>Vul hele millimeters in, bijvoorbeeld 1250.</span>
+                ) : (
+                  MEASURE_INFO[screen.key].hint
+                )}
               </span>
             </div>
           </>
@@ -178,17 +213,23 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
             {groupResult ? (
               <>
                 <p style={{ margin: 0 }}>
-                  Kleinste {formatMm(groupResult.minMm)}, grootste {formatMm(groupResult.maxMm)}: verschil <strong>{formatMm(groupResult.spreadMm)}</strong> (waarschuwingsdrempel{" "}
-                  {formatMm(groupResult.toleranceMm)}).
+                  Kleinste {formatMm(groupResult.minMm)}, grootste {formatMm(groupResult.maxMm)}: verschil{" "}
+                  <strong>{formatMm(groupResult.spreadMm)}</strong> (waarschuwingsdrempel {formatMm(groupResult.toleranceMm)}).
                 </p>
                 {groupResult.exceeds ? (
                   <div className="notice notice-warn stack-sm">
                     <span>
-                      Je meetpunten verschillen meer dan de drempel. Meet opnieuw; een opening is vaak niet overal even groot. Klopt het verschil echt, bevestig het dan. We
-                      kiezen niet zelf een gemiddelde.
+                      Je meetpunten verschillen meer dan de drempel. Meet opnieuw; een opening is vaak niet overal even groot. Klopt het
+                      verschil echt, bevestig het dan. We kiezen niet zelf een gemiddelde.
                     </span>
                     <div className="row">
-                      <button type="button" className="btn btn-sm" onClick={() => setI(screens.findIndex((s) => s.kind === "measure" && MEASURE_GROUPS[screen.group].includes(s.key as never)))}>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() =>
+                          setI(screens.findIndex((s) => s.kind === "measure" && MEASURE_GROUPS[screen.group].includes(s.key as never)))
+                        }
+                      >
                         Opnieuw meten
                       </button>
                       <label className="check small">
@@ -235,7 +276,12 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
                     [false, "Nee"],
                   ].map(([v, label]) => (
                     <label key={String(label)}>
-                      <input type="radio" name={`chk-${c}`} checked={w.checks[c] === v} onChange={() => onChange({ ...w, checks: { ...w.checks, [c]: v as boolean }, confirmed: false })} />
+                      <input
+                        type="radio"
+                        name={`chk-${c}`}
+                        checked={w.checks[c] === v}
+                        onChange={() => onChange({ ...w, checks: { ...w.checks, [c]: v as boolean }, confirmed: false })}
+                      />
                       <span>{label as string}</span>
                     </label>
                   ))}
@@ -260,7 +306,9 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
               <option value="2.5">2,5 × de railbreedte</option>
               <option value="3">3 × de railbreedte</option>
             </select>
-            <span className="hint">De volheid hangt af van stof, plooi en band. Kies wat jij of je leverancier wilt; wij kiezen niets voor je.</span>
+            <span className="hint">
+              De volheid hangt af van stof, plooi en band. Kies wat jij of je leverancier wilt; wij kiezen niets voor je.
+            </span>
           </div>
         )}
 
@@ -301,7 +349,8 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
               </div>
             ) : (
               <div className="notice">
-                <strong>Meetblad met ruwe maten.</strong> De uiteindelijke bestelmaat bevestig je volgens de meetinstructie van je gekozen leverancier.
+                <strong>Meetblad met ruwe maten.</strong> De uiteindelijke bestelmaat bevestig je volgens de meetinstructie van je gekozen
+                leverancier.
                 <ul>
                   {evaluation.orderBlocked.map((s) => (
                     <li key={s}>{s}</li>
@@ -317,8 +366,15 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
               </ul>
             )}
             <label className="check">
-              <input type="checkbox" checked={w.confirmed} disabled={evaluation.missing.length > 0} onChange={(e) => onChange({ ...w, confirmed: e.target.checked })} />
-              <span>Ik heb alle maten van dit raam nagekeken{evaluation.missing.length ? " (eerst alle verplichte maten invullen)" : ""}</span>
+              <input
+                type="checkbox"
+                checked={w.confirmed}
+                disabled={evaluation.missing.length > 0}
+                onChange={(e) => onChange({ ...w, confirmed: e.target.checked })}
+              />
+              <span>
+                Ik heb alle maten van dit raam nagekeken{evaluation.missing.length ? " (eerst alle verplichte maten invullen)" : ""}
+              </span>
             </label>
           </div>
         )}

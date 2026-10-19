@@ -15,7 +15,11 @@ export class DemoProvider implements PaymentProvider {
     const providerPaymentId = `demo_${input.orderId.slice(4)}`;
     await this.store.setDemo(providerPaymentId, "open");
     // The secret travels in the fragment: browsers do not send it to the server or in Referer headers.
-    return { providerPaymentId, checkoutUrl: `/betaling/demo?order=${encodeURIComponent(input.orderId)}#${input.orderSecret}`, mode: "demo" as const };
+    return {
+      providerPaymentId,
+      checkoutUrl: `/betaling/demo?order=${encodeURIComponent(input.orderId)}#${input.orderSecret}`,
+      mode: "demo" as const,
+    };
   }
 
   async getPayment(id: string): Promise<ProviderPayment> {

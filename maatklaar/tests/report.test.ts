@@ -11,24 +11,54 @@ const NOW = new Date("2026-10-19T12:00:00Z");
 function project(windowCount: number, patch: Partial<Project> = {}): Project {
   const base = newProject(NOW);
   const rooms = [
-    newRoom("Woonkamer", { kind: "rect", length: userLength(5400), width: userLength(4100) }, { doors: [{ id: "d1", wall: 0, width: userLength(830) }] }),
-    newRoom("Keuken", { kind: "rect", length: { mm: 3000, status: "auto", source: "pdf-tekst", sourceText: "3.00 x 3.00" }, width: { mm: 3000, status: "auto", source: "pdf-tekst" } }),
+    newRoom(
+      "Woonkamer",
+      { kind: "rect", length: userLength(5400), width: userLength(4100) },
+      { doors: [{ id: "d1", wall: 0, width: userLength(830) }] },
+    ),
+    newRoom("Keuken", {
+      kind: "rect",
+      length: { mm: 3000, status: "auto", source: "pdf-tekst", sourceText: "3.00 x 3.00" },
+      width: { mm: 3000, status: "auto", source: "pdf-tekst" },
+    }),
     newRoom("Hal", { kind: "drawn", page: 0, points: [], status: "auto" }),
     newRoom("Badkamer 🛁 met inloopdouche − hoek", { kind: "area", m2: 6, status: "confirmed", source: "gebruiker" }),
   ];
   const windows: ProjectWindow[] = [];
   for (let i = 0; i < windowCount; i++) {
-    const w = newWindow(windows, { product: i % 3 === 0 ? "gordijn" : "rolgordijn", mounting: i % 3 === 0 ? "wand" : "in-de-dag", roomId: rooms[i % 2]!.id, label: i % 4 === 0 ? "raam naast de voordeur met een heel lange omschrijving" : "" });
+    const w = newWindow(windows, {
+      product: i % 3 === 0 ? "gordijn" : "rolgordijn",
+      mounting: i % 3 === 0 ? "wand" : "in-de-dag",
+      roomId: rooms[i % 2]!.id,
+      label: i % 4 === 0 ? "raam naast de voordeur met een heel lange omschrijving" : "",
+    });
     if (i % 2 === 0) {
       w.measures =
         w.product === "gordijn"
           ? { rail_breedte: 2200, ophanghoogte_links: 2600, ophanghoogte_midden: 2604, ophanghoogte_rechts: 2598 }
-          : { breedte_boven: 1203, breedte_midden: 1201, breedte_onder: 1188, hoogte_links: 1500, hoogte_midden: 1499, hoogte_rechts: 1501, diepte: 60 };
+          : {
+              breedte_boven: 1203,
+              breedte_midden: 1201,
+              breedte_onder: 1188,
+              hoogte_links: 1500,
+              hoogte_midden: 1499,
+              hoogte_rechts: 1501,
+              diepte: 60,
+            };
       w.confirmed = i % 4 === 0;
     }
     windows.push(w);
   }
-  return { ...base, name: "Testwoning", rooms, windows, floor: { ...base.floor, packM2: 2.131 }, plinth: { marginPercent: 10, pieceLengthMm: 2400 }, payment: null, ...patch };
+  return {
+    ...base,
+    name: "Testwoning",
+    rooms,
+    windows,
+    floor: { ...base.floor, packM2: 2.131 },
+    plinth: { marginPercent: 10, pieceLengthMm: 2400 },
+    payment: null,
+    ...patch,
+  };
 }
 
 async function render(p: Project) {
@@ -39,7 +69,10 @@ async function render(p: Project) {
 
 async function pdfText(bytes: Uint8Array) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const doc = await pdfjs.getDocument({ data: bytes.slice(), standardFontDataUrl: `${import.meta.dirname}/../node_modules/pdfjs-dist/standard_fonts/` }).promise;
+  const doc = await pdfjs.getDocument({
+    data: bytes.slice(),
+    standardFontDataUrl: `${import.meta.dirname}/../node_modules/pdfjs-dist/standard_fonts/`,
+  }).promise;
   const pages: string[] = [];
   for (let i = 1; i <= doc.numPages; i++) {
     const content = await (await doc.getPage(i)).getTextContent();
@@ -50,7 +83,9 @@ async function pdfText(bytes: Uint8Array) {
 
 function inside(boxes: { x: number; y: number; w: number; h: number }[]) {
   const { width, height, margins: m } = PAGE;
-  return boxes.filter((b) => b.x < m.left - 0.5 || b.x + b.w > width - m.right + 0.5 || b.y < m.bottom - 2 || b.y + b.h > height - m.top + 2);
+  return boxes.filter(
+    (b) => b.x < m.left - 0.5 || b.x + b.w > width - m.right + 0.5 || b.y < m.bottom - 2 || b.y + b.h > height - m.top + 2,
+  );
 }
 
 describe("PDF-rapport", () => {
@@ -93,7 +128,19 @@ describe("PDF-rapport", () => {
   });
 
   it("zet het adres er alleen in als de gebruiker dat wil", async () => {
-    const address = { id: "adr-x", weergavenaam: "Voorbeeldstraat 1, 1234AB Voorbeeldstad", straat: null, huisnummer: 1, huisletter: null, toevoeging: null, postcode: null, woonplaats: null, gemeente: null, point: null, verblijfsobjectId: null };
+    const address = {
+      id: "adr-x",
+      weergavenaam: "Voorbeeldstraat 1, 1234AB Voorbeeldstad",
+      straat: null,
+      huisnummer: 1,
+      huisletter: null,
+      toevoeging: null,
+      postcode: null,
+      woonplaats: null,
+      gemeente: null,
+      point: null,
+      verblijfsobjectId: null,
+    };
     const without = await render(project(1, { address }));
     expect((await pdfText(without.bytes)).join(" ")).not.toContain("Voorbeeldstraat");
     const withAddr = await render(project(1, { address, report: { includeAddress: true } }));
@@ -101,7 +148,9 @@ describe("PDF-rapport", () => {
   });
 
   it("markeert een DEMO-rapport op elke pagina", async () => {
-    const { bytes, pages } = await render(project(1, { payment: { orderId: "ord_x", orderSecret: "s", status: "paid", mode: "demo", checkedAt: NOW.toISOString() } }));
+    const { bytes, pages } = await render(
+      project(1, { payment: { orderId: "ord_x", orderSecret: "s", status: "paid", mode: "demo", checkedAt: NOW.toISOString() } }),
+    );
     const texts = await pdfText(bytes);
     expect(texts[0]).toContain("DEMO-RAPPORT");
     expect(texts.filter((t) => t.includes("DEMO - NIET BETAALD"))).toHaveLength(pages);
@@ -111,7 +160,7 @@ describe("PDF-rapport", () => {
 describe("CSV-bestellijst", () => {
   it("gebruikt puntkomma's, decimale komma's en een BOM, en neutraliseert formules", () => {
     const p = project(1);
-    p.rooms[0]!.name = "=HYPERLINK(\"http://evil\")";
+    p.rooms[0]!.name = '=HYPERLINK("http://evil")';
     const csv = buildCsv(computeProject(p), { demo: false });
     expect(csv.startsWith("﻿")).toBe(true);
     const lines = csv.split("\r\n");

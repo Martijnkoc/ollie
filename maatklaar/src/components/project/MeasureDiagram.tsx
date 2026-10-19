@@ -49,7 +49,18 @@ export function MeasureDiagram({ active, keys }: { active: MeasureKey | null; ke
         vensterbank
       </text>
 
-      {outside && <rect x="52" y="48" width="186" height="146" fill="none" stroke={is("gewenste_breedte") || is("gewenste_hoogte") ? ON : OFF} strokeDasharray="6 4" strokeWidth="2" />}
+      {outside && (
+        <rect
+          x="52"
+          y="48"
+          width="186"
+          height="146"
+          fill="none"
+          stroke={is("gewenste_breedte") || is("gewenste_hoogte") ? ON : OFF}
+          strokeDasharray="6 4"
+          strokeWidth="2"
+        />
+      )}
       {curtains && <rect x="40" y="26" width="210" height="6" rx="3" fill={is("rail_breedte") ? ON : "#b98c3c"} />}
 
       {show("breedte_boven") && <Arrow x1={72} y1={88} x2={218} y2={88} active={is("breedte_boven")} />}

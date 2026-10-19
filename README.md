@@ -1,5 +1,8 @@
 # cafe. — Eerst een klik. Dan een date.
 
+> **Let op:** deze repository bevat sinds kort ook **MaatKlaar** (plattegrond → materiaal- en bestellijst), een
+> zelfstandige app in [`maatklaar/`](maatklaar/README.md). Cafe hieronder is daar niet door veranderd.
+
 Cafe helpt mensen die datingmoe zijn. Je ziet en spreekt elkaar eerst twintig minuten op video, en daarna kiest ieder privé of je echt wilt afspreken. Een vriendelijke "nee" is ook een goed resultaat.
 
 Er zijn twee ingangen in één product:

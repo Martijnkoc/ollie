@@ -31,7 +31,15 @@ const TEST_SUPPLIER_RULE: MeasurementRuleSet = {
 };
 
 const complete: WindowMeasurements = {
-  measures: { breedte_boven: 1203, breedte_midden: 1201, breedte_onder: 1202, hoogte_links: 1500, hoogte_midden: 1499, hoogte_rechts: 1501, diepte: 60 },
+  measures: {
+    breedte_boven: 1203,
+    breedte_midden: 1201,
+    breedte_onder: 1202,
+    hoogte_links: 1500,
+    hoogte_midden: 1499,
+    hoogte_rechts: 1501,
+    diepte: 60,
+  },
   checks: { grepen: false, ventilatierooster: false, raam_openen: false, vensterbank: false },
   acknowledged: {},
   confirmed: true,
@@ -48,7 +56,10 @@ describe("MeasurementRules", () => {
   it("weigert een leveranciersregel zonder bron of met een gemiddelde", () => {
     const noSource = { ...TEST_SUPPLIER_RULE, source: { label: "Ergens gelezen" } };
     expect(measurementRuleSetSchema.safeParse(noSource).success).toBe(false);
-    const average = { ...TEST_SUPPLIER_RULE, conversion: { ...TEST_SUPPLIER_RULE.conversion, width: { basis: "avg", of: ["breedte_midden"], adjustMm: 0 } } };
+    const average = {
+      ...TEST_SUPPLIER_RULE,
+      conversion: { ...TEST_SUPPLIER_RULE.conversion, width: { basis: "avg", of: ["breedte_midden"], adjustMm: 0 } },
+    };
     expect(measurementRuleSetSchema.safeParse(average).success).toBe(false);
     const protocolWithFormula = { ...TEST_SUPPLIER_RULE, kind: "protocol" };
     expect(measurementRuleSetSchema.safeParse(protocolWithFormula).success).toBe(false);
@@ -59,7 +70,10 @@ describe("MeasurementRules", () => {
     expect(defaultRuleFor("plisse", "op-de-dag").id).toBe("protocol-op-de-dag");
     expect(defaultRuleFor("gordijn", "plafond").id).toBe("protocol-gordijn-plafond");
     expect(defaultRuleFor("onbekend", "onbekend").id).toBe("protocol-in-de-dag");
-    expect(rulesFor("rolgordijn", "in-de-dag", [...ALL_RULES, TEST_SUPPLIER_RULE]).map((r) => r.id)).toEqual(["protocol-in-de-dag", TEST_SUPPLIER_RULE.id]);
+    expect(rulesFor("rolgordijn", "in-de-dag", [...ALL_RULES, TEST_SUPPLIER_RULE]).map((r) => r.id)).toEqual([
+      "protocol-in-de-dag",
+      TEST_SUPPLIER_RULE.id,
+    ]);
   });
 });
 

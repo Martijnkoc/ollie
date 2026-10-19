@@ -16,8 +16,14 @@ type Env = Record<string, string | undefined>;
 export function paymentsConfig(env: Env = process.env): PaymentsConfig {
   const key = env.MOLLIE_API_KEY?.trim();
   if (key) {
-    if (!/^(test|live)_[A-Za-z0-9]{20,}$/.test(key)) return { provider: "disabled", reason: "MOLLIE_API_KEY heeft geen geldig formaat (test_… of live_…)." };
-    return { provider: "mollie", apiKey: key, apiUrl: env.MOLLIE_API_URL?.trim() || "https://api.mollie.com/v2", mode: key.startsWith("live_") ? "live" : "test" };
+    if (!/^(test|live)_[A-Za-z0-9]{20,}$/.test(key))
+      return { provider: "disabled", reason: "MOLLIE_API_KEY heeft geen geldig formaat (test_… of live_…)." };
+    return {
+      provider: "mollie",
+      apiKey: key,
+      apiUrl: env.MOLLIE_API_URL?.trim() || "https://api.mollie.com/v2",
+      mode: key.startsWith("live_") ? "live" : "test",
+    };
   }
   if (env.NODE_ENV !== "production" || env.ALLOW_DEMO_PAYMENTS === "true") return { provider: "demo" };
   return { provider: "disabled", reason: "Er is geen betaalprovider ingesteld (MOLLIE_API_KEY ontbreekt)." };
@@ -51,7 +57,12 @@ export function webhookUrlFor(base: string) {
 export function publicPaymentInfo(env: Env = process.env) {
   const c = paymentsConfig(env);
   const store = storeConfig(env, c.provider);
-  if (c.provider === "disabled" || store.kind === "missing") return { available: false as const, mode: null, label: "Betalen is nog niet beschikbaar." };
+  if (c.provider === "disabled" || store.kind === "missing")
+    return { available: false as const, mode: null, label: "Betalen is nog niet beschikbaar." };
   if (c.provider === "demo") return { available: true as const, mode: "demo" as const, label: "DEMO-modus: er wordt niet echt betaald." };
-  return { available: true as const, mode: c.mode, label: c.mode === "test" ? "Testmodus: Mollie-testbetaling, er wordt geen geld afgeschreven." : "" };
+  return {
+    available: true as const,
+    mode: c.mode,
+    label: c.mode === "test" ? "Testmodus: Mollie-testbetaling, er wordt geen geld afgeschreven." : "",
+  };
 }

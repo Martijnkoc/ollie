@@ -23,19 +23,23 @@ export default function TermsPage() {
 
       <h2>Wat {BRAND.name} doet</h2>
       <p>
-        {BRAND.name} helpt je met het berekenen van materiaalhoeveelheden op basis van een plattegrond en maten die jij aanlevert en controleert. De vloerberekening is gratis.
-        Het volledige meet- en bestelrapport kost {PRICE.label} {PRICE.period} per woningproject. Er is geen abonnement.
+        {BRAND.name} helpt je met het berekenen van materiaalhoeveelheden op basis van een plattegrond en maten die jij aanlevert en
+        controleert. De vloerberekening is gratis. Het volledige meet- en bestelrapport kost {PRICE.label} {PRICE.period} per woningproject.
+        Er is geen abonnement.
       </p>
 
       <h2>Nauwkeurigheid</h2>
       <p>
-        Automatische herkenning kan fouten maken. Elke waarde krijgt daarom een label en jij bevestigt de maten. De uitkomsten zijn zo betrouwbaar als de maten die je aanlevert en
-        bevestigt. Bestelmaten voor raamdecoratie volgen de meetinstructies van de leverancier die je kiest; {BRAND.name} verzint geen leveranciersregels. Controleer kritieke maten
-        altijd in de woning voordat je bestelt.
+        Automatische herkenning kan fouten maken. Elke waarde krijgt daarom een label en jij bevestigt de maten. De uitkomsten zijn zo
+        betrouwbaar als de maten die je aanlevert en bevestigt. Bestelmaten voor raamdecoratie volgen de meetinstructies van de leverancier
+        die je kiest; {BRAND.name} verzint geen leveranciersregels. Controleer kritieke maten altijd in de woning voordat je bestelt.
       </p>
 
       <h2>Je bestanden</h2>
-      <p>Je mag alleen bestanden gebruiken waarvoor je toestemming hebt. {BRAND.name} claimt geen rechten op je plattegrond; die wordt niet naar onze server gestuurd.</p>
+      <p>
+        Je mag alleen bestanden gebruiken waarvoor je toestemming hebt. {BRAND.name} claimt geen rechten op je plattegrond; die wordt niet
+        naar onze server gestuurd.
+      </p>
 
       <h2>Betaling</h2>
       <p>

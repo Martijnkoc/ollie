@@ -66,7 +66,11 @@ export function PaymentReturn({ orderId }: { orderId: string }) {
         {state.kind === "paid" && (
           <>
             <h1>Betaling ontvangen</h1>
-            <p>{state.demo ? "DEMO: de nagebootste betaling is gelukt. Er is geen geld afgeschreven." : "Dank je wel. Je volledige rapport is ontgrendeld."}</p>
+            <p>
+              {state.demo
+                ? "DEMO: de nagebootste betaling is gelukt. Er is geen geld afgeschreven."
+                : "Dank je wel. Je volledige rapport is ontgrendeld."}
+            </p>
             <Link className="btn btn-primary" href={`/project/${state.projectId}#plinten-ramen`}>
               Naar plinten en ramen
             </Link>
@@ -76,8 +80,8 @@ export function PaymentReturn({ orderId }: { orderId: string }) {
           <>
             <h1>Je betaling is nog niet bevestigd</h1>
             <p className="muted">
-              De betaalprovider heeft de betaling nog niet als geslaagd gemeld. Zodra dat gebeurt, wordt je rapport ontgrendeld. Je kunt deze pagina open laten of later je project
-              openen; we controleren het dan opnieuw.
+              De betaalprovider heeft de betaling nog niet als geslaagd gemeld. Zodra dat gebeurt, wordt je rapport ontgrendeld. Je kunt
+              deze pagina open laten of later je project openen; we controleren het dan opnieuw.
             </p>
             <Link className="btn" href={`/project/${state.projectId}#plinten-ramen`}>
               Terug naar mijn project
@@ -96,7 +100,9 @@ export function PaymentReturn({ orderId }: { orderId: string }) {
         {state.kind === "error" && (
           <>
             <h1>Status nu niet op te halen</h1>
-            <p className="muted">We konden de betaalstatus nu niet controleren. Je project is bewaard; open het later opnieuw, dan proberen we het nog eens.</p>
+            <p className="muted">
+              We konden de betaalstatus nu niet controleren. Je project is bewaard; open het later opnieuw, dan proberen we het nog eens.
+            </p>
             <Link className="btn" href={`/project/${state.projectId}#plinten-ramen`}>
               Naar mijn project
             </Link>
@@ -106,10 +112,14 @@ export function PaymentReturn({ orderId }: { orderId: string }) {
           <>
             <h1>We vinden je project niet in deze browser</h1>
             <p>
-              Je project staat in de browser waarin je begon. Na een betaling via de app van je bank kom je soms in een andere browser terug. Open MaatKlaar in de browser waarin je
-              begon en open je project via <strong>Mijn projecten</strong>: daar controleren we de betaling opnieuw en ontgrendelen we je rapport.
+              Je project staat in de browser waarin je begon. Na een betaling via de app van je bank kom je soms in een andere browser
+              terug. Open MaatKlaar in de browser waarin je begon en open je project via <strong>Mijn projecten</strong>: daar controleren
+              we de betaling opnieuw en ontgrendelen we je rapport.
             </p>
-            <p className="small muted">Je betaalreferentie: {orderId ? <span className="code">{orderId}</span> : "onbekend"}. Bewaar deze voor vragen over je betaling.</p>
+            <p className="small muted">
+              Je betaalreferentie: {orderId ? <span className="code">{orderId}</span> : "onbekend"}. Bewaar deze voor vragen over je
+              betaling.
+            </p>
             <Link className="btn" href="/project">
               Mijn projecten in deze browser
             </Link>

@@ -255,7 +255,10 @@ async function scans() {
   }
   // A small JPEG and WEBP of the clean scan for format tests.
   await page.setContent(`<html><body style="margin:0">${svg(false)}</body></html>`);
-  writeFileSync(path.join(out, "scan-helder.jpg"), await page.screenshot({ type: "jpeg", quality: 80, clip: { x: 0, y: 0, width: 1600, height: 1100 } }));
+  writeFileSync(
+    path.join(out, "scan-helder.jpg"),
+    await page.screenshot({ type: "jpeg", quality: 80, clip: { x: 0, y: 0, width: 1600, height: 1100 } }),
+  );
   const webp = await page.evaluate(async () => {
     const c = document.createElement("canvas");
     c.width = 400;

@@ -5,7 +5,15 @@ import { centroid, type Point } from "@/lib/geometry/polygon";
 
 export type Tool = "select" | "draw" | "calibrate" | "measure" | "window";
 
-export type CanvasRoom = { id: string; number: number; name: string; points: Point[]; anchor: Point | null; active: boolean; included: boolean };
+export type CanvasRoom = {
+  id: string;
+  number: number;
+  name: string;
+  points: Point[];
+  anchor: Point | null;
+  active: boolean;
+  included: boolean;
+};
 export type CanvasWindow = { id: string; code: string; position: Point; active: boolean };
 
 const TOOL_HELP: Record<Tool, string> = {
@@ -96,7 +104,13 @@ export function PlanCanvas({
           {TOOL_HELP[tool]}
         </p>
         <div className="row" style={{ gap: 6 }} role="group" aria-label="Zoom">
-          <button type="button" className="btn btn-sm" onClick={() => setZoom((z) => Math.max(1, z / 1.5))} aria-label="Uitzoomen" disabled={zoom <= 1}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setZoom((z) => Math.max(1, z / 1.5))}
+            aria-label="Uitzoomen"
+            disabled={zoom <= 1}
+          >
             −
           </button>
           <span className="small" aria-live="polite" style={{ minWidth: 44, textAlign: "center" }}>
@@ -113,7 +127,14 @@ export function PlanCanvas({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="Je plattegrond" draggable={false} />
           ) : (
-            <div style={{ aspectRatio: `${page.width} / ${page.height}`, display: "grid", placeItems: "center", background: "var(--surface-2)" }}>
+            <div
+              style={{
+                aspectRatio: `${page.width} / ${page.height}`,
+                display: "grid",
+                placeItems: "center",
+                background: "var(--surface-2)",
+              }}
+            >
               <span className="small muted" style={{ padding: 16, textAlign: "center" }}>
                 {status ?? "Plattegrond laden…"}
               </span>
@@ -149,12 +170,27 @@ export function PlanCanvas({
           >
             {tool === "calibrate" &&
               labels.map((l, i) => (
-                <rect key={i} x={l.box.x - r(3)} y={l.box.y - r(3)} width={l.box.w + r(6)} height={l.box.h + r(6)} fill="rgba(185,140,60,0.18)" stroke="#b98c3c" strokeWidth={1} vectorEffect="non-scaling-stroke" rx={r(3)} />
+                <rect
+                  key={i}
+                  x={l.box.x - r(3)}
+                  y={l.box.y - r(3)}
+                  width={l.box.w + r(6)}
+                  height={l.box.h + r(6)}
+                  fill="rgba(185,140,60,0.18)"
+                  stroke="#b98c3c"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                  rx={r(3)}
+                />
               ))}
             {rooms.map((room) => {
               const c = room.points.length >= 3 ? centroid(room.points) : room.anchor;
               return (
-                <g key={room.id} onPointerUp={(e) => tool === "select" && (e.stopPropagation(), onRoomClick(room.id))} style={{ cursor: tool === "select" ? "pointer" : undefined }}>
+                <g
+                  key={room.id}
+                  onPointerUp={(e) => tool === "select" && (e.stopPropagation(), onRoomClick(room.id))}
+                  style={{ cursor: tool === "select" ? "pointer" : undefined }}
+                >
                   {room.points.length >= 3 && (
                     <polygon
                       points={room.points.map((p) => `${p.x},${p.y}`).join(" ")}
@@ -167,7 +203,13 @@ export function PlanCanvas({
                   )}
                   {c && (
                     <g transform={`translate(${c.x} ${c.y})`}>
-                      <circle r={r(13)} fill={room.active ? "#b98c3c" : "#1f4d3a"} stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                      <circle
+                        r={r(13)}
+                        fill={room.active ? "#b98c3c" : "#1f4d3a"}
+                        stroke="#fff"
+                        strokeWidth={2}
+                        vectorEffect="non-scaling-stroke"
+                      />
                       <text y={r(4.5)} textAnchor="middle" fontSize={r(13)} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">
                         {room.number}
                       </text>
@@ -178,7 +220,17 @@ export function PlanCanvas({
             })}
             {windows.map((w) => (
               <g key={w.id} transform={`translate(${w.position.x} ${w.position.y})`}>
-                <rect x={r(-20)} y={r(-11)} width={r(40)} height={r(22)} rx={r(11)} fill={w.active ? "#1f4d3a" : "#b98c3c"} stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                <rect
+                  x={r(-20)}
+                  y={r(-11)}
+                  width={r(40)}
+                  height={r(22)}
+                  rx={r(11)}
+                  fill={w.active ? "#1f4d3a" : "#b98c3c"}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
                 <text y={r(4.5)} textAnchor="middle" fontSize={r(12)} fontWeight={700} fill="#fff" fontFamily="ui-monospace, monospace">
                   {w.code}
                 </text>
@@ -194,7 +246,16 @@ export function PlanCanvas({
                   vectorEffect="non-scaling-stroke"
                 />
                 {draft.map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={r(i === 0 ? 7 : 5)} fill={i === 0 ? "#fff" : "#b98c3c"} stroke="#b98c3c" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+                  <circle
+                    key={i}
+                    cx={p.x}
+                    cy={p.y}
+                    r={r(i === 0 ? 7 : 5)}
+                    fill={i === 0 ? "#fff" : "#b98c3c"}
+                    stroke="#b98c3c"
+                    strokeWidth={2}
+                    vectorEffect="non-scaling-stroke"
+                  />
                 ))}
               </g>
             )}
@@ -209,9 +270,20 @@ export function PlanCanvas({
                   strokeWidth={3}
                   vectorEffect="non-scaling-stroke"
                 />
-                {[line.a, line.b].filter((p): p is Point => Boolean(p)).map((p, i) => (
-                  <circle key={i} cx={p.x} cy={p.y} r={r(6)} fill="#fff" stroke="#1f4d3a" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
-                ))}
+                {[line.a, line.b]
+                  .filter((p): p is Point => Boolean(p))
+                  .map((p, i) => (
+                    <circle
+                      key={i}
+                      cx={p.x}
+                      cy={p.y}
+                      r={r(6)}
+                      fill="#fff"
+                      stroke="#1f4d3a"
+                      strokeWidth={2.5}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
                 {line.b && line.label && (
                   <g transform={`translate(${(line.a.x + line.b.x) / 2} ${(line.a.y + line.b.y) / 2})`}>
                     <rect x={r(-46)} y={r(-30)} width={r(92)} height={r(22)} rx={r(6)} fill="#1f4d3a" />

@@ -8,7 +8,10 @@ export const fixture = (name: string) => new Uint8Array(readFileSync(path.join(F
 /** Opens a PDF with the same PDF.js build the browser uses (legacy build for Node). */
 export async function openFixturePdf(name: string) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  return pdfjs.getDocument({ data: fixture(name), standardFontDataUrl: path.resolve(import.meta.dirname, "../../node_modules/pdfjs-dist/standard_fonts/") + "/" }).promise;
+  return pdfjs.getDocument({
+    data: fixture(name),
+    standardFontDataUrl: path.resolve(import.meta.dirname, "../../node_modules/pdfjs-dist/standard_fonts/") + "/",
+  }).promise;
 }
 
 export async function fixturePageText(name: string, pageNumber = 1) {

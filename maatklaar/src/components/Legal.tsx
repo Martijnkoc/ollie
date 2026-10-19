@@ -9,8 +9,8 @@ export function CompanyField({ field, label }: { field: keyof typeof COMPANY; la
 export function DraftBanner({ checklist }: { checklist: string[] }) {
   return (
     <div className="draft-banner" role="note">
-      <strong>Concept voor publicatie — geen juridisch advies.</strong> Deze tekst moet vóór livegang door een mens worden gecontroleerd, met actuele bronnen en zo nodig
-      juridische hulp.
+      <strong>Concept voor publicatie — geen juridisch advies.</strong> Deze tekst moet vóór livegang door een mens worden gecontroleerd,
+      met actuele bronnen en zo nodig juridische hulp.
       <ul className="small" style={{ margin: "8px 0 0", paddingLeft: 18 }}>
         {checklist.map((c) => (
           <li key={c}>☐ {c}</li>

@@ -27,7 +27,11 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
             </p>
           </div>
           <div className="room-meta">
-            {computed.verified ? <StatusBadge status="derived" label="Gecontroleerd: alles uit bevestigde maten" /> : <StatusBadge status={f.status} />}
+            {computed.verified ? (
+              <StatusBadge status="derived" label="Gecontroleerd: alles uit bevestigde maten" />
+            ) : (
+              <StatusBadge status={f.status} />
+            )}
           </div>
         </div>
 
@@ -61,7 +65,12 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
                         id={`${id}-${r.room.id}`}
                         checked={r.room.includeFloor}
                         style={{ width: 22, height: 22, accentColor: "var(--brand)" }}
-                        onChange={(e) => update((p) => ({ ...p, rooms: p.rooms.map((x) => (x.id === r.room.id ? { ...x, includeFloor: e.target.checked } : x)) }))}
+                        onChange={(e) =>
+                          update((p) => ({
+                            ...p,
+                            rooms: p.rooms.map((x) => (x.id === r.room.id ? { ...x, includeFloor: e.target.checked } : x)),
+                          }))
+                        }
                       />
                     </td>
                     <td>
@@ -89,7 +98,10 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
               value={pattern.key}
               onChange={(e) => {
                 const next = patternByKey(e.target.value);
-                update((p) => ({ ...p, floor: { ...p.floor, pattern: next.key, wastePercent: next.guidePercent ?? p.floor.wastePercent } }));
+                update((p) => ({
+                  ...p,
+                  floor: { ...p.floor, pattern: next.key, wastePercent: next.guidePercent ?? p.floor.wastePercent },
+                }));
               }}
             >
               {PATTERNS.map((p) => (
@@ -99,7 +111,9 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
                 </option>
               ))}
             </select>
-            <span className="hint">Richtwaarden zijn een startpunt. Kijk in de leginstructie van jouw vloer en pas het percentage aan.</span>
+            <span className="hint">
+              Richtwaarden zijn een startpunt. Kijk in de leginstructie van jouw vloer en pas het percentage aan.
+            </span>
           </div>
           <div className="field">
             <label htmlFor={`${id}-waste`}>Snijverlies</label>
@@ -112,7 +126,15 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
                 key={`w-${project.floor.wastePercent}`}
                 onBlur={(e) => {
                   const v = parseDecimal(e.target.value);
-                  if (v !== null && v <= 50) update((p) => ({ ...p, floor: { ...p.floor, wastePercent: v, pattern: v === patternByKey(p.floor.pattern).guidePercent ? p.floor.pattern : "eigen" } }));
+                  if (v !== null && v <= 50)
+                    update((p) => ({
+                      ...p,
+                      floor: {
+                        ...p.floor,
+                        wastePercent: v,
+                        pattern: v === patternByKey(p.floor.pattern).guidePercent ? p.floor.pattern : "eigen",
+                      },
+                    }));
                 }}
               />
               <span>%</span>
@@ -135,7 +157,9 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
               />
               <span>m²</span>
             </div>
-            <span className="hint">Staat op de verpakking of productpagina van jouw vloer. Zonder deze waarde rekenen we geen pakken uit.</span>
+            <span className="hint">
+              Staat op de verpakking of productpagina van jouw vloer. Zonder deze waarde rekenen we geen pakken uit.
+            </span>
           </div>
         </div>
 
@@ -167,8 +191,9 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
 
         {bagArea !== null && (
           <p className="notice small">
-            Ter vergelijking: de BAG registreert {formatM2(bagArea)} gebruiksoppervlakte voor de hele woning. Dat is een andere meting dan de vloer per kamer (muren, kasten,
-            trapgaten en ruimtes die je niet meetelt maken het verschil). We tellen ze nooit bij elkaar op of door elkaar.
+            Ter vergelijking: de BAG registreert {formatM2(bagArea)} gebruiksoppervlakte voor de hele woning. Dat is een andere meting dan
+            de vloer per kamer (muren, kasten, trapgaten en ruimtes die je niet meetelt maken het verschil). We tellen ze nooit bij elkaar
+            op of door elkaar.
           </p>
         )}
       </div>

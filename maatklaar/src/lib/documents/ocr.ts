@@ -7,7 +7,11 @@ import { ocrBlocksToText, type OcrBlocks } from "./ocr-words";
  * Local OCR with Tesseract.js. Worker, engine and Dutch language data are served from /vendor on our own
  * origin; the image never leaves the device. The language data is cached by the browser after first use.
  */
-export async function recognizeCanvas(canvas: HTMLCanvasElement, pxPerUnit: number, onProgress?: (fraction: number) => void): Promise<TextItem[]> {
+export async function recognizeCanvas(
+  canvas: HTMLCanvasElement,
+  pxPerUnit: number,
+  onProgress?: (fraction: number) => void,
+): Promise<TextItem[]> {
   const { createWorker, PSM } = await import("tesseract.js");
   const origin = window.location.origin;
   const worker = await createWorker("nld", 1, {

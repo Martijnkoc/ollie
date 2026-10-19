@@ -57,7 +57,8 @@ export function computeRoom(room: Room, project: Pick<Project, "scales">): RoomR
     issues.push("Obstakels zijn groter dan de ruimte zelf. Controleer de maten.");
     netAreaMm2 = null;
   }
-  const status = netAreaMm2 === null ? "missing" : combine([geometry.status, ...obstacleStatuses, room.nameStatus === "auto" ? "auto" : "confirmed"]);
+  const status =
+    netAreaMm2 === null ? "missing" : combine([geometry.status, ...obstacleStatuses, room.nameStatus === "auto" ? "auto" : "confirmed"]);
   return { room, geometry, obstaclesMm2, netAreaMm2, status, issues };
 }
 
@@ -90,8 +91,11 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
   }
 
   const counts = new Map<string, number>();
-  for (const r of project.rooms) if (r.name.trim()) counts.set(r.name.trim().toLowerCase(), (counts.get(r.name.trim().toLowerCase()) ?? 0) + 1);
-  const duplicateNames = [...counts.entries()].filter(([, n]) => n > 1).map(([name]) => project.rooms.find((r) => r.name.trim().toLowerCase() === name)!.name);
+  for (const r of project.rooms)
+    if (r.name.trim()) counts.set(r.name.trim().toLowerCase(), (counts.get(r.name.trim().toLowerCase()) ?? 0) + 1);
+  const duplicateNames = [...counts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([name]) => project.rooms.find((r) => r.name.trim().toLowerCase() === name)!.name);
 
   const floor = computeFloor(
     rooms.map((r) => ({ id: r.room.id, name: roomName(r.room), included: r.room.includeFloor, areaMm2: r.netAreaMm2, status: r.status })),
@@ -127,7 +131,8 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
   });
 
   const included = rooms.filter((r) => r.room.includeFloor);
-  const verified = included.length > 0 && overlaps.length === 0 && floor.incompleteRooms.length === 0 && included.every((r) => r.status === "derived");
+  const verified =
+    included.length > 0 && overlaps.length === 0 && floor.incompleteRooms.length === 0 && included.every((r) => r.status === "derived");
 
   return { rooms, floor, plinths, windows, overlaps, duplicateNames, verified };
 }

@@ -29,12 +29,26 @@ export function pdfItemsToText(items: readonly PdfJsTextItem[], viewportTransfor
     const h = vlen;
     const w = item.width;
     const p0 = { x: m[4], y: m[5] };
-    const corners = [p0, { x: p0.x + u.x * w, y: p0.y + u.y * w }, { x: p0.x + v.x * h, y: p0.y + v.y * h }, { x: p0.x + u.x * w + v.x * h, y: p0.y + u.y * w + v.y * h }];
+    const corners = [
+      p0,
+      { x: p0.x + u.x * w, y: p0.y + u.y * w },
+      { x: p0.x + v.x * h, y: p0.y + v.y * h },
+      { x: p0.x + u.x * w + v.x * h, y: p0.y + u.y * w + v.y * h },
+    ];
     const xs = corners.map((c) => c.x);
     const ys = corners.map((c) => c.y);
     const x = Math.min(...xs);
     const y = Math.min(...ys);
-    out.push({ text, x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y, source: "pdf-tekst", confidence: null, vertical: Math.abs(u.y) > Math.abs(u.x) });
+    out.push({
+      text,
+      x,
+      y,
+      w: Math.max(...xs) - x,
+      h: Math.max(...ys) - y,
+      source: "pdf-tekst",
+      confidence: null,
+      vertical: Math.abs(u.y) > Math.abs(u.x),
+    });
   }
   return out;
 }

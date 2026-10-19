@@ -33,9 +33,23 @@ export type PlinthRoomResult = {
 };
 
 export function computeRoomPlinth(room: PlinthRoomInput): PlinthRoomResult {
-  const base = { id: room.id, name: room.name, excludedWallsMm: 0, doorDeductionMm: 0, obstacleAdditionMm: 0, unconfirmedDoors: 0, wallPiecesMm: [] };
+  const base = {
+    id: room.id,
+    name: room.name,
+    excludedWallsMm: 0,
+    doorDeductionMm: 0,
+    obstacleAdditionMm: 0,
+    unconfirmedDoors: 0,
+    wallPiecesMm: [],
+  };
   if (!room.edgesMm) {
-    return { ...base, perimeterMm: null, netMm: null, status: "missing", issues: ["De vorm van deze ruimte is onbekend; voer lengte en breedte in of teken de ruimte."] };
+    return {
+      ...base,
+      perimeterMm: null,
+      netMm: null,
+      status: "missing",
+      issues: ["De vorm van deze ruimte is onbekend; voer lengte en breedte in of teken de ruimte."],
+    };
   }
   const issues: string[] = [];
   const perimeterMm = room.edgesMm.reduce((s, l) => s + l, 0);
@@ -62,7 +76,10 @@ export function computeRoomPlinth(room: PlinthRoomInput): PlinthRoomResult {
     perWall[door.wall] = perWall[door.wall]! - door.widthMm;
     doorDeductionMm += door.widthMm;
   }
-  if (unconfirmedDoors) issues.push(`${unconfirmedDoors === 1 ? "Eén deuropening is" : `${unconfirmedDoors} deuropeningen zijn`} nog niet bevestigd en niet afgetrokken.`);
+  if (unconfirmedDoors)
+    issues.push(
+      `${unconfirmedDoors === 1 ? "Eén deuropening is" : `${unconfirmedDoors} deuropeningen zijn`} nog niet bevestigd en niet afgetrokken.`,
+    );
 
   const obstacleAdditionMm = room.obstaclePerimetersMm.reduce((s, l) => s + l, 0);
   const netMm = perimeterMm - excludedWallsMm - doorDeductionMm + obstacleAdditionMm;
@@ -70,7 +87,19 @@ export function computeRoomPlinth(room: PlinthRoomInput): PlinthRoomResult {
 
   let status: Status = room.geometryStatus === "derived" ? "derived" : room.geometryStatus === "missing" ? "missing" : "check";
   if (status === "derived" && (unconfirmedDoors > 0 || issues.length)) status = "check";
-  return { id: room.id, name: room.name, perimeterMm, excludedWallsMm, doorDeductionMm, obstacleAdditionMm, netMm, unconfirmedDoors, wallPiecesMm, status, issues };
+  return {
+    id: room.id,
+    name: room.name,
+    perimeterMm,
+    excludedWallsMm,
+    doorDeductionMm,
+    obstacleAdditionMm,
+    netMm,
+    unconfirmedDoors,
+    wallPiecesMm,
+    status,
+    issues,
+  };
 }
 
 export type PlinthSettings = { marginPercent: number; pieceLengthMm: number | null };
@@ -130,7 +159,9 @@ export function computePlinths(rooms: readonly PlinthRoomInput[], settings: Plin
   let piecesByTotal: number | null = null;
   let piecesByWall: number | null = null;
   if (incompleteRooms.length) {
-    steps.push(`Onvolledig: ${incompleteRooms.join(", ")} ${incompleteRooms.length === 1 ? "heeft" : "hebben"} nog geen bekende vorm. We rekenen nog geen bestelhoeveelheid uit.`);
+    steps.push(
+      `Onvolledig: ${incompleteRooms.join(", ")} ${incompleteRooms.length === 1 ? "heeft" : "hebben"} nog geen bekende vorm. We rekenen nog geen bestelhoeveelheid uit.`,
+    );
   } else if (known.length) {
     requiredMm = netMm * (1 + settings.marginPercent / 100);
     steps.push(`Met marge: ${formatMFromMm(netMm)} × (1 + ${formatPercent(settings.marginPercent)}) = ${formatMFromMm(requiredMm)}`);
@@ -140,13 +171,27 @@ export function computePlinths(rooms: readonly PlinthRoomInput[], settings: Plin
         known.flatMap((r) => r.wallPiecesMm),
         settings.pieceLengthMm,
       );
-      steps.push(`Lengtes van ${formatMFromMm(settings.pieceLengthMm)}: ${formatMFromMm(requiredMm)} ÷ ${formatMFromMm(settings.pieceLengthMm)} = ${formatCount(piecesByTotal)} stuks (naar boven afgerond)`);
+      steps.push(
+        `Lengtes van ${formatMFromMm(settings.pieceLengthMm)}: ${formatMFromMm(requiredMm)} ÷ ${formatMFromMm(settings.pieceLengthMm)} = ${formatCount(piecesByTotal)} stuks (naar boven afgerond)`,
+      );
       steps.push(`Ter controle, per wand zonder las over een hoek en zonder marge: ${formatCount(piecesByWall)} stuks`);
     } else {
       steps.push("Aantal stuks: vul de lengte in waarin jouw plint wordt verkocht. We gebruiken geen standaardlengte.");
     }
   }
 
-  const status: Status = incompleteRooms.length || !known.length ? "missing" : known.some((r) => r.status !== "derived") ? "check" : "derived";
-  return { rooms: results, netMm, incompleteRooms, marginPercent: settings.marginPercent, requiredMm, pieceLengthMm: settings.pieceLengthMm, piecesByTotal, piecesByWall, status, steps };
+  const status: Status =
+    incompleteRooms.length || !known.length ? "missing" : known.some((r) => r.status !== "derived") ? "check" : "derived";
+  return {
+    rooms: results,
+    netMm,
+    incompleteRooms,
+    marginPercent: settings.marginPercent,
+    requiredMm,
+    pieceLengthMm: settings.pieceLengthMm,
+    piecesByTotal,
+    piecesByWall,
+    status,
+    steps,
+  };
 }

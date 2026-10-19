@@ -31,10 +31,22 @@ export function confirmRoom(room: Room): Room {
   const s = room.shape;
   let shape: RoomShape = s;
   if (s.kind === "rect") shape = { ...s, length: confirmLength(s.length), width: confirmLength(s.width) };
-  if (s.kind === "l") shape = { ...s, length: confirmLength(s.length), width: confirmLength(s.width), notchLength: confirmLength(s.notchLength), notchWidth: confirmLength(s.notchWidth) };
+  if (s.kind === "l")
+    shape = {
+      ...s,
+      length: confirmLength(s.length),
+      width: confirmLength(s.width),
+      notchLength: confirmLength(s.notchLength),
+      notchWidth: confirmLength(s.notchWidth),
+    };
   if (s.kind === "drawn" && s.points.length >= 3) shape = { ...s, status: "confirmed" };
   if (s.kind === "area" && s.m2 !== null) shape = { ...s, status: "confirmed" };
-  return { ...room, nameStatus: "confirmed", shape, obstacles: room.obstacles.map((o) => ({ ...o, length: confirmLength(o.length), width: confirmLength(o.width) })) };
+  return {
+    ...room,
+    nameStatus: "confirmed",
+    shape,
+    obstacles: room.obstacles.map((o) => ({ ...o, length: confirmLength(o.length), width: confirmLength(o.width) })),
+  };
 }
 
 function shapeSummary(room: Room) {
@@ -162,12 +174,19 @@ export function RoomCard({
       <div className="room-fields">
         <div className="field full">
           <label htmlFor={`${id}-shape`}>Vorm</label>
-          <select id={`${id}-shape`} className="select" value={s.kind} onChange={(e) => setShape(switchShape(room, e.target.value as RoomShape["kind"], page))}>
-            {(Object.keys(SHAPE_LABELS) as RoomShape["kind"][]).filter((k) => k !== "drawn" || hasPlan).map((k) => (
-              <option key={k} value={k}>
-                {SHAPE_LABELS[k]}
-              </option>
-            ))}
+          <select
+            id={`${id}-shape`}
+            className="select"
+            value={s.kind}
+            onChange={(e) => setShape(switchShape(room, e.target.value as RoomShape["kind"], page))}
+          >
+            {(Object.keys(SHAPE_LABELS) as RoomShape["kind"][])
+              .filter((k) => k !== "drawn" || hasPlan)
+              .map((k) => (
+                <option key={k} value={k}>
+                  {SHAPE_LABELS[k]}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -191,7 +210,12 @@ export function RoomCard({
               <div className="segmented" role="radiogroup" aria-labelledby={`${id}-corner`}>
                 {CORNERS.map((c) => (
                   <label key={c.key}>
-                    <input type="radio" name={`${id}-corner`} checked={s.corner === c.key} onChange={() => setShape({ ...s, corner: c.key })} />
+                    <input
+                      type="radio"
+                      name={`${id}-corner`}
+                      checked={s.corner === c.key}
+                      onChange={() => setShape({ ...s, corner: c.key })}
+                    />
                     <span>{c.label}</span>
                   </label>
                 ))}
@@ -203,7 +227,9 @@ export function RoomCard({
         {s.kind === "drawn" && (
           <div className="full stack-sm">
             <p className="small muted" style={{ margin: 0 }}>
-              {s.points.length >= 3 ? `${s.points.length} hoekpunten getekend op pagina ${s.page + 1}.` : "Nog niet getekend. Klik op de plattegrond op elke hoek van de ruimte, langs de muur."}
+              {s.points.length >= 3
+                ? `${s.points.length} hoekpunten getekend op pagina ${s.page + 1}.`
+                : "Nog niet getekend. Klik op de plattegrond op elke hoek van de ruimte, langs de muur."}
             </p>
             <button type="button" className="btn btn-sm" style={{ justifySelf: "start" }} onClick={onDraw}>
               {s.points.length ? "Opnieuw tekenen" : "Teken op de plattegrond"}
@@ -223,7 +249,11 @@ export function RoomCard({
                 key={`${s.m2}`}
                 onBlur={(e) => {
                   const v = parseDecimal(e.target.value);
-                  setShape(v === null || v <= 0 ? { ...s, m2: null, status: "missing", source: "gebruiker" } : { ...s, m2: v, status: "confirmed", source: "gebruiker" });
+                  setShape(
+                    v === null || v <= 0
+                      ? { ...s, m2: null, status: "missing", source: "gebruiker" }
+                      : { ...s, m2: v, status: "confirmed", source: "gebruiker" },
+                  );
                 }}
               />
               <span>m²</span>
@@ -260,13 +290,32 @@ export function RoomCard({
                     onChange={(e) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, name: e.target.value } : x)) })}
                   />
                 </div>
-                <LengthInput label="Lengte" value={o.length} onChange={(length) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, length } : x)) })} />
-                <LengthInput label="Breedte" value={o.width} onChange={(width) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, width } : x)) })} />
+                <LengthInput
+                  label="Lengte"
+                  value={o.length}
+                  onChange={(length) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, length } : x)) })}
+                />
+                <LengthInput
+                  label="Breedte"
+                  value={o.width}
+                  onChange={(width) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, width } : x)) })}
+                />
                 <label className="check small full">
-                  <input type="checkbox" checked={o.plinthAround} onChange={(e) => set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, plinthAround: e.target.checked } : x)) })} />
+                  <input
+                    type="checkbox"
+                    checked={o.plinthAround}
+                    onChange={(e) =>
+                      set({ obstacles: room.obstacles.map((x) => (x.id === o.id ? { ...x, plinthAround: e.target.checked } : x)) })
+                    }
+                  />
                   <span>Plint rondom dit obstakel</span>
                 </label>
-                <button type="button" className="btn btn-sm btn-ghost full" style={{ justifySelf: "start" }} onClick={() => set({ obstacles: room.obstacles.filter((x) => x.id !== o.id) })}>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost full"
+                  style={{ justifySelf: "start" }}
+                  onClick={() => set({ obstacles: room.obstacles.filter((x) => x.id !== o.id) })}
+                >
                   Obstakel verwijderen
                 </button>
               </div>
@@ -275,7 +324,14 @@ export function RoomCard({
               type="button"
               className="btn btn-sm"
               style={{ justifySelf: "start" }}
-              onClick={() => set({ obstacles: [...room.obstacles, { id: randomId(10), name: "Obstakel", length: { ...MISSING }, width: { ...MISSING }, plinthAround: false }] })}
+              onClick={() =>
+                set({
+                  obstacles: [
+                    ...room.obstacles,
+                    { id: randomId(10), name: "Obstakel", length: { ...MISSING }, width: { ...MISSING }, plinthAround: false },
+                  ],
+                })
+              }
             >
               + Obstakel toevoegen
             </button>

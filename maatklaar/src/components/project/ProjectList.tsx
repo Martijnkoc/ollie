@@ -25,7 +25,8 @@ export function ProjectList() {
         </Link>
       </div>
       <p className="muted">
-        Projecten staan alleen in deze browser op dit apparaat, niet op onze server. Na {LIMITS.projectExpiryDays} dagen zonder wijzigingen worden ze automatisch gewist.
+        Projecten staan alleen in deze browser op dit apparaat, niet op onze server. Na {LIMITS.projectExpiryDays} dagen zonder wijzigingen
+        worden ze automatisch gewist.
       </p>
       {projects === null ? (
         <p className="muted" aria-busy="true">

@@ -11,7 +11,8 @@ export function SiteFooter() {
             {BRAND.isWorkingTitle ? <span className="tiny muted"> (werktitel)</span> : null} — {BRAND.tagline}
           </p>
           <p className="small">
-            Berekeningen zijn zo betrouwbaar als de maten die je aanlevert en bevestigt. Bestelmaten voor raamdecoratie volgen de regels van je leverancier.
+            Berekeningen zijn zo betrouwbaar als de maten die je aanlevert en bevestigt. Bestelmaten voor raamdecoratie volgen de regels van
+            je leverancier.
           </p>
         </div>
         <div>

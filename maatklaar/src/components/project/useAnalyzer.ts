@@ -7,7 +7,13 @@ import type { AnalysisResult } from "@/lib/plan-analysis/analyze";
 import type { PlanDocument, Project } from "@/lib/projects/schema";
 import { loadFile } from "@/lib/projects/store";
 
-export type AnalyzerState = { page: number; stage: AnalysisStage | null; error: string | null; done: boolean; result: AnalysisResult | null };
+export type AnalyzerState = {
+  page: number;
+  stage: AnalysisStage | null;
+  error: string | null;
+  done: boolean;
+  result: AnalysisResult | null;
+};
 
 export const STAGE_LABEL: Record<AnalysisStage["stage"], string> = {
   tekst: "Tekst en posities uit de PDF lezen",
@@ -30,7 +36,14 @@ export function useAnalyzer(projectId: string, update: (fn: (p: Project) => Proj
         setState({ page, stage: null, error: null, done: true, result });
         return result;
       } catch (err) {
-        setState({ page, stage: null, error: err instanceof Error && err.message.length < 200 ? err.message : "De analyse is mislukt. Je kunt de kamers handmatig invoeren.", done: true, result: null });
+        setState({
+          page,
+          stage: null,
+          error:
+            err instanceof Error && err.message.length < 200 ? err.message : "De analyse is mislukt. Je kunt de kamers handmatig invoeren.",
+          done: true,
+          result: null,
+        });
         return null;
       }
     },

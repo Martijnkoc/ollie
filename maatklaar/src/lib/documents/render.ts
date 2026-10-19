@@ -21,9 +21,7 @@ function pdfFor(blob: Blob) {
   return p;
 }
 
-export type Inspection =
-  | { ok: true; kind: FileKind; pages: PlanDocument["pages"]; notes: string[] }
-  | { ok: false; error: string };
+export type Inspection = { ok: true; kind: FileKind; pages: PlanDocument["pages"]; notes: string[] } | { ok: false; error: string };
 
 /** Validates a chosen file and reads its pages, entirely in the browser. */
 export async function inspectFile(file: File): Promise<Inspection> {
@@ -39,7 +37,10 @@ export async function inspectFile(file: File): Promise<Inspection> {
       return { ok: false, error: err instanceof PdfOpenError ? err.message : "Deze PDF kunnen we niet openen." };
     }
     if (pdf.numPages > LIMITS.maxPdfPages) {
-      return { ok: false, error: `Deze PDF heeft ${pdf.numPages} pagina's; we lezen er maximaal ${LIMITS.maxPdfPages}. Bewaar alleen de pagina's met plattegronden als nieuwe PDF.` };
+      return {
+        ok: false,
+        error: `Deze PDF heeft ${pdf.numPages} pagina's; we lezen er maximaal ${LIMITS.maxPdfPages}. Bewaar alleen de pagina's met plattegronden als nieuwe PDF.`,
+      };
     }
     const pages: PlanDocument["pages"] = [];
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -59,7 +60,12 @@ export async function inspectFile(file: File): Promise<Inspection> {
 }
 
 /** Renders one page into a canvas whose long side is about `targetPx`. Returns pixels per page unit. */
-export async function renderPageCanvas(blob: Blob, kind: FileKind, pageIndex: number, targetPx: number): Promise<{ canvas: HTMLCanvasElement; pxPerUnit: number }> {
+export async function renderPageCanvas(
+  blob: Blob,
+  kind: FileKind,
+  pageIndex: number,
+  targetPx: number,
+): Promise<{ canvas: HTMLCanvasElement; pxPerUnit: number }> {
   if (kind === "pdf") {
     const pdf = await pdfFor(blob);
     const page: PdfPage = await pdf.getPage(pageIndex + 1);
@@ -86,7 +92,12 @@ export type AnalysisStage = { stage: "tekst" | "ocr" | "herkennen"; fraction?: n
  * Analysis of one page: embedded PDF text first; if a page has (almost) no text it is a scan and we run
  * local OCR on a high-resolution render. Then the same recognition rules run on whatever text was found.
  */
-export async function analyzePage(blob: Blob, doc: PlanDocument, pageIndex: number, onStage: (s: AnalysisStage) => void): Promise<AnalysisResult> {
+export async function analyzePage(
+  blob: Blob,
+  doc: PlanDocument,
+  pageIndex: number,
+  onStage: (s: AnalysisStage) => void,
+): Promise<AnalysisResult> {
   const page = doc.pages[pageIndex]!;
   if (doc.kind === "pdf") {
     onStage({ stage: "tekst" });
@@ -101,5 +112,9 @@ export async function analyzePage(blob: Blob, doc: PlanDocument, pageIndex: numb
   const { canvas, pxPerUnit } = await renderPageCanvas(blob, doc.kind, pageIndex, 3000);
   const items = await recognizeCanvas(canvas, pxPerUnit, (fraction) => onStage({ stage: "ocr", fraction }));
   onStage({ stage: "herkennen" });
-  return analyzeText(items, { method: "ocr", imageWidthPx: page.unit === "px" ? page.width : null, minImageWidthPx: LIMITS.minImageWidthPx });
+  return analyzeText(items, {
+    method: "ocr",
+    imageWidthPx: page.unit === "px" ? page.width : null,
+    minImageWidthPx: LIMITS.minImageWidthPx,
+  });
 }
