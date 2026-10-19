@@ -1,16 +1,12 @@
-import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createWorker, PSM, type Worker } from "tesseract.js";
-import { ocrBlocksToText, type OcrBlocks } from "@/lib/documents/ocr-words";
-import { analyzeText } from "@/lib/plan-analysis/analyze";
+import type { Worker } from "tesseract.js";
 import { applyAnalysis } from "@/lib/plan-analysis/apply";
-import { finishAutoMeasure, measureGeometry } from "@/lib/plan-analysis/auto-measure";
-import { cropForOcr, readDimensionText, type DimensionReading } from "@/lib/plan-analysis/dimensions";
-import { flattenBackground } from "@/lib/plan-analysis/raster";
+import { measureGeometry } from "@/lib/plan-analysis/auto-measure";
 import { computeProject } from "@/lib/projects/compute";
 import { newProject } from "@/lib/projects/factory";
 import { fixture } from "./support/pdf";
-import { decodePng, encodePng } from "./support/png";
+import { createOcr, measurePlan } from "./support/measure-node";
+import { decodePng } from "./support/png";
 
 /**
  * The whole automatic measuring chain on a fictional makelaarsplattegrond (fixtures/plattegrond-wanden.png,
@@ -21,37 +17,15 @@ const PX_PER_M = 130;
 const TRUTH_M2: Record<string, number> = { Woonkamer: 29.44, Keuken: 3.75, Hal: 5.4, Badkamer: 5.4, Slaapkamer: 4.86 };
 
 const page = decodePng(fixture("plattegrond-wanden.png"));
-const langPath = path.resolve(import.meta.dirname, "../node_modules/@tesseract.js-data/nld/4.0.0_best_int");
 let worker: Worker;
 
 beforeAll(async () => {
-  worker = await createWorker("nld", 1, { langPath, cacheMethod: "none", gzip: true });
+  worker = await createOcr();
 }, 120_000);
 
 afterAll(async () => {
   await worker?.terminate();
 });
-
-async function readLabels(lines: NonNullable<ReturnType<typeof measureGeometry>>["lines"]) {
-  await worker.setParameters({
-    tessedit_pageseg_mode: PSM.SINGLE_LINE,
-    tessedit_char_whitelist: "0123456789.,cm ",
-    user_defined_dpi: "300",
-  });
-  const readings: DimensionReading[] = [];
-  for (const line of lines) {
-    for (const turn of line.axis === "h" ? ([0] as const) : ([90, 270] as const)) {
-      const crop = cropForOcr(page, line.label, turn);
-      const text = (await worker.recognize(encodePng(crop))).data.text;
-      const value = readDimensionText(text, crop);
-      if (value) {
-        readings.push({ ...line, ...value });
-        break;
-      }
-    }
-  }
-  return readings;
-}
 
 describe("automatisch opmeten van een makelaarsplattegrond", () => {
   const geo = measureGeometry(page.data, page.w, page.h)!;
@@ -76,22 +50,10 @@ describe("automatisch opmeten van een makelaarsplattegrond", () => {
   });
 
   it("meet alle ruimtes uit de tekening, met een bewezen schaal", async () => {
-    // Room names come from the page OCR, exactly as in the browser.
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, preserve_interword_spaces: "1", tessedit_char_whitelist: "" });
-    const flat = { data: flattenBackground(page.data, page.w, page.h), w: page.w, h: page.h };
-    const ocr = await worker.recognize(encodePng(flat), {}, { blocks: true });
-    const text = analyzeText(ocrBlocksToText(ocr.data.blocks as unknown as OcrBlocks, 1), {
-      method: "ocr",
-      imageWidthPx: page.w,
-      minImageWidthPx: 800,
-    });
+    // The same chain as the browser: page OCR for the names, walls, dimension lines, label OCR, consensus.
+    const { text, auto: measured } = await measurePlan(worker, page);
     expect(text.rooms.map((r) => r.name).sort()).toEqual(Object.keys(TRUTH_M2).sort());
-
-    const readings = await readLabels(geo.lines);
-    expect(readings.length).toBeGreaterThanOrEqual(11);
-    const labels = text.rooms.map((r) => ({ name: r.name, x: r.box.x + r.box.w / 2, y: r.box.y + r.box.h / 2, h: r.box.h }));
-    const auto = finishAutoMeasure(geo, readings, labels, 1);
-
+    const auto = measured!;
     expect(auto.scale?.proven).toBe(true);
     expect(auto.scale?.directions).toBe(2);
     expect(Math.abs(1000 / auto.scale!.mmPerUnit - PX_PER_M) / PX_PER_M).toBeLessThan(0.005);

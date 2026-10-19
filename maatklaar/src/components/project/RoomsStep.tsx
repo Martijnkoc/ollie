@@ -355,6 +355,18 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                   ))}
                 </div>
 
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="tiny muted">Opnieuw analyseren vervangt alleen ruimtes die je nog niet hebt bevestigd.</span>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={image.missing || Boolean(analysis && analysis.page === page && !analysis.done)}
+                    onClick={() => void run(doc, page)}
+                  >
+                    Opnieuw analyseren
+                  </button>
+                </div>
+
                 <PlanCanvas
                   page={pageInfo}
                   imageUrl={image.url}

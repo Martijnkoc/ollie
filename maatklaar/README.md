@@ -1,8 +1,11 @@
-# MaatKlaar (werktitel) — Je plattegrond erin. Je bestellijst eruit.
+# MaatKlaar (werktitel) — Van plattegrond naar complete bestellijst.
 
-Nederlandstalige webapp voor wie verhuist, verbouwt of opnieuw inricht: adres invoeren → plattegrond uploaden en
-controleren → **gratis** vloer per kamer → voor **€ 8,99 eenmalig** plinten, een raamregister met begeleid
-meetprotocol en een persoonlijk PDF-rapport plus CSV-bestellijst.
+Nederlandstalige webapp voor wie verhuist, een huis koopt, verbouwt of opnieuw inricht: adres invoeren →
+plattegrond uploaden → ruimtes worden **automatisch opgemeten langs de wanden** en jij controleert → **gratis**
+vloer per kamer, vloerhoeveelheid en verf → voor **€ 8,99 eenmalig** alle materialen (laminaat, PVC, tegels,
+ondervloer, plinten, profielen, primer, behang), een raamregister met meetbegeleiding en foto-assistent, en een
+persoonlijk PDF-rapport plus CSV-bestellijst. Alles draait in de browser; er gaat geen plattegrond of foto naar
+een server of AI-dienst.
 
 Deze map is een zelfstandige Next.js-app binnen de repository `ollie`; de rest van de repository (Cafe) wordt niet
 gebruikt of gewijzigd. Projectregels en architectuur: [`CLAUDE.md`](CLAUDE.md). Plan en voortgang:
@@ -10,9 +13,11 @@ gebruikt of gewijzigd. Projectregels en architectuur: [`CLAUDE.md`](CLAUDE.md). 
 
 ## Status
 
-Werkende MVP, lokaal te starten en end-to-end getest. Wat **niet** is aangetoond staat hieronder eerlijk vermeld:
+Werkende V2, lokaal te starten en end-to-end getest. Wat **niet** is aangetoond staat hieronder eerlijk vermeld:
 PDOK en Mollie waren vanuit de bouwomgeving niet bereikbaar, dus beide koppelingen zijn gebouwd op de gedocumenteerde
-velden en getest tegen nagebootste services, niet tegen de echte.
+velden en getest tegen nagebootste services, niet tegen de echte. De automatische opmeting is getest op een
+fictieve testplattegrond en op twee door de opdrachtgever aangeleverde makelaarsplattegronden (lokaal, niet in Git);
+er is nog **geen** validatieset met metingen in echte woningen.
 
 ## Snel starten
 
@@ -39,18 +44,20 @@ PDOK_LOCATIESERVER_URL=http://localhost:3201/ls PDOK_BAG_URL=http://localhost:32
 
 | Onderdeel | Wat het doet |
 | --- | --- |
-| Landingpage | Hero, gratis vs. € 8,99, drie stappen, rapportvoorbeeld, uitleg over nauwkeurigheid, FAQ, vaste mobiele CTA. Het voorbeeld is een fictieve woning; de getallen erin worden met de echte rekencode berekend. |
+| Landingpage | "Van plattegrond naar complete bestellijst." Adres-autocomplete en plattegrond neerzetten direct in de hero (gaat verder in een nieuw project met echte voortgang), prijsregel, privacyregel, drie stappen, interactieve demo (gelabeld als fictief, rekent met de echte code), vergelijking gratis/compleet, voor wie, rapportvoorbeeld, FAQ, eind-CTA, vaste mobiele CTA. |
 | Adres | Autocomplete via PDOK Locatieserver v3_1 (via onze server, niet opgeslagen of gelogd), gebruiker kiest zelf het adres. BAG OGC API v2: gebruiksoppervlakte, bouwjaar, gebruiksdoel, status en pandcontour — alleen als de server precies het gevraagde object teruggeeft. Echte voortgangsstappen, nette meldingen bij time-out, 429, storing en leeg resultaat. |
-| Upload | PDF (tot 20 pagina's), JPG, PNG, WEBP tot 20 MB. Controle op signatuur én MIME-type, grootte, pagina's en pixelafmetingen vóór het decoderen. Drag-and-drop en bestandskeuze. |
-| Analyse (lokaal) | PDF-tekst met posities via PDF.js; scans via Tesseract.js met Nederlandse taaldata. Alles zelf gehost, niets naar een externe dienst. Kamernamen, `L × B`-labels (eenheid alleen als die eenduidig is), oppervlaktelabels, schaalnotatie, "niet op schaal". Koppeling label↔kamer alleen als één kamer duidelijk het dichtst ligt. Kwaliteitspoort: onzeker gelezen maten worden niet overgenomen. |
-| Kamer-editor | Plattegrond met SVG-overlay: kamers tekenen (haakse uitlijning), schaal kalibreren met een bekende maat (met suggestie uit een maatlabel), controlemeting. Vormen: rechthoek, L-vorm, getekend, alleen oppervlakte; obstakels. Elke waarde houdt een label (automatisch herkend / door jou bevestigd / berekend / nog controleren / nog meten). Overlap en dubbele namen worden gesignaleerd. Handmatige modus zonder plattegrond. |
-| Gratis vloer | Per kamer en totaal van de selectie, direct bijgewerkt; snijverlies per legpatroon (instelbare richtwaarde); pakken alleen met een door de gebruiker opgegeven pakinhoud; alle tussenstappen zichtbaar; BAG-oppervlakte apart ter vergelijking. |
-| Betalen | Mollie Payments API v2 (eenmalig, iDEAL e.a.), server-side verificatie (webhook of statusopvraag), idempotent en bestand tegen volgorde, terugbetaling trekt toegang in. Orders bevatten alleen ordernummer, projectreferentie, bedrag en status. DEMO-provider zonder sleutel, in productie uit tenzij expliciet aangezet. |
-| Plinten | Omtrek per gecontroleerde ruimte, per wand aan/uit, deuren alleen afgetrokken als de breedte is ingevuld, obstakels optioneel rondom, marge, handelslengtes alleen als opgegeven (plus controle per wand). |
-| Raamregister | R01, R02 …; ruimte, product (gordijn, rolgordijn, plissé, jaloezie, onbekend), montagewijze, meetregel. Meetwizard per raam met diagrammen, meerdere meetpunten, afwijkingscontrole (nooit middelen), obstakelvragen, gordijnvolheid alleen als gebruikerskeuze. |
-| MeasurementRules | Versieerbaar schema met bron, datum, verplichte maten, toleranties, diepte en een omrekenformule. In V1 alleen algemene meetprotocollen (geen bestelmaat); leveranciersregels worden geweigerd zonder bron-URL. Zie [`docs/MEETREGELS.md`](docs/MEETREGELS.md). |
-| Rapport | PDF (A4, pdf-lib) in de browser: project, woningoverzicht met bron, plattegrond met nummers, vloer-, plinten- en raamtabellen, winkelchecklist, rekenmethode en aannames, disclaimer. Tabellen breken netjes over pagina's met herhaalde kop. CSV met puntkomma's en decimale komma. DEMO-stempel op elke pagina in DEMO-modus. |
-| Privacy | Project en (optioneel) bestand in IndexedDB op het apparaat, verval na 30 dagen, wisknoppen. Geen analytics. CSP en security headers. Privacy, voorwaarden en contact als gemarkeerd concept met checklist. |
+| Upload | PDF (tot 20 pagina's), JPG, PNG, WEBP tot 20 MB. Controle op signatuur én MIME-type, grootte, pagina's en pixelafmetingen vóór het decoderen. Drag-and-drop, bestandskeuze, ook vanaf de landingpage. |
+| Tekst lezen (lokaal) | PDF-tekst met posities via PDF.js; afbeeldingen en scans via Tesseract.js met Nederlandse taaldata, op hun eigen resolutie en met gekleurde vlakken eerst wit gemaakt. Kamernamen (ook "Kast", losse "K" = meterkast), `L × B`- en oppervlaktelabels, schaalnotatie, "niet op schaal". Kwaliteitspoort: onzeker gelezen maten worden niet overgenomen. |
+| **Automatisch opmeten** | In een Web Worker: wanden (donkere vlakken in de wandkleur van de tekening; zwarte kookplaten, tv's en open haarden horen er niet bij), deur- en raamopeningen (alleen binnen het huis als er een deursymbool staat: drempellijnen of draaicirkel; schuif- en kastdeuren als dubbele lijn), ruimtes als polygonen (ook L-vormen), namen erbij. Schaal uit de **maatlijnen** (streepjes en waarde in de lijn; waarde uit de PDF-tekst of lokale OCR, weggevallen decimaalpunt alleen hersteld als de vorm van de glyphs het aanwijst); alleen als meerdere lijnen in beide richtingen onderling kloppen. Uitschieters (verkeerd gelezen) worden genoemd en genegeerd. Per ruimte controles (rondom wanden, één naam, nette omtrek, bewezen schaal, klopt met een maatlijn) en **"Bevestig alles wat klopt"**. Open ruimtes met twee namen ("Woonkamer + Keuken") alleen gesplitst bij een duidelijke vernauwing. Herhaalde namen genummerd. Gevelopeningen vullen het raamregister met een indicatieve breedte. |
+| Kamer-editor | Plattegrond met SVG-overlay, zoom, naam/oppervlakte/status bij elke ruimte. Ruimtes **splitsen** langs een getekende lijn en **samenvoegen** als ze een grens delen (niet over een wand heen). Tekenen met haakse uitlijning, kalibreren met een bekende maat, controlemeting, opnieuw analyseren (alleen onbevestigde ruimtes worden vervangen). Vormen: rechthoek, L-vorm, omtrek, alleen oppervlakte; obstakels. Elke waarde houdt een label. Overlap en dubbele namen worden gesignaleerd. Handmatige modus zonder plattegrond. |
+| Gratis basis | (1) vloer per ruimte en totaal van je selectie, (2) vloerhoeveelheid met snijverlies per legpatroon en hele pakken (alleen met opgegeven pakinhoud), (3) **verfcalculator**: omtrek × plafondhoogte, lagen, dekking, ramen/deuren alleen afgetrokken als je ze invult; aannames zichtbaar tot je eigen waarden invult. BAG-oppervlakte apart ter vergelijking. |
+| Materiaalbibliotheek (betaald) | Getypeerde, geversioneerde modules met tests: laminaat, PVC, vloertegels, ondervloer, plinten, overgangsprofielen, muurverf, primer, behang, gordijnen, rolgordijnen, jaloezieën, plissés, vouwgordijnen, rolluiken. Per categorie: invoer met eenheden, formule, afronding, ruimtes in/uit, en status `niet_genoeg_gegevens` / `geschat` / `berekend` / `klaar_voor_bestellen` / `wacht_op_controle` / `extra_controle_nodig`. Raamproducten worden nooit "klaar voor bestellen" zonder gecontroleerde leveranciersregel; rolluiken altijd extra controle. |
+| Betalen | Mollie Payments API v2 (eenmalig € 8,99, iDEAL e.a.), server-side verificatie (webhook of statusopvraag), idempotent en bestand tegen volgorde, terugbetaling trekt toegang in. Orders bevatten alleen ordernummer, projectreferentie, bedrag en status. DEMO-provider zonder sleutel, in productie uit tenzij expliciet aangezet. |
+| Plinten | Omtrek per gecontroleerde ruimte, per wand aan/uit, deuren alleen afgetrokken als de breedte is bevestigd (opgemeten deuren komen mee als "automatisch herkend"), obstakels, marge, handelslengtes alleen als opgegeven. |
+| Raamregister | R01, R02 …; herkend op de tekening of zelf toegevoegd, verplaatsen op de plattegrond; product (gordijn, rolgordijn, plissé, jaloezie, vouwgordijn, rolluik), montagewijze, meetregel. Meetwizard met meerdere meetpunten en afwijkingscontrole (nooit middelen). **Foto-assistent**: mogelijkheden detecteren zonder toestemming te vragen (camera, https, WebXR), camera pas bij "Camera starten", of een foto kiezen; A4-vel op het glas, hoeken aantikken → schatting met foutmarge (`browser_scan_estimate`), vergeleken met je rolmaatmetingen, nooit een bestelmaat. Foto's blijven op het apparaat. |
+| MeasurementRules | Versieerbaar schema met bron, datum, verplichte maten, toleranties, diepte en een omrekenformule. Alleen algemene meetprotocollen (geen bestelmaat); leveranciersregels worden geweigerd zonder bron-URL. Zie [`docs/MEETREGELS.md`](docs/MEETREGELS.md). |
+| Rapport | PDF (A4, pdf-lib) in de browser: project, woningoverzicht met bron, plattegrond met nummers, vloer met **bron per ruimte** (`PDF_explicit_dimension`, `OCR_explicit_dimension`, `PDF_scaled_geometry`, `user_input`, `user_confirmed`), plinten, raamtabel plus **een kaart per raam** (foto-uitsnede, bron van de maten, foto-schatting, wat ontbreekt, bestelstatus), **materialen per categorie** met status, aannames, ontbrekende gegevens en regelversie, winkelchecklist, schaalbewijs, disclaimer. Paginanummers, herhaalde tabelkoppen, geen afgebroken rijen. CSV met puntkomma's, decimale komma en de materiaalregels. |
+| Privacy | Project, bestand en raamfoto's in IndexedDB op het apparaat, verval na 30 dagen, wisknoppen. Geen analytics. CSP en security headers; camera alleen toegestaan voor de eigen site. Privacy, voorwaarden en contact als gemarkeerd concept met checklist. |
 
 ## Controleren
 
@@ -60,20 +67,25 @@ npm test               # Vitest
 npm run format:check
 npm run build
 npm run test:e2e       # bouwt zelf, start nep-PDOK/Mollie en twee app-servers (DEMO en Mollie)
+npm run validate       # meet plannen met referentiematen (zie docs/VALIDATIE.md)
+npm run fixtures       # testplattegronden en testfoto opnieuw maken
 ```
 
 Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
 
-- **Vitest: 111 tests geslaagd** — eenheden en conversies, rechthoek/polygoon/L-vorm zonder bounding-box-overschatting,
-  (de)selecteren, snijverlies en `ceil` van pakken, plinten met bevestigde deuren, raammetingen met toleranties en
-  blokkade van bestelmaten, de "gecontroleerd"-test (geen label zonder schaal of kritieke maten), uploadvalidatie
-  (signatuur, MIME, te groot, decompressiebom, kapotte PDF), PDF.js-tekst van de fixtures, **echte lokale OCR** op twee
-  scans, PDOK/BAG met time-out/leeg/429/genegeerd filter, Mollie-contracttests (redirect geeft niets vrij, idempotente
-  webhook, terugbetaling, bedrag-mismatch), PDF met 1/10/50 ramen binnen de marges en CSV.
-- **Playwright: 19 tests geslaagd** — complete reis tot PDF/CSV, redirect met `status=paid` ontgrendelt niets, echte
-  Mollie-adapter over een ander domein heen (project blijft bewaard), annuleren, webhookinvoer, cross-site order
-  geweigerd, adresfouten, uploadfouten, kalibreren + tekenen (30,00 m²), OCR in de browser, mobiel (Pixel 7) zonder
-  horizontale scroll, axe WCAG 2.2 A/AA zonder ernstige of kritieke bevindingen op alle pagina's en projectstappen.
+- **Vitest: 142 tests geslaagd** — o.a. geometrie, vloer, plinten, raammetingen, uploadvalidatie, PDF.js-tekst, echte
+  lokale OCR, PDOK/BAG en Mollie-contracttests, PDF met 1/10/50 ramen en met alle materiaalcategorieën, foto's en
+  lange namen binnen de marges; **de hele opmeetketen** (OCR → wanden → maatlijnen → schaal → ruimtes → project →
+  vloertotaal) op de testplattegrond; rasterbewerkingen, decimaalpuntherstel, schaalconsensus met uitschieter;
+  splitsen/samenvoegen; materiaalmodules (afronding, aannames, uitsluiten, ontbrekende maten, raamstatussen);
+  homografie en foto-schatting met foutmarge.
+- **Playwright: 26 tests geslaagd** — complete reis tot PDF/CSV (incl. verf en laminaat), automatisch opmeten +
+  "Bevestig alles wat klopt" + splitsen/samenvoegen in de browser, foto-assistent met testfoto, nep-camera en
+  geweigerde camera, landingpage (adres en plattegrond vanaf de hero, demo), betalingen (redirect geeft niets vrij,
+  echte Mollie-adapter tegen een nagebootste dienst, annuleren, webhook), adres- en uploadfouten, kalibreren +
+  tekenen, OCR in de browser, mobiel zonder horizontale scroll, axe WCAG 2.2 A/AA op alle pagina's en stappen.
+- `npm run validate` op het fictieve voorbeeld: 5/5 ruimtes, 7/7 ramen, oppervlakte- en schaalfout 0,00 %.
+  Dat bewijst dat de meetopstelling werkt, niet hoe goed het product is op echte woningen.
 - `tsc`, Prettier en `next build`: geen fouten.
 
 ## Valkuilen (gevonden of te verwachten)
@@ -86,9 +98,10 @@ Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
    afwijkend veld leidt tot "niet gevonden", nooit tot verkeerde data. Mollie: één testbetaling met `test_`-sleutel.
 3. **PDF.js 6 (modern build) breekt in huidige browsers**: het gebruikt `Map.prototype.getOrInsertComputed`.
    Tekstextractie werkte, renderen niet. Opgelost door de legacy build. Let op bij updates.
-4. **Automatisch kamergrenzen vinden in rasterbeelden is zonder ML niet betrouwbaar.** V1 herkent tekst (namen,
-   maten, schaal) en laat vormen tekenen of invoeren. Ramen worden niet uit de tekening gehaald; alleen een label
-   "raam"/"R1" wordt als kandidaat gezien. Dit is eerlijk, maar minder "magisch" dan de belofte doet vermoeden.
+4. **Automatisch opmeten werkt op tekeningen met gevulde (donkere) wanden**, zoals de meeste makelaarsplattegronden
+   (Zibber, Floorplanner en vergelijkbaar). CAD-tekeningen met wanden als twee dunne lijnen worden niet opgemeten;
+   als er dan meerdere kamernamen in één ruimte vallen, valt de app terug op de maten op de tekening of op tekenen.
+   Kavel- en tuintekeningen (dunne schuurwanden) worden niet ondersteund.
 5. **OCR raadt overtuigend fout**: "6.0?" werd "6.07". Daarom worden OCR-maten onder 70 % zekerheid nooit
    overgenomen. Maak die drempel niet lager zonder validatieset.
 6. **Een schaalnotatie in een PDF klopt alleen op ware papiergrootte.** Makelaars-PDF's zijn vaak geschaald of
@@ -110,6 +123,25 @@ Laatst uitgevoerd in deze omgeving (Node 22, Chromium 141):
 14. **Taaldata voor OCR is ~3 MB** en de OCR-engine ~4 MB per variant; alleen geladen als een pagina geen tekst heeft.
 15. **Adres via onze server**: dat is een extra partij in de keten (bewust: één foutmodel, geen CORS-afhankelijkheid).
     Het adres wordt niet opgeslagen of gelogd; staat zo in de privacytekst.
+16. **OCR laat decimaalpunten in maatlabels vallen** ("5.45 m" → "545m", met hoge zekerheid). Zo'n waarde is
+    onaannemelijk en wordt geweigerd; we zetten de punt alleen terug als de vormen in het label precies één punt
+    op de juiste plek laten zien. Verkeerd gelezen cijfers ("2.70" → "2.10") vallen af doordat de maatlijnen
+    onderling moeten kloppen.
+17. **Vergroten maakt OCR slechter**: bij 1,5× vergroting verdween "Hal" uit het resultaat. Afbeeldingen worden
+    daarom op hun eigen resolutie gelezen (alleen kleine beelden worden vergroot).
+18. **Gekleurde vlakken verbergen tekst voor OCR** (blauwe badkamer). Vóór OCR wordt elke pixel gedeeld door de
+    lichtste pixel in de buurt, zodat vlakken wit worden en tekst donker blijft.
+19. **Zwart meubilair tegen een wand** (kookplaat, tv, kachel) leek eerst wand. Wanden worden nu herkend aan de
+    ene vlakke kleur waarin de tekening ze tekent; meubels zijn gearceerd of gekleurd.
+20. **Open keuken**: zonder wand kan niemand de grens tussen woonkamer en keuken weten. We splitsen alleen bij een
+    duidelijke vernauwing; anders één ruimte "Woonkamer + Keuken", die je met **Splitsen** zelf deelt.
+21. **Turbopack en Web Workers**: `new Worker(new URL("./x.worker.ts", import.meta.url), { type: "module" })` werkt;
+    controleer na Next-updates dat de opmeting in productie draait (e2e-test `auto-measure.spec.ts`).
+22. **Permissions-Policy**: de camera stond eerst uit (`camera=()`), waardoor elke cameratoegang faalde. Nu
+    `camera=(self)`; let hierop bij het aanscherpen van headers.
+23. **Foto-schattingen hangen af van pixels**: een klein A4-vel op een vage foto geeft ±6 cm of meer. De app toont de
+    foutmarge en noemt de schatting "te onnauwkeurig" boven 3 %. WebXR wordt gedetecteerd maar bewust niet gebruikt
+    voor maten zolang de nauwkeurigheid voor raamdecoratie niet is aangetoond.
 
 ## Configuratie en productie
 
@@ -134,7 +166,10 @@ Alle namen staan in [`.env.example`](.env.example).
 ## Niet aangetoond
 
 - Live PDOK-responses en live Mollie-betalingen (zie valkuil 2).
-- Echte makelaarsplattegronden: alleen synthetische fixtures zijn getest.
+- Nauwkeurigheid op echte woningen: getest op één fictieve testplattegrond en twee aangeleverde
+  makelaarsplattegronden, vergeleken met de maatlijnen op die tekeningen zelf (zie `docs/VALIDATIE.md`), niet met
+  metingen in de woning. Geen percentage claimen vóór een validatieset.
+- Foto-assistent op echte telefoons: getest met een synthetische foto en de testcamera van Chromium.
 - Safari en Firefox: alleen Chromium is automatisch getest.
 - Volledige WCAG-conformiteit: alleen automatische axe-checks en toetsenbordbasis; geen screenreadertest. Het
   tekenen op de plattegrond is met muis/vinger; met het toetsenbord kun je alle maten wel als getal invoeren.

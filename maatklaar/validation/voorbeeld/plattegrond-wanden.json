@@ -1,0 +1,11 @@
+{
+  "pxPerM": 130,
+  "windows": 7,
+  "rooms": [
+    { "name": "Woonkamer", "areaM2": 29.44, "widthMm": 6000, "depthMm": 5600 },
+    { "name": "Keuken", "areaM2": 3.75, "widthMm": 2500, "depthMm": 1500 },
+    { "name": "Hal", "areaM2": 5.4, "widthMm": 2000, "depthMm": 2700 },
+    { "name": "Badkamer", "areaM2": 5.4, "widthMm": 2000, "depthMm": 2700 },
+    { "name": "Slaapkamer", "areaM2": 4.86, "widthMm": 1800, "depthMm": 2700 }
+  ]
+}

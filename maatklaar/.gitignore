@@ -11,3 +11,7 @@ playwright-report/
 .vercel
 # Copied from node_modules by scripts/copy-vendor-assets.mjs
 public/vendor/
+
+# Validation runs: results and plans of real homes stay local
+validation/**/resultaat.json
+validation/eigen/

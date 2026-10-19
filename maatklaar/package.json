@@ -17,8 +17,9 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "fixtures": "node scripts/make-fixtures.mjs",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.mjs\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.mjs\" \"validation/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.{ts,mjs}\" \"scripts/**/*.mjs\" \"validation/**/*.ts\"",
+    "validate": "vitest run --config vitest.validation.config.ts"
   },
   "dependencies": {
     "next": "16.4.2",

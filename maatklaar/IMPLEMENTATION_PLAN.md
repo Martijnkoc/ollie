@@ -59,10 +59,28 @@ Vervolg (niet in V1): validatieset en meting (docs/VALIDATIE.md), echte leveranc
 live controle PDOK/Mollie, Safari/Firefox-tests, server-side rapportgeneratie als misbruik daarom vraagt,
 geometrische detectie van wanden/ramen in vector-PDF's.
 
+## V2 — Automatisch opmeten en de complete bestellijst
+
+Uitgevoerd op basis van de V2-opdracht, bovenop V1 (niets weggegooid):
+
+- ☑ Automatisch opmeten uit de tekening: wanden, deur- en raamopeningen, ruimtes als polygonen, schaal uit
+  maatlijnen met consensus, controles per ruimte, "Bevestig alles wat klopt" (Web Worker, lokaal)
+- ☑ OCR-verbeteringen: achtergrond vlakmaken, eigen resolutie, losse "K", decimaalpuntherstel uit de vorm
+- ☑ Ruimtes splitsen en samenvoegen; ramen verplaatsen; opnieuw analyseren
+- ☑ Gratis verfcalculator; materiaalbibliotheek (15 categorieën) met statussen, versies en tests
+- ☑ Vouwgordijn en rolluik (extra controle) met eigen meetbladen
+- ☑ Foto-assistent: capability-detectie, camera op verzoek, foto kiezen, A4-referentie, schatting met foutmarge
+- ☑ Rapport: materialen, bron per ruimte, schaalbewijs, kaart per raam met foto; CSV met materialen
+- ☑ Landingpage volgens V2 (adres en upload in de hero, demo, vergelijking, voor wie, FAQ)
+- ☑ Testharnas `npm run validate`; e2e voor opmeten, foto/camera, landingpage
+- ☐ Validatieset met metingen in echte woningen (zie docs/VALIDATIE.md) — nodig vóór elke nauwkeurigheidsclaim
+- ☐ Leveranciersregels met bron (docs/MEETREGELS.md) — nodig voor "klaar voor bestellen" bij raamdecoratie
+- ☐ 3D-buitenweergave uit open data: bewust niet gebouwd (geen interieurwaarde, extra databron)
+
 ## Risico's en valkuilen (kort; uitgebreid in README)
 - PDOK en Mollie waren vanuit de bouwomgeving niet bereikbaar → adapters gebouwd op gedocumenteerde velden,
   defensief geparsed en met mocks getest; live controle nodig vóór lancering.
-- Automatische kamergrenzen uit rasterbeelden zijn zonder ML niet betrouwbaar → V1 herkent tekst (namen, maten,
-  schaal) en laat vormen tekenen/invoeren.
+- Automatisch opmeten werkt op tekeningen met gevulde wanden; lijntekeningen vallen terug op labels/tekenen.
+  Nauwkeurigheid op echte woningen is nog niet gemeten.
 - Client-side ontgrendeling is voor een technisch onderlegde gebruiker te omzeilen (berekeningen draaien lokaal).
 - iDEAL op mobiel kan terugkeren in een andere browser → project niet gevonden; uitleg + hercontrole in de oorspronkelijke browser.

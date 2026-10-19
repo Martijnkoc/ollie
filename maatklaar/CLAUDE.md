@@ -21,7 +21,9 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
 4. BAG-gebruiksoppervlakte ≠ som van kamers. Altijd apart tonen, met uitleg.
 5. Een adres of gebouwcontour onthult geen interne plattegrond of raammaten. De pandcontour is van het hele
    gebouw (bij appartementen meerdere woningen).
-6. Raamhoogte/-breedte/montagediepte komen nooit uit een plattegrond van bovenaf; die worden gemeten.
+6. Raamhoogte/-breedte/montagediepte komen nooit uit een plattegrond van bovenaf; die worden gemeten. Een
+   breedte van de tekening (`planWidthMm`) en een foto-schatting (`photo.estimate`, `browser_scan_estimate`) zijn
+   indicaties naast de meting, nooit een meetwaarde of bestelmaat.
 7. Geen universele aftrek voor raamdecoratie. Een bestelmaat wordt alleen berekend met een expliciete,
    bronvermelde `MeasurementRuleSet` van het type `supplier` (`src/lib/measurements`). In V1 staan er **geen**
    leveranciersregels in de app (`src/config/measurement-rules.ts` is leeg); dan tonen we een meetblad met ruwe maten.
@@ -52,9 +54,10 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
 ```
 src/config/            site.ts (merk, prijs, teksten, limieten), measurement-rules.ts (leveranciersregels, leeg)
 src/lib/geometry/      eenheden, polygonen (oppervlakte, omtrek, validatie, overlap), vormen → mm-polygoon
-src/lib/materials/     vloer (snijverlies, pakken), plinten, legpatronen, uitbreidbaar materiaalregister
-src/lib/measurements/  MeasurementRuleSet-schema, generieke meetprotocollen, raamevaluatie
-src/lib/plan-analysis/ tekstregels, classificatie (kamers, maten, schaal), koppeling, kwaliteitspoort
+src/lib/materials/     vloer (snijverlies, pakken), plinten, legpatronen; catalog.ts = materiaalbibliotheek met statussen
+src/lib/measurements/  MeasurementRuleSet-schema, generieke meetprotocollen, raamevaluatie, foto-schatting (photo.ts)
+src/lib/plan-analysis/ tekstregels, classificatie (kamers, maten, schaal), koppeling, kwaliteitspoort;
+                       raster.ts, walls.ts, dimensions.ts, rooms-auto.ts, auto-measure.ts: opmeten uit de tekening
 src/lib/documents/     uploadvalidatie (signatuur, MIME, grootte, afmetingen), PDF.js, OCR (browser)
 src/lib/projects/      projectschema (zod), status/herkomst, berekeningen per project, IndexedDB-opslag
 src/lib/address/       PDOK Locatieserver + BAG OGC API adapters (server)
@@ -63,7 +66,8 @@ src/lib/reports/       rapportmodel, PDF (pdf-lib), CSV
 src/app/               pagina's en API-routes (route handlers)
 src/components/        UI; berekeningen nooit in componenten, altijd via src/lib
 tests/                 Vitest (pure functies, adapters met nep-fetch, PDF-uitvoer, fixtures)
-e2e/                   Playwright (mock-PDOK en DEMO-betaling, mobiel, toegankelijkheid)
+e2e/                   Playwright (mock-PDOK en DEMO-betaling, mobiel, toegankelijkheid, camera)
+validation/            testharnas: npm run validate (plannen met referentiematen; echte woningen niet in Git)
 fixtures/              synthetische testplattegronden (gegenereerd met `npm run fixtures`)
 ```
 
