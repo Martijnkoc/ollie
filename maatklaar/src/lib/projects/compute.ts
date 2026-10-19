@@ -36,6 +36,8 @@ export type ProjectComputation = {
   verified: boolean;
 };
 
+export const roomName = (room: Pick<Room, "name">) => room.name.trim() || "Naamloze ruimte";
+
 export function computeRoom(room: Room, project: Pick<Project, "scales">): RoomResult {
   const geometry = shapeGeometry(room.shape, project.scales);
   const issues = [...geometry.issues];
@@ -88,11 +90,11 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
   }
 
   const counts = new Map<string, number>();
-  for (const r of project.rooms) counts.set(r.name.trim().toLowerCase(), (counts.get(r.name.trim().toLowerCase()) ?? 0) + 1);
+  for (const r of project.rooms) if (r.name.trim()) counts.set(r.name.trim().toLowerCase(), (counts.get(r.name.trim().toLowerCase()) ?? 0) + 1);
   const duplicateNames = [...counts.entries()].filter(([, n]) => n > 1).map(([name]) => project.rooms.find((r) => r.name.trim().toLowerCase() === name)!.name);
 
   const floor = computeFloor(
-    rooms.map((r) => ({ id: r.room.id, name: r.room.name, included: r.room.includeFloor, areaMm2: r.netAreaMm2, status: r.status })),
+    rooms.map((r) => ({ id: r.room.id, name: roomName(r.room), included: r.room.includeFloor, areaMm2: r.netAreaMm2, status: r.status })),
     { wastePercent: project.floor.wastePercent, packM2: project.floor.packM2 },
   );
 
@@ -101,7 +103,7 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
       .filter((r) => r.room.includePlinth)
       .map((r) => ({
         id: r.room.id,
-        name: r.room.name,
+        name: roomName(r.room),
         edgesMm: r.geometry.edgesMm,
         geometryStatus: r.geometry.edgesMm ? combine([r.geometry.status, r.room.nameStatus === "auto" ? "auto" : "confirmed"]) : "missing",
         wallsWithoutPlinth: r.room.wallsWithoutPlinth,
@@ -113,7 +115,7 @@ export function computeProject(project: Project, rules?: readonly MeasurementRul
     project.plinth,
   );
 
-  const roomNames = new Map(project.rooms.map((r) => [r.id, r.name]));
+  const roomNames = new Map(project.rooms.map((r) => [r.id, roomName(r)]));
   const windows = project.windows.map((w) => {
     const rule = windowRule(w, rules);
     return {

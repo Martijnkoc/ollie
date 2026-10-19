@@ -77,7 +77,8 @@ export type Door = z.infer<typeof doorSchema>;
 
 export const roomSchema = z.object({
   id: z.string(),
-  name: z.string().min(1).max(60),
+  /** May be empty while the user types; shown as "Naamloze ruimte" then. */
+  name: z.string().max(60),
   nameStatus: z.enum(["auto", "confirmed"]),
   origin: z.enum(["auto", "manual"]),
   /** Plan page the room belongs to, and where its label sits (page units). */
@@ -136,6 +137,10 @@ export const analysisSchema = z.object({
   scaleNotation: z.object({ denominator: z.number().int().positive(), text: z.string().max(60) }).nullable(),
   notToScale: z.boolean(),
   findings: z.array(z.string().max(300)),
+  /** Single length labels with their position, offered as suggestions when calibrating. */
+  lengthLabels: z
+    .array(z.object({ mm: z.number().positive().nullable(), text: z.string().max(40), box: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }) }))
+    .max(300),
 });
 export type PageAnalysis = z.infer<typeof analysisSchema>;
 

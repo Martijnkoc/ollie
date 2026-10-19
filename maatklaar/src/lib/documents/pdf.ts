@@ -4,7 +4,9 @@ import { LIMITS } from "@/config/site";
 import type { TextItem } from "@/lib/plan-analysis/types";
 import { pdfItemsToText, type PdfJsTextItem } from "./pdf-text";
 
-type PdfJs = typeof import("pdfjs-dist");
+// The legacy build targets the browsers we support (the modern build needs brand-new APIs such as
+// Map.prototype.getOrInsertComputed and breaks rendering in current Chrome and Safari releases).
+type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 type PdfDocument = Awaited<ReturnType<PdfJs["getDocument"]>["promise"]>;
 export type PdfPage = Awaited<ReturnType<PdfDocument["getPage"]>>;
 
@@ -12,7 +14,7 @@ let pdfjsPromise: Promise<PdfJs> | null = null;
 
 /** Loads PDF.js on demand with the self-hosted worker; nothing is fetched from another origin. */
 function loadPdfJs() {
-  pdfjsPromise ??= import("pdfjs-dist").then((pdfjs) => {
+  pdfjsPromise ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
     pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
     return pdfjs;
   });

@@ -13,8 +13,9 @@ export function formatM2FromMm2(mm2: number) {
   return `${two.format(mm2 / 1_000_000)} m²`;
 }
 
-export function formatM2(m2: number) {
-  return `${two.format(m2)} m²`;
+/** m² with two decimals; pass 3 for product data such as pack contents (2,131 m²). */
+export function formatM2(m2: number, decimals: 2 | 3 = 2) {
+  return `${(decimals === 3 ? nf(2, 3) : two).format(m2)} m²`;
 }
 
 /** 4200 mm → "4,20 m" */

@@ -73,6 +73,7 @@ export function analysisSummary(result: AnalysisResult, page: number, ranAt: Dat
     scaleNotation: result.scaleNotation,
     notToScale: result.notToScale,
     findings,
+    lengthLabels: result.lengthLabels.slice(0, 300).map((l) => ({ mm: l.mm, text: l.text.slice(0, 40), box: l.box })),
   };
 }
 

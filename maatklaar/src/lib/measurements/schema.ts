@@ -11,6 +11,8 @@ export const PRODUCT_LABELS: Record<ProductFamily, string> = {
   onbekend: "Ik weet het nog niet",
 };
 
+export const PRODUCT_SHORT: Record<ProductFamily, string> = { gordijn: "Gordijn", rolgordijn: "Rolgordijn", plisse: "Plissé", jaloezie: "Jaloezie", onbekend: "Product nog niet gekozen" };
+
 export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "onbekend"] as const;
 export type Mounting = (typeof MOUNTINGS)[number];
 
@@ -21,6 +23,8 @@ export const MOUNTING_LABELS: Record<Mounting, string> = {
   wand: "Rail of roede aan de wand",
   onbekend: "Weet ik nog niet",
 };
+
+export const MOUNTING_SHORT: Record<Mounting, string> = { "in-de-dag": "in de dag", "op-de-dag": "op de dag", plafond: "rail aan plafond", wand: "rail/roede aan wand", onbekend: "montage nog niet gekozen" };
 
 /** Which mountings make sense for a product family. Curtains hang from a rail; the others sit in or on the opening. */
 export function mountingsFor(family: ProductFamily): Mounting[] {

@@ -57,7 +57,7 @@ export function computeFloor(rows: readonly FloorRow[], settings: FloorSettings)
     steps.push(`Met snijverlies: ${formatM2(selectedNetM2)} × (1 + ${formatPercent(settings.wastePercent)}) = ${formatM2(requiredM2)}`);
     if (settings.packM2 !== null && settings.packM2 > 0) {
       packs = ceilSafe(requiredM2 / settings.packM2);
-      steps.push(`Pakken: ${formatM2(requiredM2)} ÷ ${formatM2(settings.packM2)} per pak = ${formatCount(packs)} (naar boven afgerond)`);
+      steps.push(`Pakken: ${formatM2(requiredM2)} ÷ ${formatM2(settings.packM2, 3)} per pak = ${formatCount(packs)} (naar boven afgerond)`);
     } else {
       steps.push("Aantal pakken: vul de oppervlakte per pak van jouw vloer in. We gebruiken geen standaardpakgrootte.");
     }

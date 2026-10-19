@@ -20,6 +20,8 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // This app lives in a subfolder of a repository with its own lockfile; pin the workspace root here.
+  turbopack: { root: import.meta.dirname },
   poweredByHeader: false,
   serverExternalPackages: ["postgres"],
   async headers() {

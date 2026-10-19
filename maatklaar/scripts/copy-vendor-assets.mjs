@@ -18,7 +18,8 @@ function copy(from, to) {
 rmSync(out, { recursive: true, force: true });
 
 // PDF.js: worker, standard fonts, CMaps and the wasm image decoders.
-copy("pdfjs-dist/build/pdf.worker.min.mjs", "pdfjs/pdf.worker.min.mjs");
+// Legacy build: the modern one relies on very recent JS APIs that many browsers do not ship yet.
+copy("pdfjs-dist/legacy/build/pdf.worker.min.mjs", "pdfjs/pdf.worker.min.mjs");
 copy("pdfjs-dist/standard_fonts", "pdfjs/standard_fonts");
 copy("pdfjs-dist/cmaps", "pdfjs/cmaps");
 copy("pdfjs-dist/wasm", "pdfjs/wasm");
