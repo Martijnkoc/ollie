@@ -17,7 +17,7 @@ export const PROTOCOLS: MeasurementRuleSet[] = [
     date: "2026-10-19",
     kind: "protocol",
     title: "Meetblad raamdecoratie in de dag",
-    productFamilies: ["rolgordijn", "plisse", "jaloezie", "onbekend"],
+    productFamilies: ["rolgordijn", "plisse", "jaloezie", "vouwgordijn", "onbekend"],
     mounting: "in-de-dag",
     source: SOURCE,
     required: ["breedte_boven", "breedte_midden", "breedte_onder", "hoogte_links", "hoogte_midden", "hoogte_rechts", "diepte"],
@@ -38,7 +38,7 @@ export const PROTOCOLS: MeasurementRuleSet[] = [
     date: "2026-10-19",
     kind: "protocol",
     title: "Meetblad raamdecoratie op de dag",
-    productFamilies: ["rolgordijn", "plisse", "jaloezie", "onbekend"],
+    productFamilies: ["rolgordijn", "plisse", "jaloezie", "vouwgordijn", "onbekend"],
     mounting: "op-de-dag",
     source: SOURCE,
     required: ["gewenste_breedte", "gewenste_hoogte", "ruimte_boven"],
@@ -92,6 +92,39 @@ export const PROTOCOLS: MeasurementRuleSet[] = [
     ],
     supplierCheckRequired: ["Afgewerkte lengte, plooi- of volheidsfactor en bandtype met je leverancier of naaiatelier."],
   },
+  ...(["voorzet", "inbouw"] as const).map((mounting): MeasurementRuleSet => ({
+    id: `protocol-rolluik-${mounting}`,
+    version: "1.0",
+    date: "2026-10-19",
+    kind: "protocol",
+    title: `Meetblad rolluik (${mounting === "voorzet" ? "voorzetrolluik" : "inbouwrolluik"})`,
+    productFamilies: ["rolluik"],
+    mounting,
+    source: SOURCE,
+    required: [
+      "breedte_boven",
+      "breedte_midden",
+      "breedte_onder",
+      "hoogte_links",
+      "hoogte_midden",
+      "hoogte_rechts",
+      "diepte",
+      "ruimte_boven",
+    ],
+    optional: [],
+    toleranceMm: tolerance,
+    checks: ["kast_ruimte", "geleiders", "stroom", "vensterbank", "raam_openen"],
+    minDepthMm: null,
+    conversion: { kind: "none" },
+    warnings: [
+      "Rolluiken vragen altijd extra controle: kastmaat, geleiders, montagepositie en bediening verschillen per fabrikant en per gevel.",
+      "Meet de opening op drie plekken in beide richtingen; we middelen niets weg.",
+    ],
+    supplierCheckRequired: [
+      "Kastmaat, geleidertype, bestelmaat en montagepositie volgens de inmeetinstructie van de fabrikant of een monteur.",
+      "Bij gevelwerk of een gehuurde woning: toestemming van eigenaar of VvE.",
+    ],
+  })),
 ];
 
 for (const rule of [...PROTOCOLS, ...SUPPLIER_RULES]) measurementRuleSetSchema.parse(rule);
@@ -105,6 +138,7 @@ export function findRule(id: string, rules: readonly MeasurementRuleSet[] = ALL_
 /** The generic protocol that fits a product and mounting. Unknown mounting falls back to measuring the opening itself. */
 export function defaultRuleFor(family: ProductFamily, mounting: Mounting): MeasurementRuleSet {
   if (family === "gordijn") return findRule(mounting === "plafond" ? "protocol-gordijn-plafond" : "protocol-gordijn")!;
+  if (family === "rolluik") return findRule(mounting === "inbouw" ? "protocol-rolluik-inbouw" : "protocol-rolluik-voorzet")!;
   return findRule(mounting === "op-de-dag" ? "protocol-op-de-dag" : "protocol-in-de-dag")!;
 }
 

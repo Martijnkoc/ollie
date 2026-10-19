@@ -85,6 +85,9 @@ export function RoomCard({
   onDelete,
   onDraw,
   onConfirmed,
+  onSplit,
+  mergeWith = [],
+  onMerge,
 }: {
   number: number;
   result: RoomResult;
@@ -97,6 +100,11 @@ export function RoomCard({
   onDraw: () => void;
   /** Called after "Naam en maten kloppen", e.g. to open the next room that still needs checking. */
   onConfirmed?: () => void;
+  /** Starts drawing a split line for this room (outlines only). */
+  onSplit?: () => void;
+  /** Rooms on the same page this one can be joined with. */
+  mergeWith?: { id: string; name: string }[];
+  onMerge?: (otherId: string) => void;
 }) {
   const room = result.room;
   const poly = result.geometry.polygonMm;
@@ -113,6 +121,8 @@ export function RoomCard({
     (s.kind === "rect" && [s.length, s.width].some((l) => l.status === "auto")) ||
     (s.kind === "l" && [s.length, s.width, s.notchLength, s.notchWidth].some((l) => l.status === "auto")) ||
     (s.kind === "area" && s.status === "auto") ||
+    (s.kind === "drawn" && s.status === "auto" && s.points.length >= 3) ||
+    room.doors.some((d) => d.width.status === "auto") ||
     room.obstacles.some((o) => o.length.status === "auto" || o.width.status === "auto");
 
   const set = (patch: Partial<Room>) => onChange({ ...room, ...patch });
@@ -376,6 +386,27 @@ export function RoomCard({
           >
             Naam en maten kloppen
           </button>
+        )}
+        {onSplit && s.kind === "drawn" && s.points.length >= 3 && (
+          <button type="button" className="btn btn-sm" onClick={onSplit}>
+            Splitsen
+          </button>
+        )}
+        {onMerge && s.kind === "drawn" && mergeWith.length > 0 && (
+          <select
+            className="select"
+            style={{ width: "auto", minHeight: 36 }}
+            aria-label={`${room.name.trim() || "Deze ruimte"} samenvoegen met`}
+            value=""
+            onChange={(e) => e.target.value && onMerge(e.target.value)}
+          >
+            <option value="">Samenvoegen met…</option>
+            {mergeWith.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
         )}
         <button type="button" className="btn btn-sm btn-ghost" onClick={onDelete} aria-label={`Verwijder ${room.name}`}>
           Verwijderen

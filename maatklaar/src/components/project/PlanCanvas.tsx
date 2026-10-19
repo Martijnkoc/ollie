@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { centroid, type Point } from "@/lib/geometry/polygon";
 
-export type Tool = "select" | "draw" | "calibrate" | "measure" | "window";
+export type Tool = "select" | "draw" | "calibrate" | "measure" | "window" | "split";
 
 export type CanvasRoom = {
   id: string;
@@ -13,6 +13,8 @@ export type CanvasRoom = {
   anchor: Point | null;
   active: boolean;
   included: boolean;
+  /** Name, area and status shown next to the number when there is room for it. */
+  caption?: string;
 };
 export type CanvasWindow = { id: string; code: string; position: Point; active: boolean };
 
@@ -22,6 +24,7 @@ const TOOL_HELP: Record<Tool, string> = {
   calibrate: "Klik op het begin en het eind van een maat die je kent, bijvoorbeeld een maatlijn met een getal.",
   measure: "Klik op twee punten om de afstand te meten met de huidige schaal.",
   window: "Klik op de plek van het raam op de plattegrond.",
+  split: "Klik twee punten op de lijn waar de ruimte moet worden gesplitst, bijvoorbeeld waar de keuken begint.",
 };
 
 /**
@@ -40,6 +43,7 @@ export function PlanCanvas({
   labels,
   onPoint,
   onRoomClick,
+  onWindowClick,
   onCancel,
   onUndo,
 }: {
@@ -54,6 +58,8 @@ export function PlanCanvas({
   labels: { box: { x: number; y: number; w: number; h: number }; text: string }[];
   onPoint: (p: Point) => void;
   onRoomClick: (id: string) => void;
+  /** Clicking a window marker (for example to move it). */
+  onWindowClick?: (id: string) => void;
   onCancel: () => void;
   onUndo: () => void;
 }) {
@@ -213,13 +219,33 @@ export function PlanCanvas({
                       <text y={r(4.5)} textAnchor="middle" fontSize={r(13)} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">
                         {room.number}
                       </text>
+                      {room.caption && (room.active || zoom >= 1.5) && (
+                        <text
+                          y={r(30)}
+                          textAnchor="middle"
+                          fontSize={r(12)}
+                          fontWeight={600}
+                          fill="#1f4d3a"
+                          stroke="#fff"
+                          strokeWidth={r(3)}
+                          paintOrder="stroke"
+                          fontFamily="Inter, sans-serif"
+                        >
+                          {room.caption}
+                        </text>
+                      )}
                     </g>
                   )}
                 </g>
               );
             })}
             {windows.map((w) => (
-              <g key={w.id} transform={`translate(${w.position.x} ${w.position.y})`}>
+              <g
+                key={w.id}
+                transform={`translate(${w.position.x} ${w.position.y})`}
+                onPointerUp={(e) => onWindowClick && (e.stopPropagation(), onWindowClick(w.id))}
+                style={{ cursor: onWindowClick ? "pointer" : undefined }}
+              >
                 <rect
                   x={r(-20)}
                   y={r(-11)}

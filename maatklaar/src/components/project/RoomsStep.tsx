@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatMFromMm, parseDecimal, parseMetresToMm } from "@/lib/format";
+import { formatM2FromMm2, formatMFromMm, parseDecimal, parseMetresToMm } from "@/lib/format";
 import { distance, type Point } from "@/lib/geometry/polygon";
 import { mmPerPointForNotation, mmPerUnitFromCalibration } from "@/lib/geometry/units";
-import { emptyRect, newRoom } from "@/lib/projects/factory";
+import { mapEdge, mergePolygons, splitPolygon } from "@/lib/geometry/edit";
+import { centroid } from "@/lib/geometry/polygon";
+import { emptyRect, newRoom, randomId } from "@/lib/projects/factory";
 import type { Room, Scale } from "@/lib/projects/schema";
+import { STATUS_META } from "@/lib/projects/status";
 import { PlanCanvas, type Tool } from "./PlanCanvas";
 import { AutoSummary } from "./AutoSummary";
 import { confirmRoom, RoomCard } from "./RoomCard";
@@ -28,6 +31,7 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
   const [calError, setCalError] = useState<string | null>(null);
   const [notationText, setNotationText] = useState("");
   const [newName, setNewName] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
 
   const scale = project.scales.find((s) => s.page === page) ?? null;
   const pageRooms = project.rooms.filter((r) => r.page === page || (r.shape.kind === "drawn" && r.shape.page === page));
@@ -41,6 +45,12 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
 
   const numbers = useMemo(() => new Map(project.rooms.map((r, i) => [r.id, i + 1])), [project.rooms]);
   const results = computed.rooms;
+  const captionFor = (id: string) => {
+    const res = results.find((x) => x.room.id === id);
+    if (!res) return undefined;
+    const area = res.netAreaMm2 !== null ? ` · ${formatM2FromMm2(res.netAreaMm2)}` : "";
+    return `${res.room.name.trim() || "Naamloze ruimte"}${area} · ${STATUS_META[res.status].label.toLowerCase()}`;
+  };
 
   function setRoom(room: Room) {
     update((p) => ({ ...p, rooms: p.rooms.map((r) => (r.id === room.id ? room : r)) }));
@@ -57,6 +67,83 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
       ),
       scales: p.scales.map((s) => (s.page === page && s.method === "maatlijnen" && s.evidence?.proven ? { ...s, status: "confirmed" } : s)),
     }));
+  }
+
+  /** Splits the active room along the drawn line; names of an open space ("Woonkamer + Keuken") are shared out. */
+  function splitActive(a: Point, b: Point) {
+    const room = project.rooms.find((r) => r.id === activeId);
+    if (!room || room.shape.kind !== "drawn") return;
+    const shape = room.shape;
+    const result = splitPolygon(shape.points, a, b);
+    if (!result.ok) {
+      setEditError(result.reason);
+      setLine(null);
+      return;
+    }
+    // Parts in reading order get the names in reading order.
+    const parts = [...result.parts].sort((p, q) => centroid(p).y - centroid(q).y || centroid(p).x - centroid(q).x);
+    const names = room.name.split(" + ").map((n) => n.trim());
+    const nameFor = (i: number) => (names.length === 2 ? names[i]! : i === 0 ? room.name : `${room.name.trim() || "Ruimte"} (deel 2)`);
+    const note = "Gesplitst langs een lijn die je zelf hebt getekend.";
+    const pieces: Room[] = parts.map((points, i) => ({
+      ...room,
+      id: i === 0 ? room.id : randomId(12),
+      name: nameFor(i),
+      anchor: centroid(points),
+      shape: { ...shape, points },
+      autoOk: false,
+      doors: room.doors.flatMap((d) => {
+        const wall = mapEdge(shape.points, d.wall, points);
+        return wall >= 0 ? [{ ...d, wall }] : [];
+      }),
+      wallsWithoutPlinth: room.wallsWithoutPlinth.map((w) => mapEdge(shape.points, w, points)).filter((w) => w >= 0),
+      notes: [note, ...room.notes.filter((n) => !n.includes("lopen zonder wand") && !n.includes("is geschat"))].slice(0, 10),
+    }));
+    update((p) => {
+      const at = p.rooms.findIndex((r) => r.id === room.id);
+      return { ...p, rooms: [...p.rooms.slice(0, at), ...pieces, ...p.rooms.slice(at + 1)] };
+    });
+    setEditError(null);
+    setActiveId(pieces[0]!.id);
+    chooseTool("select");
+  }
+
+  /** Joins two rooms that share a boundary (no wall between them) into one. */
+  function merge(roomId: string, otherId: string) {
+    const a = project.rooms.find((r) => r.id === roomId);
+    const b = project.rooms.find((r) => r.id === otherId);
+    if (!a || !b || a.shape.kind !== "drawn" || b.shape.kind !== "drawn") return;
+    const result = mergePolygons(a.shape.points, b.shape.points);
+    if (!result.ok) {
+      setEditError(result.reason);
+      return;
+    }
+    const points = result.polygon;
+    const fromA = a.doors.flatMap((d) => {
+      const wall = mapEdge(a.shape.kind === "drawn" ? a.shape.points : [], d.wall, points);
+      return wall >= 0 ? [{ ...d, wall }] : [];
+    });
+    const fromB = b.doors.flatMap((d) => {
+      const wall = mapEdge(b.shape.kind === "drawn" ? b.shape.points : [], d.wall, points);
+      return wall >= 0 ? [{ ...d, id: randomId(8), wall }] : [];
+    });
+    const joined: Room = {
+      ...a,
+      name: `${a.name.trim() || "Ruimte"} + ${b.name.trim() || "ruimte"}`.slice(0, 60),
+      shape: { ...a.shape, points, status: a.shape.status === "confirmed" && b.shape.status === "confirmed" ? "confirmed" : "auto" },
+      anchor: centroid(points),
+      autoOk: false,
+      doors: [...fromA, ...fromB].slice(0, 20),
+      wallsWithoutPlinth: [],
+      notes: [`Samengevoegd met ${b.name.trim() || "een ruimte zonder naam"}.`, ...a.notes].slice(0, 10),
+    };
+    update((p) => ({
+      ...p,
+      rooms: p.rooms.filter((r) => r.id !== b.id).map((r) => (r.id === a.id ? joined : r)),
+      windows: p.windows.map((w) => (w.roomId === b.id ? { ...w, roomId: a.id } : w)),
+    }));
+    setEditError(null);
+    setActiveId(a.id);
   }
 
   function chooseTool(t: Tool) {
@@ -104,6 +191,9 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
       const first = draft[0];
       if (draft.length >= 3 && first && p.x === first.x && p.y === first.y) return finishDrawing(draft);
       setDraft((d) => [...d, p]);
+    } else if (tool === "split") {
+      if (!line || line.b) setLine({ a: p, b: null });
+      else splitActive(line.a, p);
     } else if (tool === "calibrate" || tool === "measure") {
       if (!line || line.b) {
         setLine({ a: p, b: null });
@@ -278,6 +368,7 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                     id: r.id,
                     number: numbers.get(r.id) ?? 0,
                     name: r.name,
+                    caption: captionFor(r.id),
                     points: r.shape.kind === "drawn" && r.shape.page === page ? r.shape.points : [],
                     anchor: r.anchor,
                     active: r.id === activeId,
@@ -294,6 +385,20 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                   onCancel={() => chooseTool("select")}
                   onUndo={() => setDraft((d) => d.slice(0, -1))}
                 />
+
+                {editError && (
+                  <p className="notice notice-warn small" role="alert" style={{ margin: 0 }}>
+                    {editError}
+                  </p>
+                )}
+                {tool === "split" && (
+                  <div className="row">
+                    <span className="small">Splitsen: {project.rooms.find((r) => r.id === activeId)?.name.trim() || "gekozen ruimte"}</span>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => chooseTool("select")}>
+                      Annuleren
+                    </button>
+                  </div>
+                )}
 
                 {tool === "draw" && (
                   <div className="row">
@@ -466,6 +571,15 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
                     }))
                   }
                   onDraw={() => startDrawing(res.room.id)}
+                  onSplit={() => {
+                    setActiveId(res.room.id);
+                    setEditError(null);
+                    chooseTool("split");
+                  }}
+                  mergeWith={pageRooms
+                    .filter((r) => r.id !== res.room.id && r.shape.kind === "drawn" && r.shape.points.length >= 3)
+                    .map((r) => ({ id: r.id, name: `${numbers.get(r.id)}. ${r.name.trim() || "Naamloze ruimte"}` }))}
+                  onMerge={(other) => merge(res.room.id, other)}
                   onConfirmed={() => {
                     const i = results.findIndex((x) => x.room.id === res.room.id);
                     const next = [...results.slice(i + 1), ...results.slice(0, i)].find((x) => x.status !== "derived");

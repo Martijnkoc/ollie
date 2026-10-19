@@ -31,6 +31,7 @@ export function newProject(now = new Date()): Project {
     plinth: { marginPercent: DEFAULT_PLINTH_MARGIN_PERCENT, pieceLengthMm: null },
     payment: null,
     report: { includeAddress: false },
+    materials: { selected: ["verf"], rooms: {}, inputs: {} },
   };
 }
 

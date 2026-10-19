@@ -34,6 +34,7 @@ export function WindowSection({ project, update, computed }: StepProps) {
   const id = useId();
   const [open, setOpen] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [moving, setMoving] = useState<string | null>(null);
   const doc = project.document;
   const page = doc ? Math.min(doc.selectedPage, doc.pages.length - 1) : 0;
   const image = usePlanImage(project.id, doc, page, doc ? doc.sizeBytes : 0);
@@ -77,6 +78,13 @@ export function WindowSection({ project, update, computed }: StepProps) {
       </div>
 
       {placing && doc && (
+        <p className="small" style={{ margin: 0 }} aria-live="polite">
+          {moving
+            ? `Klik op de nieuwe plek voor ${project.windows.find((w) => w.id === moving)?.code ?? "het raam"}.`
+            : "Klik op de plattegrond om een raam toe te voegen, of klik op een raamcode om dat raam te verplaatsen."}
+        </p>
+      )}
+      {placing && doc && (
         <PlanCanvas
           page={doc.pages[page]!}
           imageUrl={image.url}
@@ -85,11 +93,17 @@ export function WindowSection({ project, update, computed }: StepProps) {
           rooms={[]}
           windows={project.windows
             .filter((w) => w.page === page && w.position)
-            .map((w) => ({ id: w.id, code: w.code, position: w.position!, active: false }))}
+            .map((w) => ({ id: w.id, code: w.code, position: w.position!, active: w.id === moving }))}
           draft={[]}
           line={null}
           labels={[]}
-          onPoint={(pt) => update((p) => ({ ...p, windows: [...p.windows, newWindow(p.windows, { page, position: pt })] }))}
+          onWindowClick={(wid) => setMoving((m) => (m === wid ? null : wid))}
+          onPoint={(pt) => {
+            if (moving) {
+              update((p) => ({ ...p, windows: p.windows.map((w) => (w.id === moving ? { ...w, page, position: pt } : w)) }));
+              setMoving(null);
+            } else update((p) => ({ ...p, windows: [...p.windows, newWindow(p.windows, { page, position: pt })] }));
+          }}
           onRoomClick={() => undefined}
           onCancel={() => setPlacing(false)}
           onUndo={() => undefined}

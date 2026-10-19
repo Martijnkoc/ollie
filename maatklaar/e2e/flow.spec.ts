@@ -30,7 +30,10 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   // Free floor result, live (de)selection, packs only with a pack size.
   await page.getByRole("button", { name: "Bereken mijn vloer" }).click();
   await expect(page.locator(".metric").first()).toContainText("96,00 m²");
-  await page.getByRole("checkbox", { name: /Badkamer/ }).uncheck();
+  await page
+    .getByRole("table", { name: "Vloeroppervlakte per ruimte" })
+    .getByRole("checkbox", { name: /Badkamer/ })
+    .uncheck();
   await expect(page.locator(".metric").first()).toContainText("90,00 m²");
   await expect(page.locator(".metric.primary")).toContainText("96,30 m²"); // 90 × 1,07
   await expect(page.locator(".metric").nth(2)).toContainText("—");
@@ -38,6 +41,18 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   await page.getByLabel("Inhoud per pak (optioneel)").blur();
   await expect(page.locator(".metric").nth(2)).toContainText("46"); // 96,30 / 2,131 = 45,19 → 46
   await expect(page.getByText(/Wil je ook plinten en raamdecoratie/)).toBeVisible();
+
+  // Free paint estimate: an assumed ceiling height stays visible as an assumption until the user fills it in.
+  const paint = page.locator(".category-card").filter({ has: page.getByRole("heading", { name: "Muurverf" }) });
+  // The L-shaped woonkamer only has an area: without wall lengths no paint quantity is invented.
+  await expect(paint).toContainText("Niet genoeg gegevens");
+  await expect(paint).toContainText("Ontbreekt: Vorm (omtrek) van Woonkamer");
+  await paint.getByRole("checkbox", { name: "Woonkamer" }).uncheck();
+  await expect(paint).toContainText("Geschat");
+  await expect(paint).toContainText(/Plafondhoogte: 2,60 m \(aanname/);
+  await paint.getByLabel("Plafondhoogte").fill("2,50");
+  await paint.getByLabel("Plafondhoogte").blur();
+  await expect(paint).not.toContainText(/Plafondhoogte: 2,60 m \(aanname/);
 
   // Paid step: locked until a verified (DEMO) payment.
   await page.getByRole("button", { name: "Bekijk wat je krijgt" }).click();
@@ -92,6 +107,15 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   await expect(dialog.getByText("Door jou bevestigd")).toBeVisible();
   await dialog.getByRole("button", { name: "Klaar" }).click();
   await expect(card).toContainText("Bestelmaat: volgens je leverancier.");
+
+  // Material library: laminate with an own waste percentage and pack size is ready to order.
+  await page.getByRole("checkbox", { name: "Laminaat" }).check();
+  const laminate = page.locator(".category-card").filter({ has: page.getByRole("heading", { name: "Laminaat" }) });
+  await expect(laminate).toContainText("Geschat");
+  await laminate.getByLabel("Snijverlies").fill("7");
+  await laminate.getByLabel("Inhoud per pak").fill("2,131");
+  await laminate.getByLabel("Inhoud per pak").blur();
+  await expect(laminate).toContainText("Klaar voor bestellen");
 
   // Report: PDF and CSV made in the browser.
   await page.getByRole("button", { name: "Naar mijn rapport" }).click();

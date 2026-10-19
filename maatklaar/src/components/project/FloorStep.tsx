@@ -4,7 +4,9 @@ import { useId } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PRICE } from "@/config/site";
 import { formatCount, formatM2, formatPercent, parseDecimal } from "@/lib/format";
+import { moduleByKey } from "@/lib/materials/catalog";
 import { PATTERNS, patternByKey } from "@/lib/materials/patterns";
+import { CategoryCard } from "./CategoryCard";
 import { isPaid, type StepProps } from "./types";
 
 export function FloorStep({ project, update, computed, goTo }: StepProps) {
@@ -198,6 +200,19 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
         )}
       </div>
 
+      <div className="panel stack" aria-labelledby="verf-titel">
+        <div className="panel-head">
+          <div>
+            <h2 id="verf-titel">Verf voor je muren</h2>
+            <p className="muted" style={{ margin: 0 }}>
+              Gratis. We rekenen met de omtrek van je ruimtes; de plafondhoogte en de dekking van je verf vul je zelf in. Tot dan zie je een
+              schatting.
+            </p>
+          </div>
+        </div>
+        <CategoryCard module={moduleByKey("verf")} project={project} update={update} computed={computed} />
+      </div>
+
       {!paid && f.includedCount > 0 && (
         <aside className="upsell" aria-labelledby="upsell-titel">
           <div>
@@ -207,6 +222,7 @@ export function FloorStep({ project, update, computed, goTo }: StepProps) {
             <p style={{ opacity: 0.9 }}>Ontvang je complete meetrapport voor {PRICE.label} eenmalig.</p>
             <ul className="ticks">
               <li>Plinten per ruimte en per wand, met deuren en marge</li>
+              <li>Laminaat, PVC, tegels, ondervloer, primer, behang en raamdecoratie per categorie</li>
               <li>Raamregister met begeleid meetprotocol per raam</li>
               <li>PDF-rapport en CSV-bestellijst</li>
             </ul>

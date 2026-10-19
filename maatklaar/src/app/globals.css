@@ -216,6 +216,23 @@ a:hover {
   }
 }
 
+.grid-3 {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 760px) {
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.category-card table.data th,
+.category-card table.data td {
+  padding: 8px 6px;
+}
+
 /* ---------- Header & footer ---------- */
 
 .site-header {

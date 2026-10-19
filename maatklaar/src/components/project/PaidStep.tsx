@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PRICE } from "@/config/site";
 import { startCheckout, refreshPayment } from "./payment-client";
+import { MaterialsSection } from "./MaterialsSection";
 import { PlinthSection } from "./PlinthSection";
 import { WindowSection } from "./WindowSection";
 import { isPaid, type StepProps } from "./types";
@@ -94,6 +95,10 @@ function Checkout(props: StepProps) {
               {project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""} met
               begeleid meetprotocol en afwijkingscontrole
             </li>
+            <li>
+              Materiaalbibliotheek: laminaat, PVC, tegels, ondervloer, overgangsprofielen, primer, behang, gordijnen, rolgordijnen,
+              jaloezieën, plissés, vouwgordijnen en rolluiken, met status per categorie
+            </li>
             <li>Persoonlijk PDF-rapport (A4) met winkelchecklist, aannames en bronnen</li>
             <li>CSV-bestellijst voor je eigen overzicht of de winkel</li>
           </ul>
@@ -158,6 +163,7 @@ export function PaidStep(props: StepProps) {
       {props.project.payment?.mode === "demo" && <DemoNotice />}
       <PlinthSection {...props} />
       <WindowSection {...props} />
+      <MaterialsSection {...props} />
       <div className="row">
         <button type="button" className="btn btn-primary btn-lg" onClick={() => props.goTo("rapport")}>
           Naar mijn rapport

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PRODUCT_FAMILIES = ["gordijn", "rolgordijn", "plisse", "jaloezie", "onbekend"] as const;
+export const PRODUCT_FAMILIES = ["gordijn", "rolgordijn", "plisse", "jaloezie", "vouwgordijn", "rolluik", "onbekend"] as const;
 export type ProductFamily = (typeof PRODUCT_FAMILIES)[number];
 
 export const PRODUCT_LABELS: Record<ProductFamily, string> = {
@@ -8,6 +8,8 @@ export const PRODUCT_LABELS: Record<ProductFamily, string> = {
   rolgordijn: "Rolgordijn",
   plisse: "Plissé",
   jaloezie: "Jaloezie",
+  vouwgordijn: "Vouwgordijn",
+  rolluik: "Rolluik (extra controle)",
   onbekend: "Ik weet het nog niet",
 };
 
@@ -16,10 +18,12 @@ export const PRODUCT_SHORT: Record<ProductFamily, string> = {
   rolgordijn: "Rolgordijn",
   plisse: "Plissé",
   jaloezie: "Jaloezie",
+  vouwgordijn: "Vouwgordijn",
+  rolluik: "Rolluik",
   onbekend: "Product nog niet gekozen",
 };
 
-export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "onbekend"] as const;
+export const MOUNTINGS = ["in-de-dag", "op-de-dag", "plafond", "wand", "voorzet", "inbouw", "onbekend"] as const;
 export type Mounting = (typeof MOUNTINGS)[number];
 
 export const MOUNTING_LABELS: Record<Mounting, string> = {
@@ -27,6 +31,8 @@ export const MOUNTING_LABELS: Record<Mounting, string> = {
   "op-de-dag": "Op de dag (op of boven het kozijn)",
   plafond: "Rail aan het plafond",
   wand: "Rail of roede aan de wand",
+  voorzet: "Voorzetrolluik (kast en geleiders op de gevel of in de dag)",
+  inbouw: "Inbouwrolluik (kast in de muur of het kozijn)",
   onbekend: "Weet ik nog niet",
 };
 
@@ -35,12 +41,16 @@ export const MOUNTING_SHORT: Record<Mounting, string> = {
   "op-de-dag": "op de dag",
   plafond: "rail aan plafond",
   wand: "rail/roede aan wand",
+  voorzet: "voorzetrolluik",
+  inbouw: "inbouwrolluik",
   onbekend: "montage nog niet gekozen",
 };
 
 /** Which mountings make sense for a product family. Curtains hang from a rail; the others sit in or on the opening. */
 export function mountingsFor(family: ProductFamily): Mounting[] {
-  return family === "gordijn" ? ["plafond", "wand", "onbekend"] : ["in-de-dag", "op-de-dag", "onbekend"];
+  if (family === "gordijn") return ["plafond", "wand", "onbekend"];
+  if (family === "rolluik") return ["voorzet", "inbouw", "onbekend"];
+  return ["in-de-dag", "op-de-dag", "onbekend"];
 }
 
 export const MEASURE_KEYS = [
@@ -86,7 +96,16 @@ export const MEASURE_INFO: Record<MeasureKey, { label: string; hint: string }> =
   ophanghoogte_rechts: { label: "Ophanghoogte rechts", hint: "Van het ophangpunt tot de vloer, rechts. Vloeren lopen vaak niet waterpas." },
 };
 
-export const CHECK_KEYS = ["grepen", "vensterbank", "radiator", "ventilatierooster", "raam_openen"] as const;
+export const CHECK_KEYS = [
+  "grepen",
+  "vensterbank",
+  "radiator",
+  "ventilatierooster",
+  "raam_openen",
+  "kast_ruimte",
+  "geleiders",
+  "stroom",
+] as const;
 export type CheckKey = (typeof CHECK_KEYS)[number];
 
 export const CHECK_INFO: Record<CheckKey, { question: string; why: string }> = {
@@ -103,6 +122,18 @@ export const CHECK_INFO: Record<CheckKey, { question: string; why: string }> = {
   raam_openen: {
     question: "Moet het raam kunnen openen of kantelen terwijl het product hangt?",
     why: "Een draai-kiepraam kan tegen het product slaan.",
+  },
+  kast_ruimte: {
+    question: "Is er boven het raam ruimte voor de rolluikkast (gevel, latei of kozijn)?",
+    why: "De kastmaat hangt af van de hoogte van het raam en het product; zonder ruimte past een rolluik niet.",
+  },
+  geleiders: {
+    question: "Is er naast het kozijn ruimte voor de geleiders, links en rechts?",
+    why: "Geleiders moeten recht en stevig bevestigd kunnen worden.",
+  },
+  stroom: {
+    question: "Is er een stroompunt in de buurt, voor een elektrische bediening?",
+    why: "Bepaalt of elektrische bediening zonder extra werk kan.",
   },
 };
 

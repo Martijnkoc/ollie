@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { addressSchema, buildingSchema } from "@/lib/address/types";
+import { CATEGORY_KEYS } from "@/lib/materials/catalog";
 import { CHECK_KEYS, MEASURE_KEYS, MOUNTINGS, PRODUCT_FAMILIES } from "@/lib/measurements/schema";
 
 export const SCHEMA_VERSION = 1;
@@ -249,5 +250,14 @@ export const projectSchema = z.object({
   }),
   payment: paymentSchema.nullable(),
   report: z.object({ includeAddress: z.boolean() }),
+  /** Material library: chosen categories, per-category room choice and the values the user entered. */
+  materials: z
+    .object({
+      selected: z.array(z.enum(CATEGORY_KEYS)).max(CATEGORY_KEYS.length),
+      /** Room ids per category; absent = the category's default (floor rooms or plinth rooms). */
+      rooms: z.partialRecord(z.enum(CATEGORY_KEYS), z.array(z.string()).max(100)),
+      inputs: z.partialRecord(z.enum(CATEGORY_KEYS), z.record(z.string().max(40), z.number().finite().nullable())),
+    })
+    .default({ selected: ["verf"], rooms: {}, inputs: {} }),
 });
 export type Project = z.infer<typeof projectSchema>;
