@@ -1838,3 +1838,15 @@ dialog.sheet::backdrop {
   display: grid;
   gap: 10px;
 }
+
+.qr-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.qr {
+  width: min(260px, 70vw);
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line, #d9d2c3);
+}

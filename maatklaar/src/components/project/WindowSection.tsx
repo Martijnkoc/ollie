@@ -26,6 +26,8 @@ import { ORDER_STATUS_LABELS, orderSummary, type OrderStatus } from "@/lib/rules
 import { scanStatus } from "@/lib/scantag/status";
 import { CameraMeasure } from "./CameraMeasure";
 import { mergeResults, processShots } from "./scantag-client";
+import { TransferDialog } from "./TransferDialog";
+import { loadReturnContext, sendBack, type ReturnContext } from "./transfer-client";
 import { MeasureWizard } from "./MeasureWizard";
 import { PlanCanvas } from "./PlanCanvas";
 import { usePlanImage } from "./usePlanImage";
@@ -60,6 +62,11 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
   const [placing, setPlacing] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
   const [cameraFor, setCameraFor] = useState<string | null>(null);
+  const [transfer, setTransfer] = useState(false);
+  const [back, setBack] = useState<ReturnContext | null>(null);
+  const [backStatus, setBackStatus] = useState<string | null>(null);
+  // On a phone that received this project: the way back to the computer, while it is valid.
+  useEffect(() => setBack(loadReturnContext(project.id)), [project.id]);
   const doc = project.document;
   const page = doc ? Math.min(doc.selectedPage, doc.pages.length - 1) : 0;
   const image = usePlanImage(project.id, doc, page, doc ? doc.sizeBytes : 0);
@@ -136,6 +143,9 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
               {placing ? "Klaar met aanwijzen" : "Ramen aanwijzen op plattegrond"}
             </button>
           )}
+          <button type="button" className="btn btn-sm" onClick={() => setTransfer(true)}>
+            Scannen met je telefoon
+          </button>
           <button
             type="button"
             className="btn btn-sm btn-primary"
@@ -145,6 +155,34 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
           </button>
         </div>
       </div>
+
+      {back && (
+        <div className="notice stack-sm" role="region" aria-label="Terugsturen naar je computer">
+          <span className="small">
+            Dit project kwam van je computer. Klaar met scannen? Stuur je ramen terug; je foto&apos;s blijven op deze telefoon.
+          </span>
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                setBackStatus("Versturen…");
+                sendBack(back, project).then(
+                  () => setBackStatus("Verstuurd. Je computer haalt je scans op zolang het venster daar open staat."),
+                  (err: Error) => setBackStatus(err.message),
+                );
+              }}
+            >
+              Terugsturen naar je computer
+            </button>
+            {backStatus && (
+              <span className="small" role="status">
+                {backStatus}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {placing && doc && (
         <p className="small" style={{ margin: 0 }} aria-live="polite">
@@ -362,6 +400,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
         })}
       </div>
 
+      {transfer && <TransferDialog project={project} update={update} onClose={() => setTransfer(false)} />}
       {opened && paid && (
         <MeasureWizard
           window={opened.window}

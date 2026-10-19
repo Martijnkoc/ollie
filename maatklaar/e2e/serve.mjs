@@ -25,6 +25,8 @@ run("npx", ["next", "start", "-p", "3100"], {
   APP_URL: "http://localhost:3100",
   ALLOW_DEMO_PAYMENTS: "true",
   ORDERS_FILE: path.join(data, "demo.json"),
+  ALLOW_FILE_TRANSFER_STORE: "true",
+  TRANSFERS_FILE: path.join(data, "transfers.json"),
 });
 run("npx", ["next", "start", "-p", "3101"], {
   ...common,
