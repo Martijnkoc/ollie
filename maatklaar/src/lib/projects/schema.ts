@@ -160,7 +160,8 @@ export const windowSchema = z.object({
   measures: z.partialRecord(z.enum(MEASURE_KEYS), z.number().int().positive().max(100_000)),
   measureSource: z.enum(["gebruiker", "tekening", "scan", "anders"]),
   checks: z.partialRecord(z.enum(CHECK_KEYS), z.boolean()),
-  deviationAcknowledged: z.boolean(),
+  /** Per measuring group: the values confirmed despite a spread above the threshold. */
+  acknowledged: z.partialRecord(z.enum(["breedte", "hoogte", "ophanghoogte"]), z.string().max(100)),
   confirmed: z.boolean(),
   fullness: z.number().positive().max(5).nullable(),
 });

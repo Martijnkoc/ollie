@@ -6,8 +6,11 @@ export type WindowMeasurements = {
   measures: Partial<Record<MeasureKey, number>>;
   /** Answers to the obstacle checks: true = yes, present; false = no; missing = not answered yet. */
   checks: Partial<Record<CheckKey, boolean>>;
-  /** The user re-measured and states that a spread above the threshold is real. */
-  deviationAcknowledged: boolean;
+  /**
+   * Per measuring group, the values the user re-measured and declared correct despite a spread above the
+   * threshold (see `groupSignature`). Changing any value of that group makes the acknowledgement lapse.
+   */
+  acknowledged: Partial<Record<MeasureGroup, string>>;
   /** The user reviewed all values for this window. */
   confirmed: boolean;
   /** Curtains only: fullness factor chosen by the user (e.g. 2 for twice the rail width). Never a default. */
@@ -24,6 +27,11 @@ export const WINDOW_STATUS_LABELS: Record<WindowStatus, string> = {
   bestelmaat: "Bestelmaat berekend",
 };
 
+/** Fingerprint of the measured values of one group, e.g. "1203|1201|1195". */
+export function groupSignature(values: readonly { mm: number }[]) {
+  return values.map((v) => v.mm).join("|");
+}
+
 export type GroupResult = {
   group: MeasureGroup;
   values: { key: MeasureKey; mm: number }[];
@@ -32,6 +40,8 @@ export type GroupResult = {
   spreadMm: number;
   toleranceMm: number;
   exceeds: boolean;
+  /** The spread exceeds the threshold and the user confirmed exactly these values. */
+  acknowledged: boolean;
 };
 
 export type WindowEvaluation = {
@@ -71,9 +81,10 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     const minMm = Math.min(...values.map((v) => v.mm));
     const maxMm = Math.max(...values.map((v) => v.mm));
     const toleranceMm = rule.toleranceMm[group];
-    groups.push({ group, values, minMm, maxMm, spreadMm: maxMm - minMm, toleranceMm, exceeds: maxMm - minMm > toleranceMm });
+    const exceeds = maxMm - minMm > toleranceMm;
+    groups.push({ group, values, minMm, maxMm, spreadMm: maxMm - minMm, toleranceMm, exceeds, acknowledged: exceeds && input.acknowledged[group] === groupSignature(values) });
   }
-  const deviating = groups.filter((g) => g.exceeds);
+  const deviating = groups.filter((g) => g.exceeds && !g.acknowledged);
 
   const depthMm = relevant.has("diepte") ? value("diepte") : null;
   const depth = {
@@ -86,9 +97,11 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   const checksPresent = rule.checks.filter((c) => input.checks[c] === true);
 
   const warnings = [...rule.warnings];
-  for (const g of deviating) {
+  for (const g of groups.filter((x) => x.exceeds)) {
     warnings.push(
-      `De ${g.group} verschilt ${formatMm(g.spreadMm)} tussen je meetpunten (drempel ${formatMm(g.toleranceMm)}). Meet opnieuw; als het klopt, bevestig het verschil.`,
+      g.acknowledged
+        ? `De ${g.group} verschilt ${formatMm(g.spreadMm)} tussen je meetpunten (drempel ${formatMm(g.toleranceMm)}); je hebt opnieuw gemeten en bevestigd dat dit klopt.`
+        : `De ${g.group} verschilt ${formatMm(g.spreadMm)} tussen je meetpunten (drempel ${formatMm(g.toleranceMm)}). Meet opnieuw; als het klopt, bevestig het verschil.`,
     );
   }
   for (const c of checksPresent) warnings.push(`${CHECK_INFO[c].question} Ja — ${CHECK_INFO[c].why}`);
@@ -99,7 +112,7 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     orderBlocked.push("Er is geen gecontroleerde meetregel van een leverancier gekozen. Bevestig de bestelmaat volgens de instructie van je leverancier.");
   }
   if (missing.length) orderBlocked.push(`Nog te meten: ${missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ")}.`);
-  if (deviating.length && !input.deviationAcknowledged) orderBlocked.push("Er is een afwijking tussen meetpunten die nog niet is gecontroleerd.");
+  if (deviating.length) orderBlocked.push("Er is een afwijking tussen meetpunten die nog niet is gecontroleerd.");
   if (checksOpen.length) orderBlocked.push("Nog niet alle controlevragen zijn beantwoord.");
   if (depth.ok === false) orderBlocked.push("De montagediepte is te klein voor deze regel.");
   if (rule.minDepthMm !== null && depth.mm === null) orderBlocked.push("De diepte van de dag ontbreekt.");
@@ -134,7 +147,7 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
 
   let status: WindowStatus;
   if (missing.length) status = "nog-meten";
-  else if (deviating.length && !input.deviationAcknowledged) status = "afwijking";
+  else if (deviating.length) status = "afwijking";
   else if (!input.confirmed) status = "ingevoerd";
   else if (order) status = "bestelmaat";
   else status = "bevestigd";

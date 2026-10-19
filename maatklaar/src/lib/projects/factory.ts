@@ -92,7 +92,7 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     measures: {},
     measureSource: "gebruiker",
     checks: {},
-    deviationAcknowledged: false,
+    acknowledged: {},
     confirmed: false,
     fullness: null,
     ...extra,

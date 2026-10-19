@@ -49,6 +49,8 @@ export function RoomsStep({ project, update, computed, goTo }: StepProps) {
     setDraft([]);
     setLine(null);
     setCalError(null);
+    // Tools are used on the plan: bring it into view (the buttons can sit below it on small screens).
+    if (t !== "select") requestAnimationFrame(() => document.querySelector(".plan-wrap")?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
 
   function startDrawing(roomId: string | null) {

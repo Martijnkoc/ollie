@@ -33,7 +33,7 @@ const TEST_SUPPLIER_RULE: MeasurementRuleSet = {
 const complete: WindowMeasurements = {
   measures: { breedte_boven: 1203, breedte_midden: 1201, breedte_onder: 1202, hoogte_links: 1500, hoogte_midden: 1499, hoogte_rechts: 1501, diepte: 60 },
   checks: { grepen: false, ventilatierooster: false, raam_openen: false, vensterbank: false },
-  deviationAcknowledged: false,
+  acknowledged: {},
   confirmed: true,
   fullness: null,
 };
@@ -98,10 +98,16 @@ describe("raammeting", () => {
     expect(e.status).toBe("afwijking");
     expect(e.order).toBeNull();
 
-    const acknowledged = evaluateWindow({ ...skewed, deviationAcknowledged: true }, TEST_SUPPLIER_RULE);
+    const acknowledged = evaluateWindow({ ...skewed, acknowledged: { breedte: "1203|1201|1195" } }, TEST_SUPPLIER_RULE);
     expect(acknowledged.status).toBe("bestelmaat");
     // Kleinste maat telt (regel: min), niet een gemiddelde.
     expect(acknowledged.order!.widthMm).toBe(1195 - 4);
+
+    // A new value in the group makes the acknowledgement lapse; other groups do not affect it.
+    const remeasured = { ...skewed, measures: { ...skewed.measures, breedte_onder: 1194 }, acknowledged: { breedte: "1203|1201|1195" } };
+    expect(evaluateWindow(remeasured, TEST_SUPPLIER_RULE).status).toBe("afwijking");
+    const otherGroup = { ...skewed, measures: { ...skewed.measures, hoogte_links: 1502 }, acknowledged: { breedte: "1203|1201|1195" } };
+    expect(evaluateWindow(otherGroup, TEST_SUPPLIER_RULE).status).toBe("bestelmaat");
   });
 
   it("binnen de tolerantie geen waarschuwing", () => {
@@ -126,7 +132,7 @@ describe("raammeting", () => {
     const base: WindowMeasurements = {
       measures: { rail_breedte: 2200, ophanghoogte_links: 2600, ophanghoogte_midden: 2604, ophanghoogte_rechts: 2598 },
       checks: {},
-      deviationAcknowledged: false,
+      acknowledged: {},
       confirmed: false,
       fullness: null,
     };

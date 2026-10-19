@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMm, parseWholeMm } from "@/lib/format";
-import { WINDOW_STATUS_LABELS, evaluateWindow } from "@/lib/measurements/evaluate";
+import { WINDOW_STATUS_LABELS, evaluateWindow, groupSignature } from "@/lib/measurements/evaluate";
 import { CHECK_INFO, MEASURE_GROUPS, MEASURE_INFO, MOUNTING_LABELS, PRODUCT_LABELS, type CheckKey, type MeasureGroup, type MeasureKey, type MeasurementRuleSet } from "@/lib/measurements/schema";
 import type { ProjectWindow } from "@/lib/projects/schema";
 import { MeasureDiagram } from "./MeasureDiagram";
@@ -72,8 +72,8 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
       setInvalid(true);
       return false;
     }
-    // A changed measurement needs a new confirmation; an acknowledged spread is re-evaluated.
-    if (w.measures[key] !== mm) onChange({ ...w, measures: { ...w.measures, [key]: mm }, confirmed: false, deviationAcknowledged: false });
+    // A changed measurement needs a new confirmation; an acknowledged spread lapses by itself (signature).
+    if (w.measures[key] !== mm) onChange({ ...w, measures: { ...w.measures, [key]: mm }, confirmed: false });
     return true;
   }
 
@@ -192,7 +192,16 @@ export function MeasureWizard({ window: w, rule, onChange, onClose }: { window: 
                         Opnieuw meten
                       </button>
                       <label className="check small">
-                        <input type="checkbox" checked={w.deviationAcknowledged} onChange={(e) => onChange({ ...w, deviationAcknowledged: e.target.checked })} />
+                        <input
+                          type="checkbox"
+                          checked={groupResult.acknowledged}
+                          onChange={(e) => {
+                            const acknowledged = { ...w.acknowledged };
+                            if (e.target.checked) acknowledged[screen.group] = groupSignature(groupResult.values);
+                            else delete acknowledged[screen.group];
+                            onChange({ ...w, acknowledged });
+                          }}
+                        />
                         <span>Ik heb opnieuw gemeten en het verschil klopt</span>
                       </label>
                     </div>
