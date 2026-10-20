@@ -27,11 +27,14 @@ export function defaultProductRule(family: ProductFamily, mounting: Mounting): P
   );
 }
 
+/** Our own measuring sheets, as opposed to a supplier's rules. */
+export const isOwnRule = (r: Pick<ProductRule, "id">) => r.id.startsWith("protocol-");
+
 /** Rules a user may choose for a window: the generic sheet first, then supplier rules for this product and mounting. */
 export function productRulesFor(family: ProductFamily, mounting: Mounting): ProductRule[] {
   const mount = MOUNT_OF[mounting];
   const generic = defaultProductRule(family, mounting);
-  return [generic, ...PRODUCT_RULES.filter((r) => r.source.supplier !== "MaatKlaar" && r.mount === mount && r.families.includes(family))];
+  return [generic, ...PRODUCT_RULES.filter((r) => !isOwnRule(r) && r.mount === mount && r.families.includes(family))];
 }
 
 /**
@@ -44,15 +47,15 @@ export function protocolView(rule: ProductRule): MeasurementRuleSet {
     id: rule.id,
     version: rule.source.rulesVersion,
     date: rule.source.checkedOn ?? "2026-10-19",
-    kind: rule.source.supplier === "MaatKlaar" ? "protocol" : "supplier",
+    kind: isOwnRule(rule) ? "protocol" : "supplier",
     title: rule.title,
     productFamilies: rule.families,
     mounting: MOUNTING_OF[rule.mount] ?? "onbekend",
-    ...(rule.source.supplier === "MaatKlaar" ? {} : { manufacturer: rule.source.supplier }),
+    ...(isOwnRule(rule) ? {} : { manufacturer: rule.source.supplier }),
     source: {
       label: `${rule.source.title}${rule.source.status === "concept" ? " — concept, nog niet volledig gecontroleerd" : ""}`,
       ...(rule.source.url ? { url: rule.source.url } : {}),
-      ...(rule.source.supplier === "MaatKlaar" ? {} : { retrievedAt: rule.source.checkedOn ?? "2026-10-19" }),
+      ...(isOwnRule(rule) ? {} : { retrievedAt: rule.source.checkedOn ?? "2026-10-19" }),
     },
     required: lengths.filter((i) => i.required && !i.when).map((i) => i.key),
     optional: lengths.filter((i) => !i.required || i.when).map((i) => i.key),

@@ -12,7 +12,7 @@ async function serious(page: import("@playwright/test").Page) {
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-for (const path of ["/", "/privacy", "/voorwaarden", "/contact", "/project"]) {
+for (const path of ["/", "/privacy", "/voorwaarden", "/contact", "/project", "/gidsen", "/gidsen/laminaat-berekenen", "/hoe-we-meten"]) {
   test(`toegankelijkheid ${path}`, async ({ page }) => {
     await page.goto(path);
     await page.waitForLoadState("networkidle");

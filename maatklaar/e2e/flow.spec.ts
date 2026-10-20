@@ -122,7 +122,7 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   const [pdf] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download PDF-rapport" }).click()]);
   const pdfBytes = readFileSync((await pdf.path())!);
   expect(pdfBytes.subarray(0, 5).toString()).toBe("%PDF-");
-  expect(pdf.suggestedFilename()).toMatch(/^maatklaar-.*\.pdf$/);
+  expect(pdf.suggestedFilename()).toMatch(/^metrivo-.*\.pdf$/);
   const [csv] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV-bestellijst" }).click()]);
   const csvText = readFileSync((await csv.path())!, "utf8");
   expect(csvText).toContain("DEMO - niet betaald");

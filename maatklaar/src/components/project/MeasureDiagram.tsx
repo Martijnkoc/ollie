@@ -1,7 +1,7 @@
 import type { MeasureKey } from "@/lib/measurements/schema";
 
-const ON = "#1f4d3a";
-const OFF = "#c7bda9";
+const ON = "#191c1a";
+const OFF = "#b9b8ae";
 
 function Arrow({ x1, y1, x2, y2, active }: { x1: number; y1: number; x2: number; y2: number; active: boolean }) {
   const c = active ? ON : OFF;
@@ -30,22 +30,22 @@ export function MeasureDiagram({ active, keys }: { active: MeasureKey | null; ke
   const outside = show("gewenste_breedte");
   return (
     <svg viewBox="0 0 360 280" role="img" aria-label={active ? `Waar je meet: ${active.replace("_", " ")}` : "Overzicht van de meetpunten"}>
-      <rect x="0" y="0" width="360" height="280" fill="#f7f3ea" />
+      <rect x="0" y="0" width="360" height="280" fill="#f4f2ec" />
       {/* ceiling and floor */}
       <line x1="10" y1="18" x2="290" y2="18" stroke="#8a8f8c" strokeWidth="2" />
-      <text x="14" y="13" fontSize="10" fill="#6b746f">
+      <text x="14" y="13" fontSize="10" fill="#68716b">
         plafond
       </text>
       <line x1="10" y1="262" x2="290" y2="262" stroke="#8a8f8c" strokeWidth="2" />
-      <text x="14" y="276" fontSize="10" fill="#6b746f">
+      <text x="14" y="276" fontSize="10" fill="#68716b">
         vloer
       </text>
       {/* wall with window opening */}
-      <rect x="70" y="70" width="150" height="120" fill="#ffffff" stroke="#1c2420" strokeWidth="3" />
+      <rect x="70" y="70" width="150" height="120" fill="#ffffff" stroke="#191c1a" strokeWidth="3" />
       <rect x="80" y="80" width="130" height="100" fill="#e3eef4" stroke="#9fb4c1" strokeWidth="1.5" />
       <line x1="145" y1="80" x2="145" y2="180" stroke="#9fb4c1" strokeWidth="1.5" />
-      <rect x="62" y="190" width="166" height="8" fill="#d8d0bf" stroke="#1c2420" strokeWidth="1.5" />
-      <text x="68" y="212" fontSize="10" fill="#6b746f">
+      <rect x="62" y="190" width="166" height="8" fill="#d8d0bf" stroke="#191c1a" strokeWidth="1.5" />
+      <text x="68" y="212" fontSize="10" fill="#68716b">
         vensterbank
       </text>
 
@@ -61,7 +61,7 @@ export function MeasureDiagram({ active, keys }: { active: MeasureKey | null; ke
           strokeWidth="2"
         />
       )}
-      {curtains && <rect x="40" y="26" width="210" height="6" rx="3" fill={is("rail_breedte") ? ON : "#b98c3c"} />}
+      {curtains && <rect x="40" y="26" width="210" height="6" rx="3" fill={is("rail_breedte") ? ON : "#ff6a35"} />}
 
       {show("breedte_boven") && <Arrow x1={72} y1={88} x2={218} y2={88} active={is("breedte_boven")} />}
       {show("breedte_midden") && <Arrow x1={72} y1={130} x2={218} y2={130} active={is("breedte_midden")} />}
@@ -79,16 +79,16 @@ export function MeasureDiagram({ active, keys }: { active: MeasureKey | null; ke
 
       {show("diepte") && (
         <g transform="translate(286 92)">
-          <text x="0" y="-8" fontSize="10" fill="#6b746f">
+          <text x="0" y="-8" fontSize="10" fill="#68716b">
             doorsnede
           </text>
-          <rect x="0" y="0" width="56" height="90" fill="#e6dfd0" stroke="#1c2420" strokeWidth="1.5" />
-          <rect x="34" y="0" width="22" height="90" fill="#fff" stroke="#1c2420" strokeWidth="1.5" />
+          <rect x="0" y="0" width="56" height="90" fill="#e6dfd0" stroke="#191c1a" strokeWidth="1.5" />
+          <rect x="34" y="0" width="22" height="90" fill="#fff" stroke="#191c1a" strokeWidth="1.5" />
           <line x1="48" y1="0" x2="48" y2="90" stroke="#7aa3bb" strokeWidth="3" />
-          <text x="2" y="104" fontSize="9" fill="#6b746f">
+          <text x="2" y="104" fontSize="9" fill="#68716b">
             muur
           </text>
-          <text x="38" y="104" fontSize="9" fill="#6b746f">
+          <text x="38" y="104" fontSize="9" fill="#68716b">
             glas
           </text>
           <Arrow x1={2} y1={45} x2={46} y2={45} active={is("diepte")} />

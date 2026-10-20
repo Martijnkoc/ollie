@@ -27,10 +27,11 @@ export async function planThumbnail(project: Project): Promise<{ png: Uint8Array
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = Math.max(2, r / 5);
       ctx.beginPath();
-      ctx.roundRect(x - w / 2, y - r, w, r * 2, r);
+      ctx.roundRect(x - w / 2, y - r, w, r * 2, pill ? r * 0.4 : r);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#ffffff";
+      // Graphite on signal orange, white on graphite: both readable.
+      ctx.fillStyle = fill === "#ff6a35" ? "#191c1a" : "#ffffff";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(label, x, y + 1);
@@ -41,18 +42,18 @@ export async function planThumbnail(project: Project): Promise<{ png: Uint8Array
         ctx.beginPath();
         shape.points.forEach((p, j) => (j ? ctx.lineTo(p.x * s, p.y * s) : ctx.moveTo(p.x * s, p.y * s)));
         ctx.closePath();
-        ctx.fillStyle = room.includeFloor ? "rgba(43,106,80,0.18)" : "rgba(107,116,111,0.12)";
+        ctx.fillStyle = room.includeFloor ? "rgba(255,106,53,0.18)" : "rgba(107,116,111,0.12)";
         ctx.fill();
-        ctx.strokeStyle = "#1f4d3a";
+        ctx.strokeStyle = "#191c1a";
         ctx.lineWidth = Math.max(2, r / 4);
         ctx.stroke();
         const c = centroid(shape.points);
-        badge(c.x * s, c.y * s, String(i + 1), "#1f4d3a");
+        badge(c.x * s, c.y * s, String(i + 1), "#191c1a");
       } else if (room.page === page && room.anchor) {
-        badge(room.anchor.x * s, room.anchor.y * s - r * 1.6, String(i + 1), "#1f4d3a");
+        badge(room.anchor.x * s, room.anchor.y * s - r * 1.6, String(i + 1), "#191c1a");
       }
     });
-    for (const w of project.windows) if (w.page === page && w.position) badge(w.position.x * s, w.position.y * s, w.code, "#b98c3c", true);
+    for (const w of project.windows) if (w.page === page && w.position) badge(w.position.x * s, w.position.y * s, w.code, "#ff6a35", true);
     const out = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
     if (!out) return null;
     return { png: new Uint8Array(await out.arrayBuffer()), width: canvas.width, height: canvas.height, page };

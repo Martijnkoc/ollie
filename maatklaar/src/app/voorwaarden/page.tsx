@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CompanyField, DraftBanner } from "@/components/Legal";
 import { BRAND, PRICE } from "@/config/site";
 
-export const metadata: Metadata = { title: "Voorwaarden" };
+export const metadata: Metadata = { title: "Voorwaarden", alternates: { canonical: "/voorwaarden" } };
 
 export default function TermsPage() {
   return (

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CompanyField, DraftBanner } from "@/components/Legal";
 import { BRAND } from "@/config/site";
 
-export const metadata: Metadata = { title: "Contact" };
+export const metadata: Metadata = { title: "Contact", alternates: { canonical: "/contact" } };
 
 export default function ContactPage() {
   return (

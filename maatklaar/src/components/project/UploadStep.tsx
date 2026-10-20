@@ -101,8 +101,8 @@ export function UploadStep({ project, update, goTo }: StepProps) {
         }}
       >
         <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
-          <rect x="7" y="5" width="30" height="34" rx="5" fill="none" stroke="#1f4d3a" strokeWidth="2" />
-          <path d="M13 15h18M13 21h10M22 21v10M13 31h18" stroke="#2b6a50" strokeWidth="2" strokeLinecap="round" />
+          <rect x="7" y="5" width="30" height="34" rx="5" fill="none" stroke="#191c1a" strokeWidth="2" />
+          <path d="M13 15h18M13 21h10M22 21v10M13 31h18" stroke="#ff6a35" strokeWidth="2" strokeLinecap="round" />
         </svg>
         <strong>Sleep je bestand hierheen of kies een bestand</strong>
         <span className="small muted">

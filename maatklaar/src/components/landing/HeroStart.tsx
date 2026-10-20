@@ -147,7 +147,7 @@ export function HeroStart() {
           file(e.dataTransfer.files[0]);
         }}
       >
-        <strong>Of kies je plattegrond</strong>
+        <strong>Of begin met je plattegrond</strong>
         <span className="small muted">
           {ACCEPTED_FILES.label} tot {Math.round(LIMITS.maxUploadBytes / 1024 / 1024)} MB · je kunt hem ook hierheen slepen
         </span>
@@ -170,9 +170,12 @@ export function HeroStart() {
         <Link href="/project/nieuw" className="btn btn-primary btn-lg">
           Breng mijn woning in kaart
         </Link>
+        <Link href="/#hoe-het-werkt" className="btn btn-lg">
+          Bekijk hoe het werkt
+        </Link>
       </div>
       <p className="price-line">
-        Basis gratis · Compleet rapport {PRICE.label} {PRICE.period} · Geen abonnement
+        Start gratis · Complete bestellijst {PRICE.label} {PRICE.period} · Geen abonnement
       </p>
       <p className="tiny muted" style={{ margin: 0 }}>
         Je plattegrond wordt in je eigen browser gelezen en blijft op je apparaat; je kunt hem altijd verwijderen. Alleen je

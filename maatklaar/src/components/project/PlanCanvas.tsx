@@ -182,8 +182,8 @@ export function PlanCanvas({
                   y={l.box.y - r(3)}
                   width={l.box.w + r(6)}
                   height={l.box.h + r(6)}
-                  fill="rgba(185,140,60,0.18)"
-                  stroke="#b98c3c"
+                  fill="rgba(255,106,53,0.18)"
+                  stroke="#ff6a35"
                   strokeWidth={1}
                   vectorEffect="non-scaling-stroke"
                   rx={r(3)}
@@ -200,8 +200,8 @@ export function PlanCanvas({
                   {room.points.length >= 3 && (
                     <polygon
                       points={room.points.map((p) => `${p.x},${p.y}`).join(" ")}
-                      fill={room.active ? "rgba(43,106,80,0.30)" : room.included ? "rgba(43,106,80,0.16)" : "rgba(107,116,111,0.12)"}
-                      stroke={room.active ? "#1f4d3a" : "#2b6a50"}
+                      fill={room.active ? "rgba(255,106,53,0.30)" : room.included ? "rgba(255,106,53,0.16)" : "rgba(104,113,107,0.12)"}
+                      stroke={room.active ? "#191c1a" : "#ff6a35"}
                       strokeWidth={room.active ? 3 : 2}
                       vectorEffect="non-scaling-stroke"
                       strokeDasharray={room.included ? undefined : "6 4"}
@@ -211,12 +211,19 @@ export function PlanCanvas({
                     <g transform={`translate(${c.x} ${c.y})`}>
                       <circle
                         r={r(13)}
-                        fill={room.active ? "#b98c3c" : "#1f4d3a"}
+                        fill={room.active ? "#ff6a35" : "#191c1a"}
                         stroke="#fff"
                         strokeWidth={2}
                         vectorEffect="non-scaling-stroke"
                       />
-                      <text y={r(4.5)} textAnchor="middle" fontSize={r(13)} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">
+                      <text
+                        y={r(4.5)}
+                        textAnchor="middle"
+                        fontSize={r(13)}
+                        fontWeight={700}
+                        fill={room.active ? "#191c1a" : "#fff"}
+                        fontFamily="Inter, sans-serif"
+                      >
                         {room.number}
                       </text>
                       {room.caption && (room.active || zoom >= 1.5) && (
@@ -225,7 +232,7 @@ export function PlanCanvas({
                           textAnchor="middle"
                           fontSize={r(12)}
                           fontWeight={600}
-                          fill="#1f4d3a"
+                          fill="#191c1a"
                           stroke="#fff"
                           strokeWidth={r(3)}
                           paintOrder="stroke"
@@ -251,13 +258,20 @@ export function PlanCanvas({
                   y={r(-11)}
                   width={r(40)}
                   height={r(22)}
-                  rx={r(11)}
-                  fill={w.active ? "#1f4d3a" : "#b98c3c"}
+                  rx={r(4)}
+                  fill={w.active ? "#191c1a" : "#ff6a35"}
                   stroke="#fff"
                   strokeWidth={2}
                   vectorEffect="non-scaling-stroke"
                 />
-                <text y={r(4.5)} textAnchor="middle" fontSize={r(12)} fontWeight={700} fill="#fff" fontFamily="ui-monospace, monospace">
+                <text
+                  y={r(4.5)}
+                  textAnchor="middle"
+                  fontSize={r(12)}
+                  fontWeight={700}
+                  fill={w.active ? "#fff" : "#191c1a"}
+                  fontFamily="ui-monospace, monospace"
+                >
                   {w.code}
                 </text>
               </g>
@@ -266,8 +280,8 @@ export function PlanCanvas({
               <g>
                 <polyline
                   points={[...draft, ...(hover ? [hover] : [])].map((p) => `${p.x},${p.y}`).join(" ")}
-                  fill="rgba(185,140,60,0.12)"
-                  stroke="#b98c3c"
+                  fill="rgba(255,106,53,0.12)"
+                  stroke="#ff6a35"
                   strokeWidth={2.5}
                   vectorEffect="non-scaling-stroke"
                 />
@@ -277,8 +291,8 @@ export function PlanCanvas({
                     cx={p.x}
                     cy={p.y}
                     r={r(i === 0 ? 7 : 5)}
-                    fill={i === 0 ? "#fff" : "#b98c3c"}
-                    stroke="#b98c3c"
+                    fill={i === 0 ? "#fff" : "#ff6a35"}
+                    stroke="#ff6a35"
                     strokeWidth={2}
                     vectorEffect="non-scaling-stroke"
                   />
@@ -292,7 +306,7 @@ export function PlanCanvas({
                   y1={line.a.y}
                   x2={(line.b ?? hover ?? line.a).x}
                   y2={(line.b ?? hover ?? line.a).y}
-                  stroke="#1f4d3a"
+                  stroke="#191c1a"
                   strokeWidth={3}
                   vectorEffect="non-scaling-stroke"
                 />
@@ -305,14 +319,14 @@ export function PlanCanvas({
                       cy={p.y}
                       r={r(6)}
                       fill="#fff"
-                      stroke="#1f4d3a"
+                      stroke="#191c1a"
                       strokeWidth={2.5}
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}
                 {line.b && line.label && (
                   <g transform={`translate(${(line.a.x + line.b.x) / 2} ${(line.a.y + line.b.y) / 2})`}>
-                    <rect x={r(-46)} y={r(-30)} width={r(92)} height={r(22)} rx={r(6)} fill="#1f4d3a" />
+                    <rect x={r(-46)} y={r(-30)} width={r(92)} height={r(22)} rx={r(6)} fill="#191c1a" />
                     <text y={r(-14)} textAnchor="middle" fontSize={r(13)} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">
                       {line.label}
                     </text>
@@ -320,7 +334,7 @@ export function PlanCanvas({
                 )}
               </g>
             )}
-            {hover && tool !== "select" && <circle cx={hover.x} cy={hover.y} r={r(4)} fill="#1f4d3a" pointerEvents="none" />}
+            {hover && tool !== "select" && <circle cx={hover.x} cy={hover.y} r={r(4)} fill="#191c1a" pointerEvents="none" />}
           </svg>
         </div>
       </div>

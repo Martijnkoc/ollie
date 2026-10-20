@@ -1,13 +1,14 @@
+import { BRAND } from "@/config/brand";
 import type { MeasureKey } from "@/lib/measurements/schema";
 import type { ProductRule, RuleInput } from "./schema";
 
 /**
- * MaatKlaar's own measuring sheets: what to measure, never an order size (no selection). They hold for any
- * supplier; the order size then follows that supplier's instructions.
+ * Our own measuring sheets (ids start with "protocol-"): what to measure, never an order size (no selection).
+ * They hold for any supplier; the order size then follows that supplier's instructions.
  */
 const MAATKLAAR = {
-  supplier: "MaatKlaar",
-  title: "Algemeen MaatKlaar-meetblad (geen leveranciersregel)",
+  supplier: BRAND.name,
+  title: `Algemeen ${BRAND.name}-meetblad (geen leveranciersregel)`,
   url: null,
   checkedOn: "2026-10-19",
   rulesVersion: "2026.1",

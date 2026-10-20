@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/config/brand";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { findProjectByOrder, saveProject } from "@/lib/projects/store";
@@ -113,8 +114,8 @@ export function PaymentReturn({ orderId }: { orderId: string }) {
             <h1>We vinden je project niet in deze browser</h1>
             <p>
               Je project staat in de browser waarin je begon. Na een betaling via de app van je bank kom je soms in een andere browser
-              terug. Open MaatKlaar in de browser waarin je begon en open je project via <strong>Mijn projecten</strong>: daar controleren
-              we de betaling opnieuw en ontgrendelen we je rapport.
+              terug. Open {BRAND.name} in de browser waarin je begon en open je project via <strong>Mijn projecten</strong>: daar
+              controleren we de betaling opnieuw en ontgrendelen we je rapport.
             </p>
             <p className="small muted">
               Je betaalreferentie: {orderId ? <span className="code">{orderId}</span> : "onbekend"}. Bewaar deze voor vragen over je

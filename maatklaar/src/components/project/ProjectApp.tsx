@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/config/brand";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -65,7 +66,7 @@ export function ProjectApp({ id, payment }: { id: string; payment: PaymentInfo }
           <h1>Project niet gevonden op dit apparaat</h1>
           <p className="muted">
             Projecten staan alleen in de browser waarin je ze maakte, en worden na een tijd zonder wijzigingen automatisch gewist. Open
-            MaatKlaar in die browser, of begin een nieuw project.
+            {BRAND.name} in die browser, of begin een nieuw project.
           </p>
           <div className="row">
             <Link className="btn btn-primary" href="/project/nieuw">

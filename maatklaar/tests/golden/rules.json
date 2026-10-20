@@ -26,10 +26,7 @@
         "status": "needs_verification",
         "width": 1203,
         "height": null,
-        "order": [
-          1203,
-          null
-        ],
+        "order": [1203, null],
         "depthOk": true
       }
     },
@@ -59,10 +56,7 @@
         "status": "needs_verification",
         "width": 1200,
         "height": null,
-        "order": [
-          1200,
-          null
-        ],
+        "order": [1200, null],
         "depthOk": true
       }
     },
@@ -92,10 +86,7 @@
         "status": "needs_verification",
         "width": 1174,
         "height": null,
-        "order": [
-          1174,
-          null
-        ],
+        "order": [1174, null],
         "depthOk": true
       }
     },
@@ -125,10 +116,7 @@
         "status": "needs_verification",
         "width": null,
         "height": null,
-        "order": [
-          null,
-          null
-        ],
+        "order": [null, null],
         "depthOk": true,
         "question": "smalste-grens"
       }
@@ -156,10 +144,7 @@
         "status": "order_ready",
         "width": 1198,
         "height": 1496,
-        "order": [
-          1198,
-          1496
-        ],
+        "order": [1198, 1496],
         "depthOk": true
       }
     },
@@ -186,10 +171,7 @@
         "status": "not_suitable",
         "width": 1198,
         "height": 1496,
-        "order": [
-          1198,
-          1496
-        ],
+        "order": [1198, 1496],
         "depthOk": false
       }
     },
@@ -217,10 +199,7 @@
         "status": "order_ready",
         "width": 1185,
         "height": 1496,
-        "order": [
-          1185,
-          1496
-        ],
+        "order": [1185, 1496],
         "depthOk": true
       }
     },
@@ -247,10 +226,7 @@
         "status": "order_ready",
         "width": 1797,
         "height": 1398,
-        "order": [
-          1797,
-          1398
-        ],
+        "order": [1797, 1398],
         "depthOk": true
       }
     },
@@ -274,10 +250,7 @@
         "status": "not_suitable",
         "width": 2000,
         "height": 1600,
-        "order": [
-          2000,
-          1600
-        ]
+        "order": [2000, 1600]
       }
     },
     {
@@ -301,14 +274,8 @@
         "status": "order_ready",
         "width": 1300,
         "height": 1600,
-        "order": [
-          1300,
-          1600
-        ],
-        "suggestion": [
-          1300,
-          1570
-        ]
+        "order": [1300, 1600],
+        "suggestion": [1300, 1570]
       }
     },
     {
@@ -332,10 +299,7 @@
         "status": "needs_verification",
         "width": 598,
         "height": 1199,
-        "order": [
-          598,
-          1199
-        ],
+        "order": [598, 1199],
         "depthOk": true
       }
     },
@@ -360,10 +324,7 @@
         "status": "not_suitable",
         "width": 598,
         "height": 1199,
-        "order": [
-          598,
-          1199
-        ],
+        "order": [598, 1199],
         "depthOk": false
       }
     },
@@ -405,10 +366,7 @@
         "status": "needs_verification",
         "width": 2200,
         "height": null,
-        "order": [
-          2200,
-          null
-        ]
+        "order": [2200, null]
       }
     },
     {

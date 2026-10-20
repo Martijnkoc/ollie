@@ -174,7 +174,7 @@ export const productRuleSchema = z
   })
   .superRefine((r, ctx) => {
     const issue = (message: string, path: (string | number)[]) => ctx.addIssue({ code: "custom", message, path });
-    if (r.source.status === "published" && (!r.source.checkedOn || (r.source.supplier !== "MaatKlaar" && !r.source.url)))
+    if (r.source.status === "published" && (!r.source.checkedOn || (!r.id.startsWith("protocol-") && !r.source.url)))
       issue("Een gepubliceerde regel heeft een bron-URL en een controledatum.", ["source"]);
     if (!r.supported && !r.unsupportedReason) issue("Zeg waarom dit niet ondersteund wordt.", ["unsupportedReason"]);
     if (r.supplierMakesDeduction && r.deductions?.appliedBy === "maatklaar")

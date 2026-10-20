@@ -1,72 +1,118 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, type IconName } from "@/components/brand/Icon";
+import { LogoMark } from "@/components/brand/Logo";
+import { PricingBlock } from "@/components/brand/PricingBlock";
 import { HeroStart } from "@/components/landing/HeroStart";
 import { InteractiveDemo } from "@/components/landing/InteractiveDemo";
 import { PlanIllustration } from "@/components/landing/PlanIllustration";
+import { EXAMPLE_PACK_M2, EXAMPLE_ROOMS, EXAMPLE_WASTE, EXAMPLE_WINDOWS, exampleFloor } from "@/components/landing/example";
 import { ScanDiagram } from "@/components/project/ScanDiagram";
-import { EXAMPLE_PACK_M2, EXAMPLE_ROOMS, EXAMPLE_WASTE, exampleFloor } from "@/components/landing/example";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { StatusBadge } from "@/components/StatusBadge";
-import { BRAND, FAQ, PRICE } from "@/config/site";
+import { BRAND, FAQ, PRICE, siteUrl } from "@/config/site";
+import { GUIDE_INDEX } from "@/content/guide-index";
 import { formatCount, formatM2, formatPercent } from "@/lib/format";
 import { STATUS_META, type Status } from "@/lib/projects/status";
 
-const COMPARE: [string, boolean][] = [
-  ["Adres met officiële BAG-gegevens", true],
-  ["Plattegrond uitlezen, ruimtes opmeten en zelf controleren", true],
-  ["Vloeroppervlakte per ruimte en totaal, met je eigen selectie", true],
-  ["Vloerhoeveelheid met snijverlies en hele pakken", true],
-  ["Verfcalculator voor je muren", true],
-  ["Plinten per wand, met deuren en marge", false],
-  ["Laminaat, PVC, tegels, ondervloer, profielen, primer en behang", false],
-  ["Raamregister met ScanTag-maten in mm, foutmarge en status", false],
-  ["Gordijnen, rolgordijnen, jaloezieën, plissés, vouwgordijnen, rolluiken: status per raam", false],
-  ["PDF-rapport en CSV-bestellijst", false],
-];
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: BRAND.name,
+    locale: BRAND.locale,
+    title: `${BRAND.name} · ${BRAND.tagline}`,
+    description: BRAND.description,
+  },
+};
 
-const AUDIENCE: [string, string][] = [
-  ["Verhuizen", "Weet vóór de sleuteloverdracht hoeveel vloer, verf en raamdecoratie je nodig hebt, met de plattegrond van je makelaar."],
-  ["Nieuw huis gekocht", "Eén overzicht van alle ruimtes en ramen, zodat je gericht kunt vergelijken en bestellen."],
-  ["Renoveren", "Kies per klus welke ruimtes meedoen: vloer in de woonkamer, verf in de slaapkamers, niet in de badkamer."],
-  ["Opnieuw inrichten", "Een raamregister met codes en meetstatus, zodat je niet vergeet welk raam je nog moet meten."],
-  ["Verhuurder of kleine klusprofessional", "Snel een onderbouwde materiaallijst per woning, met aannames die je kunt laten zien."],
+const STEPS: { icon: IconName; title: string; text: string; auto: string; you: string }[] = [
+  {
+    icon: "pin",
+    title: "Adres",
+    text: "We zoeken je woning op in de officiële Basisregistratie Adressen en Gebouwen (BAG).",
+    auto: "Bouwjaar en gebruiksoppervlakte van de hele woning.",
+    you: "Niets: een adres zegt niets over je kamers. Het mag ook leeg blijven.",
+  },
+  {
+    icon: "floor",
+    title: "Plattegrond",
+    text: "Upload de PDF of afbeelding van je makelaar. Alles gebeurt in je eigen browser.",
+    auto: "Kamers opgemeten langs de wanden, schaal uit de maatlijnen, ramen en deuren.",
+    you: "Je controleert elke kamer en kiest welke meetellen.",
+  },
+  {
+    icon: "phone",
+    title: "Ramen",
+    text: "Scan je ramen met je telefoon: richt op de hoeken en houd even stil. Geen papier, geen rolmaat.",
+    auto: "Maten in millimeters met foutmarge, en of een scan opnieuw moet.",
+    you: "Je kiest product en montage en bevestigt de maten.",
+  },
+  {
+    icon: "list",
+    title: "Bestellijst",
+    text: `Gratis je vloer en verf. Voor ${PRICE.label} ${PRICE.period} alles in één rapport.`,
+    auto: "Hoeveelheden met snijverlies, pakken en marges, met bron per getal.",
+    you: "Je kiest wat je koopt; het rapport zegt wat nog ontbreekt.",
+  },
 ];
-
-const Yes = () => (
-  <span className="compare-yes">
-    <span aria-hidden="true">✓</span>
-    <span className="visually-hidden">inbegrepen</span>
-  </span>
-);
-const No = () => (
-  <span className="compare-no">
-    <span aria-hidden="true">—</span>
-    <span className="visually-hidden">niet inbegrepen</span>
-  </span>
-);
 
 export default function Home() {
   const floor = exampleFloor();
   const included = EXAMPLE_ROOMS.filter((r) => r.included);
+  const url = siteUrl();
   return (
     <>
+      <JsonLd
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: BRAND.name,
+            url,
+            description: BRAND.description,
+            applicationCategory: "UtilitiesApplication",
+            operatingSystem: "Web",
+            inLanguage: BRAND.language,
+            browserRequirements: "Een moderne browser. Ramen scannen vraagt een Android-telefoon met Chrome en AR-ondersteuning.",
+            offers: [
+              { "@type": "Offer", name: "Gratis basis", price: "0", priceCurrency: "EUR" },
+              { "@type": "Offer", name: "Compleet woningrapport", price: (PRICE.amountCents / 100).toFixed(2), priceCurrency: "EUR" },
+            ],
+            publisher: { "@id": `${url}/#organisatie` },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+          },
+        ]}
+      />
+
       <section className="hero">
         <div className="container hero-grid">
           <div>
-            <p className="eyebrow">Voor verhuizen, een nieuw huis, verbouwen en opnieuw inrichten</p>
-            <h1>{BRAND.tagline}</h1>
+            <p className="eyebrow">Jouw woning. Eén duidelijk overzicht.</p>
+            <h1>
+              Eerst <span className="accent">{BRAND.name}</span>.
+            </h1>
             <p className="hero-lead">
-              Ontdek hoeveel vloer, verf en andere materialen je nodig hebt. Breng je ramen overzichtelijk in kaart en maak een rapport
-              waarmee je zelf kunt shoppen.
+              Bereken je materialen, breng je ramen in kaart en maak één overzichtelijke bestellijst voor jouw woning.
             </p>
             <HeroStart />
           </div>
 
-          <figure className="demo-stage" aria-label="Productvoorbeeld met een fictieve woning">
-            <span className="badge badge-demo demo-tag">Voorbeeld · fictieve woning</span>
-            <div className="demo-plan">
+          <figure className="product-visual" aria-label="Productvoorbeeld met een fictieve woning">
+            <span className="badge badge-demo example-tag">Voorbeelddata · fictieve woning</span>
+            <div className="product-plan">
               <PlanIllustration />
             </div>
-            <div className="demo-list" aria-hidden="true">
-              <h4>Bestellijst vloer</h4>
+            <div className="product-card" aria-hidden="true">
+              <div className="row" style={{ justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                <h3>Bestellijst</h3>
+                <LogoMark className="logo-mark" />
+              </div>
               <table>
                 <tbody>
                   <tr>
@@ -78,13 +124,19 @@ export default function Home() {
                     <td>{formatM2(floor.requiredM2 ?? 0)}</td>
                   </tr>
                   <tr>
-                    <td>Pakken à {formatM2(EXAMPLE_PACK_M2, 3)}</td>
+                    <td>Laminaat, pakken à {formatM2(EXAMPLE_PACK_M2, 3)}</td>
                     <td>{formatCount(floor.packs ?? 0)}</td>
+                  </tr>
+                  <tr>
+                    <td>Ramen</td>
+                    <td>
+                      {EXAMPLE_WINDOWS[0]!.code}–{EXAMPLE_WINDOWS.at(-1)!.code}
+                    </td>
                   </tr>
                 </tbody>
               </table>
               <p className="tiny muted" style={{ margin: "8px 0 0" }}>
-                Verf, plinten, materialen en ramen R01–R05 in het rapport
+                Voorbeelddata, berekend met dezelfde rekenregels als de app.
               </p>
             </div>
             <figcaption className="visually-hidden">
@@ -95,40 +147,80 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section section-alt" id="hoe-het-werkt">
+      <section className="section" id="hoe-het-werkt">
         <div className="container">
           <div className="section-head">
             <p className="eyebrow">Zo werkt het</p>
-            <h2>In drie stappen van plattegrond naar bestellijst</h2>
-            <p className="muted">Wij meten zoveel mogelijk uit je tekening. Jij controleert, past aan en bevestigt. Pas dan rekenen we.</p>
+            <h2>Van jouw woning naar een duidelijke bestellijst</h2>
+            <p className="muted">
+              {BRAND.rule} Wij meten wat we kunnen uit je tekening en je telefoon. Jij ziet bij elk getal wat automatisch herkend is, wat
+              gemeten is en wat je nog moet bevestigen. Pas dan rekenen we.
+            </p>
           </div>
           <ol className="steps">
-            <li>
-              <h3>Adres invullen</h3>
-              <p className="muted">
-                We zoeken je woning op in de officiële registratie (BAG via PDOK) en tonen wat daar echt bekend is, zoals bouwjaar en
-                gebruiksoppervlakte. Een adres is optioneel en zegt niets over je kamers.
-              </p>
-            </li>
-            <li>
-              <h3>Plattegrond controleren</h3>
-              <p className="muted">
-                Upload de PDF of afbeelding van je makelaar. We meten de ruimtes langs de wanden, lezen de maatlijnen voor de schaal en
-                zoeken ramen en deuren. Jij kiest welke ruimtes meetellen en bevestigt wat klopt.
-              </p>
-            </li>
-            <li>
-              <h3>Bestellijst downloaden</h3>
-              <p className="muted">
-                Gratis: vloer per kamer, hoeveelheid met snijverlies en pakken, en verf. Voor {PRICE.label} eenmalig: alle materialen,
-                plinten en raamdecoratie per raam in één PDF en CSV.
-              </p>
-            </li>
+            {STEPS.map((s) => (
+              <li key={s.title}>
+                <span className="step-num">
+                  <Icon name={s.icon} />
+                </span>
+                <h3>{s.title}</h3>
+                <p className="small muted">{s.text}</p>
+                <dl className="step-split">
+                  <dt>Automatisch</dt>
+                  <dd>{s.auto}</dd>
+                  <dt>Jij</dt>
+                  <dd>{s.you}</dd>
+                </dl>
+              </li>
+            ))}
           </ol>
         </div>
       </section>
 
-      <section className="section" id="scantag">
+      <section className="section section-alt" id="vertrouwen">
+        <div className="container">
+          <div className="section-head">
+            <p className="eyebrow">Je ziet waar elk getal vandaan komt</p>
+            <h2>Gemeten, berekend of nog te controleren: het staat erbij</h2>
+            <p className="muted">
+              Een plattegrond van bovenaf vertelt niet hoe hoog je ramen zijn, en een adres onthult geen kamers. Daarom krijgt elk getal een
+              label, vullen we nooit zelf iets in en zeggen we het als iets nog gemeten moet worden.
+            </p>
+          </div>
+          <div className="status-legend">
+            {(["auto", "measured", "confirmed", "derived", "check", "missing"] as Status[]).map((s) => (
+              <div key={s} className="card-flat stack-sm">
+                <StatusBadge status={s} />
+                <span className="small muted">{STATUS_META[s].description}</span>
+              </div>
+            ))}
+          </div>
+          <p className="small" style={{ marginTop: 20 }}>
+            Hoe we meten, rekenen en afronden, met bronnen: <Link href="/hoe-we-meten">zo werkt de berekening</Link>.
+          </p>
+        </div>
+      </section>
+
+      <section className="section" id="demo">
+        <div className="container grid-2" style={{ alignItems: "center" }}>
+          <div>
+            <p className="eyebrow">Probeer het</p>
+            <h2>Jij bepaalt wat meetelt</h2>
+            <p className="muted">
+              Tik in het voorbeeld op een ruimte om hem mee te tellen of over te slaan, zoals je in de app de badkamer of het toilet uitzet.
+              Het totaal rekent direct mee, met dezelfde rekenregels als in de app.
+            </p>
+            <ul className="ticks">
+              <li>Ruimtes worden opgemeten langs de wanden op je tekening, ook L-vormen</li>
+              <li>De schaal komt uit de maatlijnen op de tekening, en die moeten onderling kloppen</li>
+              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je met ScanTag</li>
+            </ul>
+          </div>
+          <InteractiveDemo />
+        </div>
+      </section>
+
+      <section className="section section-dark" id="scantag">
         <div className="container grid-2" style={{ alignItems: "center" }}>
           <div>
             <p className="eyebrow">ScanTag</p>
@@ -156,97 +248,20 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section" id="demo">
-        <div className="container grid-2" style={{ alignItems: "center" }}>
-          <div>
-            <p className="eyebrow">Probeer het</p>
-            <h2>Jij bepaalt wat meetelt</h2>
-            <p className="muted">
-              Tik in het voorbeeld op een ruimte om hem mee te tellen of over te slaan, zoals je in de app de badkamer of het toilet uitzet.
-              Het totaal rekent direct mee, met dezelfde rekenregels als in de app.
-            </p>
-            <ul className="ticks">
-              <li>Ruimtes worden opgemeten langs de wanden op je tekening, ook L-vormen</li>
-              <li>De schaal komt uit de maatlijnen op de tekening, en die moeten onderling kloppen</li>
-              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je met ScanTag</li>
-              <li>Elke waarde houdt zijn label: herkend, door jou bevestigd, berekend of nog te meten</li>
-            </ul>
-          </div>
-          <InteractiveDemo />
-        </div>
-      </section>
-
-      <section className="section section-alt" id="prijs">
+      <section className="section" id="prijs">
         <div className="container">
           <div className="section-head">
-            <p className="eyebrow">Gratis of compleet</p>
-            <h2>De basis is gratis. Het complete rapport kost {PRICE.label}, één keer.</h2>
-            <p className="muted">Geen abonnement, geen account nodig, geen adviesgesprek. Je gratis resultaat blijft gewoon zichtbaar.</p>
+            <p className="eyebrow">Prijs</p>
+            <h2>
+              Start gratis. Complete bestellijst {PRICE.label} {PRICE.period}.
+            </h2>
+            <p className="muted">Geen abonnement, geen account, geen adviesgesprek. Je gratis resultaat blijft gewoon zichtbaar.</p>
           </div>
-          <div className="table-wrap">
-            <table className="data compare">
-              <caption className="visually-hidden">Vergelijking gratis en compleet rapport</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Wat je krijgt</th>
-                  <th scope="col">
-                    Gratis
-                    <span className="compare-price">€ 0</span>
-                  </th>
-                  <th scope="col">
-                    Compleet rapport
-                    <span className="compare-price">
-                      {PRICE.label} <small>{PRICE.period}</small>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE.map(([what, free]) => (
-                  <tr key={what}>
-                    <th scope="row">{what}</th>
-                    <td>{free ? <Yes /> : <No />}</td>
-                    <td>
-                      <Yes />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="row" style={{ marginTop: 20 }}>
-            <Link href="/project/nieuw" className="btn btn-primary">
-              Breng mijn woning in kaart
-            </Link>
-            <span className="tiny muted">
-              {PRICE.vatNote}
-              {PRICE.vatNoteVerified ? "" : " (concept: btw-behandeling wordt vóór de lancering bevestigd)"} Betalen met iDEAL en andere
-              methoden via Mollie.
-            </span>
-          </div>
+          <PricingBlock />
         </div>
       </section>
 
-      <section className="section" id="voor-wie">
-        <div className="container">
-          <div className="section-head">
-            <p className="eyebrow">Voor wie</p>
-            <h2>Voor iedereen die zelf wil kopen, zonder eerst alles op te meten</h2>
-          </div>
-          <div className="audience">
-            {AUDIENCE.map(([title, text]) => (
-              <article key={title} className="card-flat stack-sm">
-                <h3 style={{ margin: 0 }}>{title}</h3>
-                <p className="small muted" style={{ margin: 0 }}>
-                  {text}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" id="rapport">
+      <section className="section section-alt" id="rapport">
         <div className="container grid-2" style={{ alignItems: "center" }}>
           <div>
             <p className="eyebrow">Het rapport</p>
@@ -258,13 +273,16 @@ export default function Home() {
             <ul className="ticks">
               <li>Vloer, laminaat, PVC, tegels, ondervloer, verf, primer en behang met status per categorie</li>
               <li>Plinten per wand: omtrek, bevestigde deuropeningen eraf, marge, handelslengtes</li>
-              <li>Een kaart per raam (R01, R02 …) met maten in mm, foutmarge, bron en bestelstatus</li>
-              <li>Printvriendelijk A4 met paginanummers, en ook als CSV-bestellijst</li>
+              <li>Per raam (R01, R02 …) de maten in millimeters, foutmarge, bron en bestelstatus</li>
+              <li>Printvriendelijk, met paginanummers, en ook als CSV-bestellijst</li>
             </ul>
           </div>
-          <div className="report-mock" aria-label="Voorbeeldweergave van het PDF-rapport" role="img">
+          <div className="report-mock" aria-label="Voorbeeldweergave van het PDF-rapport, met voorbeelddata" role="img">
             <div className="paper" aria-hidden="true">
-              <span className="tiny muted">Meet- en bestelrapport · voorbeeld</span>
+              <div className="paper-head">
+                <span className="tiny muted">Meet- en bestelrapport · voorbeelddata</span>
+                <LogoMark />
+              </div>
               <h5>Fictieve woning</h5>
               <table>
                 <thead>
@@ -292,59 +310,55 @@ export default function Home() {
               </table>
             </div>
             <div className="paper" aria-hidden="true">
-              <span className="tiny muted">Raamregister</span>
+              <div className="paper-head">
+                <span className="tiny muted">Raamregister · voorbeelddata</span>
+                <LogoMark />
+              </div>
               <table>
                 <thead>
                   <tr>
                     <th>Raam</th>
                     <th>Product</th>
-                    <th className="r">Breedte</th>
-                    <th>Status</th>
+                    <th className="r">Opening (mm)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>R01</td>
                     <td>Plissé, in de dag</td>
-                    <td className="r">1203 · 1201 · 1202</td>
-                    <td>Bevestigd</td>
+                    <td className="r">1198 × 1496</td>
                   </tr>
                   <tr>
                     <td>R02</td>
                     <td>Rolgordijn</td>
-                    <td className="r">—</td>
-                    <td>Nog meten</td>
+                    <td className="r">nog meten</td>
                   </tr>
                   <tr>
                     <td>R03</td>
                     <td>Gordijn, wand</td>
                     <td className="r">rail 2200</td>
-                    <td>Ingevoerd</td>
                   </tr>
                 </tbody>
               </table>
-              <span className="tiny muted">Bestelmaat: volgens de meetinstructie van je leverancier.</span>
+              <span className="tiny muted">Bestelmaat alleen met de gecontroleerde regel van je leverancier.</span>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="section" id="nauwkeurigheid">
-        <div className="container grid-2">
-          <div>
-            <p className="eyebrow">Eerlijk over nauwkeurigheid</p>
-            <h2>We bluffen niet over maten</h2>
-            <p className="muted">
-              Een plattegrond van bovenaf vertelt niet hoe hoog je ramen zijn, en een adres onthult geen kamers. Daarom labelen we elk
-              getal, vullen we nooit zelf iets in en zeggen we het als iets gemeten moet worden.
-            </p>
+      <section className="section" id="gidsen">
+        <div className="container">
+          <div className="section-head">
+            <p className="eyebrow">Gidsen</p>
+            <h2>Zelf uitrekenen hoe het zit</h2>
+            <p className="muted">Hoe je vloer, verf, plinten en raamdecoratie meet en berekent, stap voor stap en met rekenvoorbeelden.</p>
           </div>
-          <div className="status-legend">
-            {(["auto", "confirmed", "derived", "missing"] as Status[]).map((s) => (
-              <div key={s} className="card-flat stack-sm">
-                <StatusBadge status={s} />
-                <span className="small muted">{STATUS_META[s].description}</span>
-              </div>
+          <div className="guide-grid">
+            {GUIDE_INDEX.map((g) => (
+              <Link key={g.slug} href={`/gidsen/${g.slug}`} className="guide-link">
+                {g.nav}
+                <Icon name="arrow-right" />
+              </Link>
             ))}
           </div>
         </div>
@@ -369,7 +383,7 @@ export default function Home() {
 
       <section className="section">
         <div className="container" style={{ textAlign: "center" }}>
-          <h2>Scheelt je een uur zoeken, meten, rekenen en lijstjes maken</h2>
+          <h2>{BRAND.tagline}</h2>
           <p className="muted">
             Begin met je adres of direct met je plattegrond. Je kunt altijd stoppen; je project blijft op je eigen apparaat.
           </p>
@@ -381,7 +395,7 @@ export default function Home() {
 
       <div className="mobile-cta">
         <span className="small">
-          <strong>Basis gratis</strong> · rapport {PRICE.label}
+          <strong>Start gratis</strong> · rapport {PRICE.label}
         </span>
         <Link href="/project/nieuw" className="btn btn-primary">
           Starten

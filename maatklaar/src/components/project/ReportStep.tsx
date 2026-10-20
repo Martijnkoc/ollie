@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/config/brand";
 import { useMemo, useState } from "react";
 import { buildCsv } from "@/lib/reports/csv";
 import { buildReportModel } from "@/lib/reports/model";
@@ -41,7 +42,7 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
       const plan = await planThumbnail(project);
       const model = buildReportModel(project, computed, { now: new Date(), plan });
       const { bytes } = await renderReportPdf(model);
-      download(bytes as BlobPart, "application/pdf", `maatklaar-${slug(project.name)}.pdf`);
+      download(bytes as BlobPart, "application/pdf", `${BRAND.fileSlug}-${slug(project.name)}.pdf`);
     } catch {
       setError("Het rapport kon niet worden gemaakt. Probeer het opnieuw.");
     }
@@ -85,7 +86,7 @@ export function ReportStep({ project, update, computed, goTo, remove }: StepProp
                   download(
                     buildCsv(computed, { demo: project.payment?.mode === "demo", materials: preview.materials }),
                     "text/csv;charset=utf-8",
-                    `maatklaar-${slug(project.name)}.csv`,
+                    `${BRAND.fileSlug}-${slug(project.name)}.csv`,
                   )
                 }
               >

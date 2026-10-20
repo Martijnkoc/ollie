@@ -41,13 +41,13 @@ export function BuildingOutline({
           <polygon
             key={i}
             points={ring.map((c) => project(c).join(",")).join(" ")}
-            fill="rgba(43,106,80,0.16)"
-            stroke="#1f4d3a"
+            fill="rgba(255,106,53,0.16)"
+            stroke="#191c1a"
             strokeWidth={stroke}
             strokeLinejoin="round"
           />
         ))}
-        {dot ? <circle cx={dot[0]} cy={dot[1]} r={stroke * 3} fill="#b98c3c" /> : null}
+        {dot ? <circle cx={dot[0]} cy={dot[1]} r={stroke * 3} fill="#ff6a35" /> : null}
       </svg>
       <figcaption className="tiny muted">
         Contour van het hele gebouw (BAG). Het punt is je adres. Dit zegt niets over de indeling binnen.

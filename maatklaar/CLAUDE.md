@@ -1,6 +1,10 @@
-# MaatKlaar — projectregels voor ontwikkelaars en AI-assistenten
+# MaatKlaar (publiek: Metrivo) — projectregels voor ontwikkelaars en AI-assistenten
 
-MaatKlaar (werktitel) is een Nederlandstalige webapp: adres invoeren → plattegrond uploaden en controleren →
+**Merknaam:** de publieke naam is **Metrivo**; `MaatKlaar` is de interne projectnaam (map, database-rol en -schema,
+code-identifiers). Publieke tekst haalt de naam altijd uit `BRAND` in `src/config/brand.ts` (naam, tagline, kleuren,
+bestandsnamen, standaard-URL); nooit hard in een component, rapport of metadata. Interne namen niet zomaar hernoemen.
+
+Metrivo is een Nederlandstalige webapp: adres invoeren → plattegrond uploaden en controleren →
 gratis vloerberekening per kamer → voor € 8,99 eenmalig een meet- en bestelrapport (plinten, raamregister,
 meetblad raamdecoratie) als PDF en CSV.
 
@@ -41,6 +45,20 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
    product het niet kan (`not_supported_for_ordering`). Laat niemand betalen voor maten die het rapport niet levert.
 9. Toon aannames en herkomst in resultaten, PDF en CSV.
 10. Geen nepreviews, nepbeoordelingen, nepbetalingen. DEMO-modus is altijd zichtbaar gelabeld.
+11. Voorbeelden en productbeelden met fictieve getallen zijn zichtbaar gelabeld als voorbeelddata. Geen claims als
+    "0 foutmarge", "99,99 % accuraat", certificering, klanten of partners die er niet zijn.
+
+## Merk, ontwerp en vindbaarheid
+
+- Ontwerptokens staan bovenaan `src/app/globals.css` (kleuren, statuskleuren, radii, spacing, focus). Gebruik tokens,
+  geen losse hexwaarden; een status heeft altijd icoon + tekst. Oranje vlak → grafiet tekst; oranje tekst → `--accent-ink`.
+- Merkcomponenten in `src/components/brand` (Logo, Icon, PricingBlock, MeasurementRow, EmptyState, StepStatus). Eén
+  iconenset, geen emoji.
+- Gidsen (`/gidsen/*`) en `/hoe-we-meten` zijn de publieke, indexeerbare inhoud (`src/content/guides.ts`): elke pagina
+  uniek en bruikbaar, met direct antwoord, bron en interne links; geen massaal gegenereerde of SEO-only tekst. Getallen
+  (snijverlies, foutmodel) komen uit dezelfde config als de app. Tests: `tests/seo.test.ts`, `e2e/seo.spec.ts`.
+- Projecten, betalingen, overdrachten en de API blijven buiten zoekmachines (`robots.ts` + `noindex`). Nieuwe
+  publieke pagina's: canonical in de metadata en een regel in `sitemap.ts`.
 
 ## Privacy-by-design
 
@@ -67,7 +85,7 @@ product (Cafe) en wordt door MaatKlaar niet gebruikt of aangepast. Werk in `maat
 ## Architectuur
 
 ```
-src/config/            site.ts (merk, prijs, teksten, limieten), scantag.ts (AR-foutmodel, drempels per product; validated leeg)
+src/config/            brand.ts (publieke naam, tagline, kleuren, siteUrl), site.ts (prijs, teksten, limieten), scantag.ts (AR-foutmodel, drempels per product; validated leeg)
 src/lib/geometry/      eenheden, polygonen (oppervlakte, omtrek, validatie, overlap), vormen → mm-polygoon
 src/lib/materials/     vloer (snijverlies, pakken), plinten, legpatronen; catalog.ts = materiaalbibliotheek met statussen
 src/lib/measurements/  meetprotocol-weergave, raamevaluatie (opening), ScanTag: ar-geometry.ts (vlakfit, lengtes,
@@ -82,8 +100,9 @@ src/lib/projects/      projectschema (zod), status/herkomst, berekeningen per pr
 src/lib/address/       PDOK Locatieserver + BAG OGC API adapters (server)
 src/lib/payments/      orders, opslag (bestand/Postgres/geheugen), Mollie- en demo-provider, service
 src/lib/reports/       rapportmodel, PDF (pdf-lib), CSV
-src/app/               pagina's en API-routes (route handlers)
-src/components/        UI; berekeningen nooit in componenten, altijd via src/lib
+src/app/               pagina's en API-routes (route handlers); gidsen/, hoe-we-meten/, sitemap.ts, robots.ts, iconen, OG
+src/content/           gidsen (SEO/GEO-inhoud) en de index ervan
+src/components/        UI; berekeningen nooit in componenten, altijd via src/lib; brand/ = logo, iconen, merkblokken
 tests/                 Vitest (pure functies, adapters met nep-fetch, PDF-uitvoer, fixtures)
 e2e/                   Playwright (mock-PDOK en DEMO-betaling, mobiel, toegankelijkheid, WebXR-testdubbel)
 validation/            testharnas: npm run validate (plannen en ScanTag-scans met referentiematen; echte woningen niet in Git)

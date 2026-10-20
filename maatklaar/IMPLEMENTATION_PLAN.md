@@ -1,4 +1,4 @@
-# Implementatieplan MaatKlaar V1
+# Implementatieplan MaatKlaar (publiek: Metrivo)
 
 Status per taak: ☐ open · ◐ bezig · ☑ klaar. Bijgewerkt tijdens de bouw.
 
@@ -123,3 +123,15 @@ Vervangt de A4-/bankpasmethode van ScanTag volledig (zie `docs/SCANTAG.md`).
 - ☑ Oude A4-scans vervallen bij laden, met auditregel; oude foto's worden van het apparaat verwijderd
 - ☑ Tests: unit (meetkern, controles, statussen, geen schaal, API-vrijgave, mm, bestelmaat) en e2e met WebXR-testdubbel
 - ☐ Op echte Android-toestellen testen en valideren (`docs/METROLOGIE.md`); daarna `validated` per product
+
+## Merk, ontwerp en vindbaarheid (oktober 2026)
+
+- ☑ Database: eigen rol `maatklaar_app` en schema `maatklaar` in het bestaande Supabase-project (`db/schema.sql`);
+  wachtwoord en `DATABASE_URL` zet de eigenaar zelf (zie README, Configuratie)
+- ☑ Merksysteem: tokens, één letter met tabelcijfers, eigen logo en iconen, favicon, app-iconen, OG-beeld
+- ☑ Landingpage, app en PDF-rapport in één merkstijl; statussen met icoon en tekst; reduced motion
+- ☑ Publieke naam Metrivo uit één config (`src/config/brand.ts`); MaatKlaar blijft de interne naam
+- ☑ Naamvoorstel met alternatieven en online conflictcheck (`docs/NAAMVOORSTEL.md`)
+- ☑ Gidsen (11) en methodepagina; canonicals, sitemap, robots, JSON-LD, interne links; privé-routes op noindex
+- ☐ Merkonderzoek BOIP/EUIPO en domein door de eigenaar; daarna `defaultUrl` en `APP_URL` op het eigen domein
+- ☐ Aanmelden bij Google Search Console / Bing Webmaster Tools

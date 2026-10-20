@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CompanyField, DraftBanner } from "@/components/Legal";
 import { BRAND, LIMITS, SOURCES } from "@/config/site";
 
-export const metadata: Metadata = { title: "Privacy" };
+export const metadata: Metadata = { title: "Privacy", alternates: { canonical: "/privacy" } };
 
 export default function PrivacyPage() {
   return (

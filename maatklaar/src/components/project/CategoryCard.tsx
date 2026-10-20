@@ -14,16 +14,17 @@ import {
 } from "@/lib/materials/catalog";
 import type { ProjectComputation } from "@/lib/projects/compute";
 import type { Project } from "@/lib/projects/schema";
+import { Icon, type IconName } from "@/components/brand/Icon";
 import { ArScan } from "./ArScan";
 import { processLocally } from "./scantag-client";
 
-const STATUS_STYLE: Record<CategoryStatus, { icon: string; data: string }> = {
-  niet_genoeg_gegevens: { icon: "?", data: "missing" },
-  geschat: { icon: "≈", data: "check" },
-  berekend: { icon: "=", data: "derived" },
-  klaar_voor_bestellen: { icon: "✓", data: "confirmed" },
-  wacht_op_controle: { icon: "…", data: "auto" },
-  extra_controle_nodig: { icon: "!", data: "check" },
+const STATUS_STYLE: Record<CategoryStatus, { icon: IconName; data: string }> = {
+  niet_genoeg_gegevens: { icon: "question", data: "missing" },
+  geschat: { icon: "alert", data: "check" },
+  berekend: { icon: "derived", data: "derived" },
+  klaar_voor_bestellen: { icon: "check-circle", data: "confirmed" },
+  wacht_op_controle: { icon: "auto", data: "auto" },
+  extra_controle_nodig: { icon: "alert", data: "check" },
 };
 
 /** Category status with icon and text, never colour alone. */
@@ -32,7 +33,7 @@ export function CategoryStatusBadge({ status }: { status: CategoryStatus }) {
   return (
     <span className="badge" data-status={s.data}>
       <span className="badge-icon" aria-hidden="true">
-        <span>{s.icon}</span>
+        <Icon name={s.icon} size={16} />
       </span>
       {CATEGORY_STATUS_LABELS[status]}
     </span>

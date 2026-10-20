@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/config/brand";
 import qrcode from "qrcode-generator";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mergeIncoming } from "@/lib/transfer/merge";
@@ -120,7 +121,7 @@ export function TransferDialog({
             </div>
             <p className="tiny muted" style={{ margin: 0 }}>
               Eén keer te gebruiken, geldig tot {until}. Je project gaat versleuteld; de sleutel staat alleen in deze code, niet bij
-              MaatKlaar. Er staan geen persoonsgegevens in de code.
+              {BRAND.name}. Er staan geen persoonsgegevens in de code.
             </p>
             <div className="field">
               <label htmlFor="overdracht-link">Of open deze link op je telefoon</label>

@@ -43,8 +43,8 @@ export function InteractiveDemo() {
               <g key={r.name} onClick={() => toggle(r.name)} style={{ cursor: "pointer" }}>
                 <polygon
                   points={pts(r.poly)}
-                  fill={on ? "rgba(43,106,80,0.20)" : "rgba(107,116,111,0.08)"}
-                  stroke="#1c2420"
+                  fill={on ? "rgba(255,106,53,0.16)" : "rgba(104,113,107,0.08)"}
+                  stroke="#191c1a"
                   strokeWidth={3}
                 />
                 <text
@@ -52,7 +52,7 @@ export function InteractiveDemo() {
                   y={r.label[1] * S}
                   textAnchor="middle"
                   fontSize="34"
-                  fill={on ? "#1f4d3a" : "#6b746f"}
+                  fill={on ? "#191c1a" : "#555d57"}
                   fontFamily="Inter, sans-serif"
                 >
                   {r.name}
@@ -62,7 +62,7 @@ export function InteractiveDemo() {
                   y={r.label[1] * S + 40}
                   textAnchor="middle"
                   fontSize="28"
-                  fill="#6b746f"
+                  fill="#555d57"
                   fontFamily="Inter, sans-serif"
                 >
                   {formatM2(r.areaM2)}
@@ -70,11 +70,11 @@ export function InteractiveDemo() {
               </g>
             );
           })}
-          <rect x="0" y="0" width="1200" height="800" fill="none" stroke="#1c2420" strokeWidth="9" />
+          <rect x="0" y="0" width="1200" height="800" fill="none" stroke="#191c1a" strokeWidth="9" />
           {EXAMPLE_WINDOWS.map((w) => (
             <g key={w.code} transform={`translate(${w.at[0] * S} ${w.at[1] * S})`}>
-              <rect x="-34" y="-20" width="68" height="40" rx="20" fill="#b98c3c" stroke="#fff" strokeWidth="4" />
-              <text y="10" textAnchor="middle" fontSize="26" fontWeight="700" fill="#fff" fontFamily="ui-monospace, monospace">
+              <rect x="-34" y="-20" width="68" height="40" rx="6" fill="#ff6a35" stroke="#fff" strokeWidth="4" />
+              <text y="10" textAnchor="middle" fontSize="26" fontWeight="700" fill="#191c1a" fontFamily="ui-monospace, monospace">
                 {w.code}
               </text>
             </g>

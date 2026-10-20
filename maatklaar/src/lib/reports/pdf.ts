@@ -1,31 +1,48 @@
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { BRAND } from "@/config/site";
+import { BRAND } from "@/config/brand";
 import { formatDate } from "@/lib/format";
 import type { Cell, ReportModel, ReportStatus, ReportTable } from "./model";
 
 const A4: [number, number] = [595.28, 841.89];
-const M = { left: 48, right: 48, top: 54, bottom: 58 };
+const M = { left: 48, right: 48, top: 72, bottom: 58 };
 const CONTENT_W = A4[0] - M.left - M.right;
 
+const hex = (h: string) => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
+
+/** The brand colours (src/config/brand.ts), with greys that stay readable when printed in black and white. */
 const C = {
-  ink: rgb(0.11, 0.14, 0.13),
-  muted: rgb(0.36, 0.4, 0.38),
-  faint: rgb(0.55, 0.58, 0.56),
-  brand: rgb(0.12, 0.3, 0.23),
-  line: rgb(0.86, 0.83, 0.77),
-  band: rgb(0.95, 0.93, 0.89),
+  ink: hex(BRAND.colors.graphite),
+  muted: hex("#4a514c"),
+  faint: hex(BRAND.colors.steel),
+  brand: hex(BRAND.colors.graphite),
+  signal: hex(BRAND.colors.signal),
+  signalInk: hex(BRAND.colors.signalInk),
+  line: hex("#d9d7ce"),
+  band: hex(BRAND.colors.surface),
+  paper: hex(BRAND.colors.offWhite),
   demo: rgb(0.85, 0.62, 0.12),
 };
 
+/** Status colours are dark enough to read in grey; the label text always says what the status is. */
 const STATUS_COLOR: Record<ReportStatus, RGB> = {
-  auto: rgb(0.55, 0.42, 0.06),
-  measured: rgb(0.2, 0.3, 0.5),
-  confirmed: rgb(0.11, 0.42, 0.26),
-  derived: rgb(0.12, 0.33, 0.47),
-  check: rgb(0.65, 0.33, 0.07),
-  missing: rgb(0.62, 0.17, 0.14),
-  neutral: rgb(0.36, 0.4, 0.38),
+  auto: hex("#3b413d"),
+  measured: hex("#1f4a73"),
+  confirmed: hex("#1e6b43"),
+  derived: hex("#191c1a"),
+  check: hex("#7a4d00"),
+  missing: hex("#a3261b"),
+  neutral: hex("#4a514c"),
 };
+
+/** The logo mark, drawn with rectangles so it needs no image: s = points per unit of the 32-unit grid. */
+function drawMark(page: PDFPage, x: number, top: number, s: number) {
+  const r = (rx: number, ry: number, w: number, h: number, color: RGB) =>
+    page.drawRectangle({ x: x + rx * s, y: top - (ry + h) * s, width: w * s, height: h * s, color });
+  r(4, 4, 5, 24, C.ink);
+  r(4, 23, 24, 5, C.ink);
+  r(15, 4, 13, 4, C.signal);
+  r(24, 4, 4, 13, C.signal);
+}
 
 export type DrawnBox = { page: number; x: number; y: number; w: number; h: number; text: string };
 
@@ -143,19 +160,25 @@ class Layout {
   }
 
   heading(text: string, level: 1 | 2 = 2) {
-    const size = level === 1 ? 22 : 13;
-    this.ensure(size * 2.6 + 40); // keep a heading together with the start of its content
+    const size = level === 1 ? 24 : 13.5;
+    this.ensure(size * 2.6 + 48); // keep a heading together with the start of its content
     this.y -= level === 1 ? 0 : 10;
-    this.drawText(text, M.left, this.y - size, size, this.bold, level === 1 ? C.brand : C.ink);
+    if (level === 2) {
+      // The brand's measuring corner in front of every section heading.
+      const top = this.y - 2;
+      this.page.drawRectangle({ x: M.left, y: top - 11, width: 1.6, height: 11, color: C.signal });
+      this.page.drawRectangle({ x: M.left, y: top - 11, width: 9, height: 1.6, color: C.signal });
+      this.drawText(text, M.left + 15, this.y - size, size, this.bold, C.ink);
+    } else this.drawText(text, M.left, this.y - size, size, this.bold, C.ink);
     this.y -= size * 1.5;
     if (level === 2) {
       this.page.drawLine({
-        start: { x: M.left, y: this.y + 4 },
-        end: { x: A4[0] - M.right, y: this.y + 4 },
+        start: { x: M.left, y: this.y + 1 },
+        end: { x: A4[0] - M.right, y: this.y + 1 },
         thickness: 0.6,
         color: C.line,
       });
-      this.y -= 6;
+      this.y -= 4;
     }
   }
 
@@ -166,7 +189,7 @@ class Layout {
       this.ensure(lh * Math.min(lines.length, 3));
       lines.forEach((line, i) => {
         this.ensure(lh);
-        if (i === 0) this.drawText("•", M.left + 2, this.y - size, size, this.bold, C.brand);
+        if (i === 0) this.page.drawRectangle({ x: M.left + 2, y: this.y - size * 0.72, width: 3.2, height: 3.2, color: C.signal });
         this.drawText(line, M.left + 14, this.y - size, size, this.regular, C.ink);
         this.y -= lh;
       });
@@ -208,7 +231,9 @@ class Layout {
     this.ensure(h);
     const top = this.y;
     this.page.drawRectangle({ x: M.left, y: top - h, width: CONTENT_W, height: h, borderColor: C.line, borderWidth: 0.6 });
-    this.drawText(title, M.left + 8, top - 13, 10, this.bold, C.brand);
+    this.page.drawRectangle({ x: M.left, y: top - 18, width: CONTENT_W, height: 18, color: C.band });
+    this.page.drawRectangle({ x: M.left, y: top - 18, width: 3, height: 18, color: C.signal });
+    this.drawText(title, M.left + 10, top - 13, 10, this.bold, C.ink);
     if (photo) {
       const img = await this.doc.embedJpg(photo.jpg);
       this.page.drawImage(img, { x: M.left + 8, y: top - 18 - photoH, width: photoW - 8, height: photoH });
@@ -236,7 +261,7 @@ class Layout {
         ls.forEach((l, j) => {
           const w = this.bold.widthOfTextAtSize(l, size);
           const tx = t.columns[i]!.align === "right" ? x + widths[i]! - pad - w : x + pad;
-          this.drawText(l, tx, this.y - pad - size - j * lh + 1.5, size, this.bold, C.muted);
+          this.drawText(l, tx, this.y - pad - size - j * lh + 1.5, size, this.bold, C.ink);
         });
         x += widths[i]!;
       });
@@ -287,10 +312,11 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   const L = new Layout(doc, await doc.embedFont(StandardFonts.Helvetica), await doc.embedFont(StandardFonts.HelveticaBold));
 
   // 1. Cover and project
-  L.drawText(`${BRAND.name.toUpperCase()} · ${model.title.toUpperCase()}`, M.left, L.y - 9, 8.5, L.bold, C.brand);
-  L.y -= 30;
+  L.drawText(model.title.toUpperCase(), M.left, L.y - 9, 9, L.bold, C.signalInk);
+  L.y -= 22;
   L.heading(model.projectName, 1);
   L.paragraph(`${model.address ? `${model.address} · ` : ""}Gemaakt op ${formatDate(model.createdAt)}`, { color: C.muted });
+  L.paragraph(BRAND.rule, { font: L.bold, size: 10, gap: 10 });
   if (model.demo) {
     L.ensure(40);
     L.page.drawRectangle({
@@ -313,6 +339,22 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
     L.y -= 40;
   }
   L.bullets(model.summary);
+
+  // Reading guide: what each label means, so official data, measurements, calculations, assumptions and gaps
+  // are told apart, also when printed in black and white.
+  L.heading("Zo lees je dit rapport");
+  L.keyValues(
+    [
+      { label: "Officieel (BAG)", value: "Uit de Basisregistratie Adressen en Gebouwen; voor de hele woning, geen kamermaat." },
+      { label: "Automatisch herkend", value: "Uit je tekening gehaald; nog niet door jou nagekeken." },
+      { label: "Gemeten (ScanTag)", value: "Met de AR-tracking van je telefoon, in mm, met foutmarge en status." },
+      { label: "Door jou bevestigd", value: "Je hebt de waarde nagekeken of zelf gemeten." },
+      { label: "Berekend", value: "Met een vaste formule uit bevestigde invoer; de formule staat erbij." },
+      { label: "Aanname", value: "Een richtwaarde die je kunt aanpassen (snijverlies, dekking, plafondhoogte)." },
+      { label: "Nog meten / nog controleren", value: "Er ontbreekt iets. We vullen niets zelf in." },
+    ],
+    8.5,
+  );
 
   // 2. Woningoverzicht
   if (model.building) {
@@ -359,7 +401,7 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   if (model.windows.table.rows.length) {
     L.table(model.windows.table, 7.5);
     L.paragraph(
-      "Ruwe maten staan apart van bestelmaten. Een bestelmaat staat er alleen als een gecontroleerde meetregel van een leverancier is gekozen.",
+      "Alle raammaten in millimeters. De gemeten opening staat apart van de bestelmaat; een bestelmaat staat er alleen met een gecontroleerde meetregel van de leverancier en maten die geschikt zijn om op te bestellen.",
       { size: 8, color: C.muted },
     );
     if (model.windows.notes.length) L.bullets(model.windows.notes, 8);
@@ -403,9 +445,27 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
   L.heading("Belangrijk");
   L.paragraph(model.disclaimer, { size: 9 });
 
-  // Footers and demo watermark on every page.
+  // Header, footer and demo watermark on every page.
   const total = L.pages.length;
   L.pages.forEach((page, i) => {
+    const top = A4[1] - 22;
+    page.drawRectangle({ x: 0, y: A4[1] - 6, width: A4[0] * 0.72, height: 6, color: C.ink });
+    page.drawRectangle({ x: A4[0] * 0.72, y: A4[1] - 6, width: A4[0] * 0.28, height: 6, color: C.signal });
+    drawMark(page, M.left, top, 0.55);
+    // The word mark is tracked out, letter by letter (the PDF fonts have no letter-spacing option).
+    let wx = M.left + 22;
+    for (const ch of L.clean(BRAND.name.toUpperCase())) {
+      page.drawText(ch, { x: wx, y: top - 13, size: 10, font: L.bold, color: C.ink });
+      wx += L.bold.widthOfTextAtSize(ch, 10) + 1.6;
+    }
+    const right = L.clean(model.title);
+    page.drawText(right, {
+      x: A4[0] - M.right - L.regular.widthOfTextAtSize(right, 8),
+      y: top - 12,
+      size: 8,
+      font: L.regular,
+      color: C.faint,
+    });
     const footer = L.clean(`${BRAND.name} · ${model.projectName} · ${formatDate(model.createdAt)}`);
     page.drawLine({ start: { x: M.left, y: M.bottom - 16 }, end: { x: A4[0] - M.right, y: M.bottom - 16 }, thickness: 0.4, color: C.line });
     page.drawText(footer.slice(0, 90), { x: M.left, y: M.bottom - 30, size: 7.5, font: L.regular, color: C.faint });

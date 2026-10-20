@@ -3,8 +3,8 @@ import { fixture } from "./helpers";
 
 test("landingpage: prijs en privacy zichtbaar, demo rekent mee", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "Van plattegrond naar complete bestellijst." })).toBeVisible();
-  await expect(page.getByText("Basis gratis · Compleet rapport € 8,99 eenmalig · Geen abonnement")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Eerst Metrivo." })).toBeVisible();
+  await expect(page.getByText("Start gratis · Complete bestellijst € 8,99 eenmalig · Geen abonnement")).toBeVisible();
   await expect(page.getByText(/blijft op je apparaat/).first()).toBeVisible();
   // The demo is labelled as a demonstration and its total follows the selection.
   const demo = page.locator(".demo-interactive");

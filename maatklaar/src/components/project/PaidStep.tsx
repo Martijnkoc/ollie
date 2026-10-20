@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/config/brand";
 import { useState } from "react";
 import { PRICE } from "@/config/site";
 import { tasksFor } from "@/lib/measurements/scan";
@@ -178,7 +179,7 @@ function Checkout(props: StepProps) {
               )}
               <p className="tiny muted" style={{ margin: 0 }}>
                 {payment.mode === "demo"
-                  ? "Je gaat naar een nagebootste betaalpagina van MaatKlaar zelf."
+                  ? `Je gaat naar een nagebootste betaalpagina van ${BRAND.name} zelf.`
                   : "Je gaat naar de beveiligde betaalpagina van Mollie (iDEAL en meer)."}{" "}
                 Je project blijft bewaard in deze browser; kom na het betalen terug in dezelfde browser.
               </p>

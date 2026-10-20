@@ -26,8 +26,8 @@ function WallDiagram({ polygon }: { polygon: { x: number; y: number }[] }) {
     <svg viewBox={`${minX - pad} ${minY - pad} ${w + 2 * pad} ${h + 2 * pad}`} style={{ width: 120, height: 100 }} aria-hidden="true">
       <polygon
         points={polygon.map((p) => `${p.x},${p.y}`).join(" ")}
-        fill="rgba(43,106,80,0.12)"
-        stroke="#1f4d3a"
+        fill="rgba(255,106,53,0.12)"
+        stroke="#191c1a"
         strokeWidth={Math.max(w, h) / 60}
       />
       {polygon.map((p, i) => {
@@ -46,7 +46,7 @@ function WallDiagram({ polygon }: { polygon: { x: number; y: number }[] }) {
             fontSize={fs}
             textAnchor="middle"
             fontWeight={700}
-            fill="#1c2420"
+            fill="#191c1a"
           >
             {String.fromCharCode(65 + (i % 26))}
           </text>

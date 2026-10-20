@@ -2,30 +2,68 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { BRAND } from "@/config/site";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { BRAND, siteUrl } from "@/config/brand";
 import "./globals.css";
 
+// One sans family for interface and marketing, served from our own domain.
 const inter = localFont({ src: "./fonts/inter-latin-wght.woff2", variable: "--font-inter", display: "swap", weight: "100 900" });
-const fraunces = localFont({ src: "./fonts/fraunces-latin-wght.woff2", variable: "--font-fraunces", display: "swap", weight: "100 900" });
 
 export const metadata: Metadata = {
-  title: { default: `${BRAND.name} · ${BRAND.tagline}`, template: `%s · ${BRAND.name}` },
-  description:
-    "Upload je plattegrond, controleer de herkende kamers en bereken gratis hoeveel vloer je nodig hebt. Voor € 8,99 eenmalig ook plinten, ramen en meetgegevens voor raamdecoratie in één PDF-rapport.",
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: `${BRAND.name} · ${BRAND.tagline.replace(/\.$/, "")} — vloer, verf en ramen berekenen`,
+    template: `%s · ${BRAND.name}`,
+  },
+  description: BRAND.description,
+  applicationName: BRAND.name,
   referrer: "same-origin",
   robots: { index: true, follow: true },
+  // No canonical here: every public page sets its own, so none inherits the home page's.
+  openGraph: {
+    type: "website",
+    siteName: BRAND.name,
+    locale: BRAND.locale,
+    title: `${BRAND.name} · ${BRAND.tagline}`,
+    description: BRAND.description,
+  },
+  twitter: { card: "summary_large_image", title: `${BRAND.name} · ${BRAND.tagline}`, description: BRAND.description },
+  formatDetection: { telephone: false, address: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f6f3ec",
+  themeColor: BRAND.colors.offWhite,
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const url = siteUrl();
   return (
-    <html lang="nl" className={`${inter.variable} ${fraunces.variable}`} data-scroll-behavior="smooth">
+    <html lang="nl" className={inter.variable} data-scroll-behavior="smooth">
       <body>
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "@id": `${url}/#organisatie`,
+              name: BRAND.name,
+              url,
+              logo: `${url}/icon.svg`,
+              slogan: BRAND.tagline,
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "@id": `${url}/#website`,
+              name: BRAND.name,
+              url,
+              inLanguage: BRAND.language,
+              publisher: { "@id": `${url}/#organisatie` },
+            },
+          ]}
+        />
         <a href="#inhoud" className="skip-link">
           Naar de inhoud
         </a>

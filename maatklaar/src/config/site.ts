@@ -1,16 +1,10 @@
 /**
- * Central product configuration. Name, price, copy and limits live here and nowhere else,
- * so they can be changed (and reviewed) in one place.
+ * Central product configuration: price, copy and limits live here and nowhere else, so they can be changed (and
+ * reviewed) in one place. The brand itself (name, taglines, colours) is in ./brand.ts.
  */
+import { BRAND } from "./brand";
 
-export const BRAND = {
-  name: "MaatKlaar",
-  /** Shown as a small note wherever the brand appears in drafts. */
-  isWorkingTitle: true,
-  tagline: "Van plattegrond naar complete bestellijst.",
-  promise:
-    "Upload je plattegrond, controleer je woning en bereken wat je nodig hebt. De basis is gratis. Voor € 8,99 eenmalig krijg je een compleet rapport met materiaalberekeningen, ramen, meetstatus en bestelinformatie.",
-};
+export { BRAND, siteUrl } from "./brand";
 
 /**
  * The one paid unlock per woningproject. The server charges `amountCents`; labels are derived from it.
@@ -25,7 +19,7 @@ export const PRICE = {
   /** Until someone has verified the VAT treatment for real sales, the interface marks it as a draft. */
   vatNoteVerified: false,
   /** Description on the bank statement (Mollie: max 255 characters). */
-  paymentDescription: "MaatKlaar meet- en bestelrapport",
+  paymentDescription: `${BRAND.name} meet- en bestelrapport`,
 };
 
 /**
@@ -91,7 +85,7 @@ export const FAQ = [
     a: "De basis is gratis: vloeroppervlakte per ruimte, vloerhoeveelheid met snijverlies en pakken, en de verfcalculator. Het complete rapport voor één woningproject kost € 8,99, één keer. Er komt niets automatisch achteraan en je hebt geen account nodig.",
   },
   {
-    q: "Wat kan MaatKlaar (nog) niet?",
+    q: `Wat kan ${BRAND.name} (nog) niet?`,
     a: "We zien geen plafondhoogtes, raamhoogtes of montagediepte op een plattegrond. We verzinnen geen leveranciersregels en geen standaard aftrek voor raamdecoratie. Een adres onthult geen binnenmaten. Een camera zonder AR-tracking (zoals Safari op een iPhone) geeft geen maat in millimeters; dan ga je via een QR-code verder op een Android-telefoon die het kan. Erkers en ronde of schuine ramen meet ScanTag niet. Waar iets ontbreekt, staat dat er duidelijk bij.",
   },
   {
