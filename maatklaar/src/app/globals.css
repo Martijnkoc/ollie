@@ -605,6 +605,10 @@ textarea.input {
   color: var(--st-auto-fg);
   background: var(--st-auto-bg);
 }
+.badge[data-status="measured"] {
+  background: #e6ecf5;
+  color: #233a5e;
+}
 .badge[data-status="confirmed"] {
   color: var(--st-confirmed-fg);
   background: var(--st-confirmed-bg);
@@ -1624,37 +1628,104 @@ dialog.sheet::backdrop {
   height: 24px;
 }
 
-/* ---------- Photo measuring assistant ---------- */
+/* ---------- ScanTag AR overlay ---------- */
 
-.camera-frame {
+/* The DOM overlay of the WebXR session: the browser shows the camera underneath and makes this full screen. */
+.ar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.ar-overlay[hidden] {
+  display: none;
+}
+
+.ar-top,
+.ar-bottom {
   position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #111;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  background: rgb(25 28 26 / 72%);
 }
 
-.camera-frame video {
-  display: block;
-  width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
+.ar-bottom {
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
 }
 
-/* Corner marks that show where the window should be; they leave the middle of the image free. */
-.camera-guide {
+.ar-status {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.ar-dots {
   position: absolute;
-  inset: 8%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  background:
-    linear-gradient(#fff, #fff) top left / 28px 3px no-repeat,
-    linear-gradient(#fff, #fff) top left / 3px 28px no-repeat,
-    linear-gradient(#fff, #fff) top right / 28px 3px no-repeat,
-    linear-gradient(#fff, #fff) top right / 3px 28px no-repeat,
-    linear-gradient(#fff, #fff) bottom left / 28px 3px no-repeat,
-    linear-gradient(#fff, #fff) bottom left / 3px 28px no-repeat,
-    linear-gradient(#fff, #fff) bottom right / 28px 3px no-repeat,
-    linear-gradient(#fff, #fff) bottom right / 3px 28px no-repeat;
-  opacity: 0.85;
+}
+
+.ar-dots circle {
+  fill: var(--accent, #ff6a35);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.ar-dots line {
+  stroke: var(--accent, #ff6a35);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+/* The cross-hair: grey while searching for a surface, accent once the phone found one. */
+.ar-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 2px solid rgb(255 255 255 / 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ar-reticle::before,
+.ar-reticle::after {
+  content: "";
+  position: absolute;
+  background: currentcolor;
+}
+
+.ar-reticle::before {
+  left: 50%;
+  top: -10px;
+  bottom: -10px;
+  width: 2px;
+  margin-left: -1px;
+}
+
+.ar-reticle::after {
+  top: 50%;
+  left: -10px;
+  right: -10px;
+  height: 2px;
+  margin-top: -1px;
+}
+
+.ar-reticle[data-found="true"] {
+  border-color: var(--accent, #ff6a35);
+  color: var(--accent, #ff6a35);
 }
 
 /* ---------- Landing V2 ---------- */
@@ -1762,73 +1833,6 @@ dialog.sheet::backdrop {
   dialog.sheet.sheet-wide {
     width: min(980px, 96vw);
   }
-}
-
-.marker-wrap {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.marker-stage {
-  position: relative;
-  border-radius: 10px;
-  overflow: visible;
-  background: #111;
-}
-
-.marker-stage img,
-.marker-stage svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  border-radius: 10px;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.marker-stage svg {
-  /* Placing and dragging points must not scroll the page. */
-  touch-action: none;
-  cursor: crosshair;
-}
-
-.marker-stage svg:focus-visible {
-  outline: 3px solid var(--brand-2);
-  outline-offset: 2px;
-}
-
-.loupe {
-  position: absolute;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 4px 18px rgb(0 0 0 / 45%);
-  background-repeat: no-repeat;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.loupe::before,
-.loupe::after {
-  content: "";
-  position: absolute;
-  background: #e0302a;
-}
-
-.loupe::before {
-  left: 50%;
-  top: 20%;
-  bottom: 20%;
-  width: 1px;
-}
-
-.loupe::after {
-  top: 50%;
-  left: 20%;
-  right: 20%;
-  height: 1px;
 }
 
 .task-list {

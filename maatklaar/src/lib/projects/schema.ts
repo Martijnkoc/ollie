@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { addressSchema, buildingSchema } from "@/lib/address/types";
 import { CATEGORY_KEYS } from "@/lib/materials/catalog";
-import { cameraShotSchema, measureSourceSchema } from "@/lib/measurements/camera";
+import {
+  measureSourceSchema,
+  scanShotSchema,
+  targetVerdictSchema,
+  verdictContextSchema,
+  WINDOW_SHAPES,
+  SCAN_TARGETS,
+} from "@/lib/measurements/scan";
 import { ANSWER_KEYS } from "@/lib/rules/schema";
 import { CHECK_KEYS, MEASURE_KEYS, MOUNTINGS, PRODUCT_FAMILIES } from "@/lib/measurements/schema";
 
@@ -188,71 +195,98 @@ export const analysisSchema = z.object({
 });
 export type PageAnalysis = z.infer<typeof analysisSchema>;
 
-export const windowSchema = z.object({
-  id: z.string(),
-  code: z.string().regex(/^R\d{2,3}$/),
-  label: z.string().max(60),
-  roomId: z.string().nullable(),
-  page: z.number().int().nonnegative().nullable(),
-  position: pointSchema.nullable(),
-  origin: z.enum(["auto", "manual"]),
-  note: z.string().max(500),
-  windowType: z.string().max(60),
-  product: z.enum(PRODUCT_FAMILIES),
-  mounting: z.enum(MOUNTINGS),
-  ruleId: z.string(),
-  measures: z.partialRecord(z.enum(MEASURE_KEYS), z.number().int().positive().max(100_000)),
-  measureSource: z.enum(["gebruiker", "tekening", "scan", "anders"]),
-  checks: z.partialRecord(z.enum(CHECK_KEYS), z.boolean()),
-  /** Per measuring group: the values confirmed despite a spread above the threshold. */
-  acknowledged: z.partialRecord(z.enum(["breedte", "hoogte", "ophanghoogte"]), z.string().max(100)),
-  confirmed: z.boolean(),
-  fullness: z.number().positive().max(5).nullable(),
-  /**
-   * Width of the opening in the wall on the plan, in mm. Indicative only: never used as a measurement or for
-   * an order size (a plan seen from above is not a window measurement).
-   */
-  planWidthMm: z.number().positive().max(100_000).nullable().default(null),
-  /** Camera measurements of this window: one entry per photo, the photos themselves stay on this device. */
-  camera: z.array(cameraShotSchema).max(30).default([]),
-  /** Per measurement that came from the camera: its uncertainty. A typed-in value has no entry. */
-  sources: z.partialRecord(z.enum(MEASURE_KEYS), measureSourceSchema).default({}),
-  /** Answers that are not lengths (fixing, roof window code, curtain end point…), as the rule asks them. */
-  answers: z.partialRecord(z.enum(ANSWER_KEYS), z.string().max(80)).default({}),
-  /** Shape of the window: product rules and ScanTag only handle rectangular windows. */
-  shape: z.enum(["rechthoek", "erker", "afwijkend"]).default("rechthoek"),
-  /** When the user last confirmed all measurements of this window (reviewed_at). */
-  confirmedAt: z.string().nullable().default(null),
-  /** What happened to this window's measurements, newest last: scans, edits, confirmations, rule changes. */
-  audit: z
-    .array(z.object({ at: z.string(), event: z.string().max(240) }))
-    .max(400)
-    .default([]),
-  /**
-   * Photo of the first photo assistant (kept on this device only): corners tapped on an A4 sheet on the glass
-   * and the opening, with a size estimate. Only shown for windows that still have one; new photos are
-   * camera measurements (`camera`).
-   */
-  photo: z
-    .object({
-      takenAt: z.string(),
-      width: z.number().int().positive(),
-      height: z.number().int().positive(),
-      reference: z.array(pointSchema).max(4),
-      opening: z.array(pointSchema).max(4),
-      estimate: z
-        .object({
-          topMm: z.number().positive(),
-          bottomMm: z.number().positive(),
-          leftMm: z.number().positive(),
-          rightMm: z.number().positive(),
-          uncertaintyMm: z.number().nonnegative(),
-        })
-        .nullable(),
-    })
-    .nullable()
-    .default(null),
-});
+/**
+ * Projects saved before ScanTag measured with AR tracking held photo scans with a printed A4 sheet or a bank
+ * card as scale. That method is gone: its scans, photo estimates and the measurements taken from them are
+ * dropped on load (typed-in values stay), with a note in the window's audit log.
+ */
+function migrateWindow(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const w = { ...(raw as Record<string, unknown>) };
+  const sources = (w.sources ?? {}) as Record<string, { method?: string }>;
+  const legacy = Object.entries(sources).filter(([, v]) => v?.method !== "scantag_ar");
+  const hadPhotoScans = Array.isArray(w.camera) && w.camera.length > 0;
+  if (!legacy.length && !hadPhotoScans && !w.photo) return w;
+  const measures = { ...((w.measures ?? {}) as Record<string, unknown>) };
+  const kept = { ...sources };
+  for (const [k] of legacy) {
+    delete measures[k];
+    delete kept[k];
+  }
+  delete w.camera;
+  delete w.photo;
+  const audit = Array.isArray(w.audit) ? w.audit : [];
+  return {
+    ...w,
+    measures,
+    sources: kept,
+    confirmed: legacy.length ? false : w.confirmed,
+    audit: [
+      ...audit,
+      {
+        at: new Date().toISOString(),
+        event: "Oude fotoscans met een A4-vel of bankpas als schaal zijn vervallen. Scan dit raam opnieuw met ScanTag.",
+      },
+    ].slice(-400),
+  };
+}
+
+const finitePositiveMm = z.number().finite().positive().max(100_000);
+
+export const windowSchema = z.preprocess(
+  migrateWindow,
+  z.object({
+    id: z.string(),
+    code: z.string().regex(/^R\d{2,3}$/),
+    label: z.string().max(60),
+    roomId: z.string().nullable(),
+    page: z.number().int().nonnegative().nullable(),
+    position: pointSchema.nullable(),
+    origin: z.enum(["auto", "manual"]),
+    note: z.string().max(500),
+    windowType: z.string().max(60),
+    product: z.enum(PRODUCT_FAMILIES),
+    mounting: z.enum(MOUNTINGS),
+    ruleId: z.string(),
+    /**
+     * Opening and product measurements in millimetres (observed layer). Typed values are whole millimetres;
+     * ScanTag values are stored unrounded, with their margin in `sources`. Rounding happens only for display
+     * and for the final order fields.
+     */
+    measures: z.partialRecord(z.enum(MEASURE_KEYS), finitePositiveMm),
+    measureSource: z.enum(["gebruiker", "tekening", "scan", "anders"]),
+    checks: z.partialRecord(z.enum(CHECK_KEYS), z.boolean()),
+    /** Per measuring group: the values confirmed despite a spread above the threshold. */
+    acknowledged: z.partialRecord(z.enum(["breedte", "hoogte", "ophanghoogte"]), z.string().max(100)),
+    confirmed: z.boolean(),
+    fullness: z.number().positive().max(5).nullable(),
+    /**
+     * Width of the opening in the wall on the plan, in mm. Indicative only: never used as a measurement or for
+     * an order size (a plan seen from above is not a window measurement).
+     */
+    planWidthMm: z.number().positive().max(100_000).nullable().default(null),
+    /** ScanTag scans of this window: AR geometry only (points in metres), no images. */
+    scans: z.array(scanShotSchema).max(30).default([]),
+    /** The server's verdict per scanned measurement, for the product, mounting and shape it was given for. */
+    scanVerdicts: z
+      .object({ context: verdictContextSchema, targets: z.partialRecord(z.enum(SCAN_TARGETS), targetVerdictSchema) })
+      .nullable()
+      .default(null),
+    /** Per measurement that came from ScanTag: raw value, margin, status and device. A typed value has none. */
+    sources: z.partialRecord(z.enum(MEASURE_KEYS), measureSourceSchema).default({}),
+    /** Answers that are not lengths (fixing, roof window code, curtain end point…), as the rule asks them. */
+    answers: z.partialRecord(z.enum(ANSWER_KEYS), z.string().max(80)).default({}),
+    /** Shape of the window: product rules and ScanTag only handle rectangular windows. */
+    shape: z.enum(WINDOW_SHAPES).default("rechthoek"),
+    /** When the user last confirmed all measurements of this window (reviewed_at). */
+    confirmedAt: z.string().nullable().default(null),
+    /** What happened to this window's measurements, newest last: scans, edits, confirmations, rule changes. */
+    audit: z
+      .array(z.object({ at: z.string(), event: z.string().max(240) }))
+      .max(400)
+      .default([]),
+  }),
+);
 export type ProjectWindow = z.infer<typeof windowSchema>;
 
 export const paymentSchema = z.object({
@@ -300,7 +334,7 @@ export const projectSchema = z.object({
       inputs: z.partialRecord(z.enum(CATEGORY_KEYS), z.record(z.string().max(40), z.number().finite().nullable())),
     })
     .default({ selected: ["verf"], rooms: {}, inputs: {} }),
-  /** Camera measurements for the whole home (the ceiling height); the photos stay on this device. */
-  camera: z.array(cameraShotSchema).max(20).default([]),
+  /** ScanTag scans for the whole home (the ceiling height): AR geometry only. */
+  scans: z.array(scanShotSchema).max(20).default([]),
 });
 export type Project = z.infer<typeof projectSchema>;

@@ -74,20 +74,23 @@ describe("raammeting (opening)", () => {
     expect(evaluateWindow(otherGroup, inDay).status).toBe("bevestigd");
   });
 
-  it("camerawaarden verschillen tot hun foutmarge zonder dat dat een afwijking is", () => {
-    const camera = {
-      method: "camera" as const,
+  it("ScanTag-waarden verschillen tot hun foutmarge zonder dat dat een afwijking is", () => {
+    const scan = {
+      method: "scantag_ar" as const,
+      scaleSource: "webxr_hit_test" as const,
+      rawMm: 1200,
       uncertaintyMm: 9,
       shots: 2,
-      scaleReference: "a4" as const,
-      validation: "not_validated" as const,
+      status: "not_supported_for_ordering" as const,
+      reasons: ["criteria_not_validated" as const],
+      device: { webxr: true, hitTest: true, depthSensing: false, domOverlay: true, platform: "android" as const, browser: "Chrome 141" },
       capturedAt: "",
     };
     const skewed = { ...complete, measures: { ...complete.measures, breedte_onder: 1195 } };
-    const e = evaluateWindow({ ...skewed, sources: { breedte_boven: camera, breedte_midden: camera, breedte_onder: camera } }, inDay);
+    const e = evaluateWindow({ ...skewed, sources: { breedte_boven: scan, breedte_midden: scan, breedte_onder: scan } }, inDay);
     expect(e.groups.find((g) => g.group === "breedte")!.toleranceMm).toBe(9);
     expect(e.status).toBe("bevestigd");
-    expect(e.camera).toEqual({ keys: ["breedte_boven", "breedte_midden", "breedte_onder"], maxUncertaintyMm: 9 });
+    expect(e.scan).toEqual({ keys: ["breedte_boven", "breedte_midden", "breedte_onder"], maxUncertaintyMm: 9 });
   });
 
   it("niet bevestigd → ingevoerd", () => {

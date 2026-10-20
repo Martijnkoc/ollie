@@ -5,11 +5,16 @@ import { ANSWER_INFO, type AnswerKey, type ProductRule, type Selector } from "./
 /**
  * Applies a product rule to a window's measurements: which measurement counts for width and height, the
  * narrowest passage, depth, overlap, deductions and the cases the rule leaves open. The result is the order
- * layer (order_dimensions); it never changes the measurements themselves.
+ * layer (orderDimensions); it never changes the measurements themselves (observedOpeningDimensions).
+ *
+ * An order size is computed only with a supplier rule that a person checked against its source within a year,
+ * and only from measurements that are accepted (validated ScanTag) or confirmed by the user. Anything else gets
+ * a status and the reasons, never a provisional number.
  */
 export const ORDER_STATUSES = [
   "order_ready",
-  "concept",
+  "rule_not_verified",
+  "measurement_not_accepted",
   "needs_verification",
   "needs_more_data",
   "not_suitable",
@@ -20,7 +25,8 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   order_ready: "Klaar om te bestellen",
-  concept: "Concept-bestelmaat (niet definitief)",
+  rule_not_verified: "Nog geen bestelmaat: meetregel niet gecontroleerd",
+  measurement_not_accepted: "Nog geen bestelmaat: maat niet geschikt om op te bestellen",
   needs_verification: "Eerst navragen",
   needs_more_data: "Meer gegevens nodig",
   not_suitable: "Past niet",
@@ -29,33 +35,25 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 /**
- * Validation status of one measurement: a camera value is "validated" only within acceptance limits that
- * were set from physical reference measurements; a typed value counts once the user confirmed the window.
+ * Status of one measurement for the order layer: a ScanTag value counts only when `accepted` (within criteria
+ * that were validated against a calibrated reference); a typed value counts once the user confirmed the window.
  */
-export const VALIDATION_STATUSES = [
-  "validated",
-  "user_confirmed",
-  "unconfirmed",
-  "not_validated",
-  "needs_more_data",
-  "unsupported",
-] as const;
-export type ValidationStatus = (typeof VALIDATION_STATUSES)[number];
+export const MEASURE_STATUSES = ["accepted", "user_confirmed", "unconfirmed", "retake_required", "not_supported_for_ordering"] as const;
+export type MeasureStatus = (typeof MEASURE_STATUSES)[number];
 
-export const VALIDATION_LABELS: Record<ValidationStatus, string> = {
-  validated: "gevalideerd",
-  user_confirmed: "door gebruiker bevestigd",
+export const MEASURE_STATUS_LABELS: Record<MeasureStatus, string> = {
+  accepted: "ScanTag, geaccepteerd voor bestellen",
+  user_confirmed: "door jou bevestigd",
   unconfirmed: "nog niet bevestigd",
-  not_validated: "niet gevalideerd",
-  needs_more_data: "extra opname nodig",
-  unsupported: "niet ondersteund",
+  retake_required: "ScanTag, opnieuw scannen",
+  not_supported_for_ordering: "ScanTag, niet geschikt om op te bestellen",
 };
 
 export type OrderInput = {
   measures: Partial<Record<MeasureKey, number>>;
   answers: Partial<Record<AnswerKey, string>>;
   checks: Partial<Record<CheckKey, boolean>>;
-  validation: Partial<Record<MeasureKey, ValidationStatus>>;
+  status: Partial<Record<MeasureKey, MeasureStatus>>;
   confirmed: boolean;
   shape: "rechthoek" | "erker" | "afwijkend";
   /** For the "rule checked within a year" test; defaults to today. */
@@ -78,8 +76,11 @@ export type OrderResult = {
   status: OrderStatus;
   width: Pick | null;
   height: Pick | null;
-  /** The order size; a side is null when it cannot be decided (see questions). Code-ordered products: by code. */
-  order: { widthMm: number | null; heightMm: number | null; byCode: string | null } | null;
+  /**
+   * The order size in whole millimetres, only when status is order_ready (or, for products ordered by type code,
+   * the code). Null in every other case: there is no provisional order size.
+   */
+  order: { orderWidthMm: number | null; orderHeightMm: number | null; byCode: string | null } | null;
   corrections: Correction[];
   /** Overlap guideline applied to the opening: a suggestion for the outer size, not an order size by itself. */
   suggestion: { widthMm: number | null; heightMm: number | null; how: string } | null;
@@ -95,11 +96,26 @@ const label = (k: MeasureKey) => MEASURE_INFO[k].label.toLowerCase();
 /** A rule counts as current when a person checked it against its source within this many days. */
 export const RULE_MAX_AGE_DAYS = 365;
 
-function applyRounding(mm: number, r: ProductRule["rounding"]) {
-  if (!r) return mm;
+/**
+ * The final order field: whole millimetres. With a rounding rule from the source, that rule; without one we
+ * round down to the whole millimetre, so a product never comes out wider or longer than measured.
+ */
+function toOrderMm(mm: number, r: ProductRule["rounding"]) {
+  if (!r) return Math.floor(mm + 1e-9);
   const q = mm / r.stepMm;
   const n = r.mode === "down" ? Math.floor(q + 1e-9) : r.mode === "up" ? Math.ceil(q - 1e-9) : Math.round(q);
   return n * r.stepMm;
+}
+
+/** Whether a rule may produce an order size today: published and checked against its source within a year. */
+export function ruleVerification(rule: ProductRule, today = new Date().toISOString().slice(0, 10)): string | null {
+  if (rule.source.status !== "published")
+    return `De meetregel van ${rule.source.supplier} is nog niet door een mens tegen de volledige bron gecontroleerd: daarom rekenen we er geen bestelmaat mee uit.`;
+  if (!rule.source.checkedOn) return `De meetregel van ${rule.source.supplier} heeft geen controledatum.`;
+  const age = (Date.parse(today) - Date.parse(rule.source.checkedOn)) / 86_400_000;
+  if (age > RULE_MAX_AGE_DAYS)
+    return `De meetregel is sinds ${rule.source.checkedOn} niet meer tegen de bron gecontroleerd: eerst opnieuw controleren.`;
+  return null;
 }
 
 export function orderDimensions(rule: ProductRule, input: OrderInput): OrderResult {
@@ -154,6 +170,18 @@ export function orderDimensions(rule: ProductRule, input: OrderInput): OrderResu
   // Obstacle questions decide an order size; a measuring sheet without one does not wait for them.
   if (rule.selection)
     for (const c of rule.checks) if (input.checks[c] === undefined) result.missing.push(`Controlevraag: ${CHECK_INFO[c].question}`);
+
+  // A rule nobody checked against its source decides nothing: no selection, no deduction, no order size.
+  const unverified = rule.selection ? ruleVerification(rule, input.today) : null;
+  if (unverified) {
+    result.blockedBy.push(unverified);
+    if (rule.depth?.minMm)
+      result.warnings.push(
+        `Volgens de nog niet gecontroleerde regel is minimaal ${formatMm(rule.depth.minMm)} ${label(rule.depth.key)} nodig; controleer dat bij ${rule.source.supplier}.`,
+      );
+    result.status = result.missing.length ? "needs_more_data" : "rule_not_verified";
+    return result;
+  }
 
   const pick = (s: Selector, side: "breedte" | "hoogte"): Pick | null => {
     if (s.kind === "minimum" || s.kind === "maximum") {
@@ -274,12 +302,14 @@ export function orderDimensions(rule: ProductRule, input: OrderInput): OrderResu
 
     const byCode = rule.selection.width.kind === "by_code" ? input.answers[rule.selection.width.key]?.trim() || null : null;
     result.order = {
-      widthMm: width === null ? null : applyRounding(width, rule.rounding),
-      heightMm: height === null ? null : applyRounding(height, rule.rounding),
+      orderWidthMm: width === null ? null : toOrderMm(width, rule.rounding),
+      orderHeightMm: height === null ? null : toOrderMm(height, rule.rounding),
       byCode,
     };
     if (!rule.rounding && (width !== null || height !== null))
-      result.warnings.push("De bron noemt geen afronding: wij ronden niet af. Je leverancier kan dat wel doen.");
+      result.warnings.push(
+        "De bron noemt geen afronding: wij ronden af naar hele millimeters, naar beneden. Je leverancier kan anders afronden.",
+      );
   }
 
   // Depth: a minimum per variant or per fixing; unknown minimums are asked, not assumed.
@@ -306,38 +336,41 @@ export function orderDimensions(rule: ProductRule, input: OrderInput): OrderResu
   // Product limits, when the rule has them.
   const lim = rule.limits;
   if (lim && result.order) {
-    const { widthMm, heightMm } = result.order;
-    if (lim.widthMm && widthMm !== null && (widthMm < lim.widthMm.min || widthMm > lim.widthMm.max))
-      result.blockedBy.push(`Breedte ${formatMm(widthMm)} valt buiten ${formatMm(lim.widthMm.min)}–${formatMm(lim.widthMm.max)}.`);
-    if (lim.heightMm && heightMm !== null && (heightMm < lim.heightMm.min || heightMm > lim.heightMm.max))
-      result.blockedBy.push(`Hoogte ${formatMm(heightMm)} valt buiten ${formatMm(lim.heightMm.min)}–${formatMm(lim.heightMm.max)}.`);
+    const { orderWidthMm: w, orderHeightMm: h } = result.order;
+    if (lim.widthMm && w !== null && (w < lim.widthMm.min || w > lim.widthMm.max)) {
+      unsuitable = true;
+      result.blockedBy.push(`Breedte ${formatMm(w)} valt buiten ${formatMm(lim.widthMm.min)}–${formatMm(lim.widthMm.max)}.`);
+    }
+    if (lim.heightMm && h !== null && (h < lim.heightMm.min || h > lim.heightMm.max)) {
+      unsuitable = true;
+      result.blockedBy.push(`Hoogte ${formatMm(h)} valt buiten ${formatMm(lim.heightMm.min)}–${formatMm(lim.heightMm.max)}.`);
+    }
   }
 
-  // Data quality: every measurement that decides the order size must be validated or confirmed.
+  // Data quality: every measurement that decides the order size must be accepted or confirmed by the user.
   const used = new Set<MeasureKey>([
     ...(result.width?.from ?? []),
     ...(result.height?.from ?? []),
     ...(result.depth?.measuredMm ? [result.depth.key] : []),
   ]);
+  const statusOf = (k: MeasureKey): MeasureStatus => input.status[k] ?? (input.confirmed ? "user_confirmed" : "unconfirmed");
+  let notAccepted = false;
   for (const k of used) {
-    const v = input.validation[k] ?? (input.confirmed ? "user_confirmed" : "unconfirmed");
-    if (v !== "validated" && v !== "user_confirmed")
-      result.blockedBy.push(
-        `${MEASURE_INFO[k].label}: ${VALIDATION_LABELS[v]}${v === "not_validated" ? " (ScanTag-meting zonder vastgestelde acceptatiegrens)" : ""}.`,
-      );
+    const v = statusOf(k);
+    if (v === "accepted" || v === "user_confirmed") continue;
+    notAccepted = true;
+    result.blockedBy.push(`${MEASURE_INFO[k].label}: ${MEASURE_STATUS_LABELS[v]}.`);
   }
-  if (!input.confirmed) result.blockedBy.push("Je hebt de maten van dit raam nog niet bevestigd.");
-
-  // The rule itself must be checked against its source, and recently.
-  if (rule.source.status !== "published")
-    result.blockedBy.push(
-      `De regel van ${rule.source.supplier} is een concept: nog niet door een mens tegen de volledige bron gecontroleerd.`,
-    );
-  else if (rule.source.checkedOn) {
-    const today = input.today ?? new Date().toISOString().slice(0, 10);
-    const age = (Date.parse(today) - Date.parse(rule.source.checkedOn)) / 86_400_000;
-    if (age > RULE_MAX_AGE_DAYS) result.blockedBy.push(`De regel is sinds ${rule.source.checkedOn} niet meer tegen de bron gecontroleerd.`);
+  if (!input.confirmed) {
+    notAccepted = true;
+    result.blockedBy.push("Je hebt de maten van dit raam nog niet bevestigd.");
   }
+  // The overlap suggestion is a number from the opening too: only from measurements that may be used.
+  if (
+    result.suggestion &&
+    (["breedte_midden", "hoogte_midden"] as const).some((k) => value(k) !== null && !["accepted", "user_confirmed"].includes(statusOf(k)))
+  )
+    result.suggestion = null;
 
   result.status = !rule.selection
     ? result.missing.length
@@ -349,10 +382,11 @@ export function orderDimensions(rule: ProductRule, input: OrderInput): OrderResu
         ? "not_suitable"
         : result.questions.length
           ? "needs_verification"
-          : result.blockedBy.length
-            ? "concept"
+          : notAccepted
+            ? "measurement_not_accepted"
             : "order_ready";
-  if (result.status === "needs_more_data" || result.status === "measuring_sheet") result.order = null;
+  // Never a provisional number: an order size exists only when it may be ordered.
+  if (result.status !== "order_ready") result.order = null;
   return result;
 }
 
@@ -362,5 +396,5 @@ export function orderSummary(o: OrderResult): string {
   if (!o.order) return `${ORDER_STATUS_LABELS[o.status]}`;
   if (o.order.byCode) return `${ORDER_STATUS_LABELS[o.status]}: bestellen op typecode ${o.order.byCode} (${rule})`;
   const side = (mm: number | null) => (mm === null ? "navragen" : formatMm(mm));
-  return `${ORDER_STATUS_LABELS[o.status]}: ${side(o.order.widthMm)} × ${side(o.order.heightMm)} (${rule})`;
+  return `${ORDER_STATUS_LABELS[o.status]}: ${side(o.order.orderWidthMm)} × ${side(o.order.orderHeightMm)} (${rule})`;
 }

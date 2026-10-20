@@ -1,61 +1,98 @@
-# ScanTag — technische gap-analyse en status
+# ScanTag — meten met de AR-tracking van je telefoon
 
-ScanTag is het meten van ramen met de camera van je telefoon, in de browser, zonder rolmaat. Dit document legt
-vast wat er bij de start van ScanTag al was, wat er ontbrak, en wat er nu echt werkt, wat een stub is en wat nog
-fysiek gevalideerd moet worden. Het wordt bijgewerkt bij elke stap.
+ScanTag meet ramen met je telefoon, in de browser, zonder app, zonder papier en zonder rolmaat. Je richt het vizier op
+een hoek, houdt even stil, en de telefoon legt vast waar dat punt in de ruimte zit. Dit document legt vast hoe dat
+werkt, wat echt is, wat een aanname is en wat nog fysiek gevalideerd moet worden.
 
-## Uitgangssituatie (vóór ScanTag)
+## Wat er veranderde (verplichte correctie, oktober 2026)
 
-| Onderdeel | Was er | Gat |
-| --- | --- | --- |
-| Camera en foto in de browser | Ja: camera-app of upload, live camera via `getUserMedia`, toestemming pas bij start | Geen kwaliteitscontrole (blur, schittering, hoek) |
-| Meetkunde | Ja: homografie in het vlak van één of twee referenties (A4, bankpas), sub-pixel randen, foutmarge per waarde | Geen begrip "gevalideerd"; geen acceptatiegrenzen |
-| Meetregels | Algemene meetprotocollen; schema voor leveranciersregels met een formule | Geen productvarianten, montagetypen, dieptetabellen, obstakel- en overlapregels, leveranciersaftrek, onbesliste randgevallen; geen leveranciersadapter |
-| Gegevensmodel | Eén set maten per raam, met bron per maat | Geen scheiding tussen waargenomen geometrie, gemeten opening en bestelmaat; geen validatiestatus, auditlog of apparaatgegevens |
-| Betaalgrens | Raamregister pas na betaling zichtbaar; betaling server-side geverifieerd | Maten werden in de browser berekend: na betaling niet door de server vrijgegeven |
-| Mobiel ↔ desktop | Projecten staan alleen op het apparaat | Geen overdracht |
-| Rapport | Per raam maten, bron, foutmarge en ondergrens | Geen gekozen min/max-regel, correcties met bron, validatiestatus, open vragen |
-| Validatie | Harnas voor plattegronden | Geen metrologisch testplan of statistiek voor camerametingen |
+De eerste versie van ScanTag haalde de schaal uit twee geprinte A4-vellen (of een bankpas) op de muur. Dat was een
+handeling die niet bij een moeiteloze ervaring past en is **volledig verwijderd**: uit de interface, de meetkern
+(homografie, randen vastklikken, fotocontroles), de opslag, de tests, de fixtures en de documentatie. Oude projecten
+met zulke scans laden nog; die scans en de maten eruit vervallen, met een regel in het auditlog van het raam.
 
-## Ontwerpkeuzes
+## Hoe ScanTag nu meet
 
-- **Privacy blijft leidend.** Foto's verlaten het apparaat niet. Voor het vrijgeven van betaalde maten gaan alleen
-  de aangetikte punten (pixelcoördinaten) naar de server, nooit het beeld.
-- **Geen generatieve AI voor maten.** Alle millimeters komen uit traceerbare meetkunde (homografie, lijnfits).
-- **Leveranciersregels zijn data met een bron**, versie en controlestatus. Een regel die niet door een mens
-  tegen de volledige bron is gecontroleerd, heeft status `concept` en levert nooit een definitieve bestelmaat.
-- **Een camerameting is niet gevalideerd** zolang er geen acceptatiegrenzen per productfamilie zijn vastgesteld
-  met fysieke referentiemetingen (`src/config/scantag.ts`). Tot die tijd: hooguit een concept-bestelmaat.
+| Stap                | Wat er gebeurt                                                                                                                                                                                                                                                                                                      | Waar                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Capability-detectie | Zonder toestemming te vragen: beveiligde verbinding, `navigator.xr.isSessionSupported("immersive-ar")`, platform en browser. Niets wordt aangenomen.                                                                                                                                                                | `lib/measurements/capabilities.ts`                   |
+| AR-sessie           | Pas na "Start de scan": WebXR `immersive-ar` met `hit-test` en `dom-overlay` (verplicht) en `depth-sensing` (als het toestel het biedt).                                                                                                                                                                            | `components/project/ar-session.ts`                   |
+| Punt vastleggen     | Elk beeld geeft waar de straal door het midden van het scherm een echt oppervlak raakt (meters, in de ruimte die de tracking vasthoudt). Bij "Vastleggen" verzamelen we 20 beelden: gemiddelde, spreiding (RMS), afstand, normaal van het oppervlak en, met dieptekaart, het verschil tussen hit-afstand en diepte. | `ArScan.tsx`, `pointFromSamples`                     |
+| Meetkunde           | Opening: vier hoeken → best passend vlak (Newell) → breedte boven/midden/onder, hoogte links/midden/rechts. Diepte: langs de normaal van de muur. Rail, ophanghoogte, plafond: afstanden tussen paren.                                                                                                              | `lib/measurements/scan.ts`, `ar-geometry.ts`         |
+| Foutmarge           | Per punt (1σ): eigen spreiding ⊕ (2 mm + 2 mm per meter afstand). Per lengte: 2σ plus 1 % van de lengte voor de schaal van de tracking. **Dit model is een aanname** tot de validatie.                                                                                                                              | `config/scantag.ts` (`AR_MEASURE`)                   |
+| Controle per scan   | Opnieuw scannen bij: tracking kwijt, onrustig punt, te kort vastgehouden, ontbrekend punt, hoeken niet in één vlak (op het glas), geen rechthoek (naast de rand of verkeerde volgorde), dieptekaart spreekt tracking tegen, kozijn niet gevonden, niet recht naar achteren, maat past niet bij de opname.           | `assessShot`                                         |
+| Oordeel per maat    | Drie statussen (hieronder), per product en montage.                                                                                                                                                                                                                                                                 | `verdictFor`, `scanCriteria`                         |
+| Vrijgave            | De browser stuurt alleen de punten (geen beeld) naar `/api/scantag`. Vóór betaling komen alleen statussen terug; na een server-side geverifieerde betaling van hetzelfde project ook de maten. Niets wordt opgeslagen.                                                                                              | `app/api/scantag/route.ts`, `lib/scantag/process.ts` |
+
+Er wordt geen foto gemaakt of bewaard. De schaal komt nooit uit een plattegrond, de BAG, een afbeelding of een
+generatief model.
+
+## Drie meetstatussen
+
+| Status                       | Betekenis                                                                                                           | Wanneer                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `accepted`                   | Voldoet aan de **gevalideerde** kwaliteitscriteria voor dit product. Mag meetellen voor een bestelmaat.             | Alleen als `validated` voor het product is ingevuld uit een validatierapport. **Nu nooit.**                                            |
+| `retake_required`            | Opnieuw scannen helpt: zichtbaarheid, stilhouden, perspectief, inconsistente scans, of te ver weg voor dit product. | Fout in de scan of `come_closer`                                                                                                       |
+| `not_supported_for_ordering` | Deze browser, sensor of invoer levert geen voldoende betrouwbare metrische maat voor dit product.                   | Geen WebXR-AR (iPhone/iPad Safari, computer), andere raamvorm, `sensor_too_coarse` (ook van dichtbij te grof), of nog niet gevalideerd |
+
+Elke ScanTag-maat bewaart: ruwe waarde (onafgerond), foutmarge, aantal scans, status, redenen, bron van de schaal
+(`webxr_hit_test` of `webxr_hit_test_depth`), apparaatgegevens (WebXR, hit-test, dieptekaart, DOM-overlay, platform,
+browser; geen identificatie) en tijdstip (`window.sources`).
+
+**Eerlijk gevolg van het aangenomen model:** met 1 % schaalfout en een paar mm per punt is een rolgordijn of plissé in
+de dag (±4 mm) met telefoon-AR niet haalbaar (`sensor_too_coarse`). Voor gordijnen en producten op de dag is de marge
+ruimer; daar vraagt ScanTag hooguit om dichterbij te scannen. Alleen een fysieke validatie kan laten zien dat het model
+te voorzichtig is.
+
+## Bestelmaat
+
+Drie gescheiden lagen: waargenomen geometrie (AR-punten), gemeten opening (`observedOpeningDimensions`:
+`openingWidthMm`, `openingHeightMm`, `depthMm`, `measurementUncertaintyMm`) en bestelmaat (`orderDimensions`:
+`orderWidthMm`, `orderHeightMm`, hele millimeters). Een bestelmaat bestaat **alleen** als:
+
+1. de productregel van de leverancier door een mens tegen de bron is gecontroleerd (`published`) en niet ouder is
+   dan een jaar, en
+2. elke beslissende maat `accepted` (ScanTag) of door de gebruiker bevestigd is, en het raam bevestigd is, en
+3. er geen open vragen, ontbrekende maten of productgrenzen in de weg zitten.
+
+Anders is er geen getal, ook geen voorlopig: alleen de status (`rule_not_verified`, `measurement_not_accepted`,
+`needs_verification`, …) en de redenen. Zonder afrondingsregel uit de bron ronden we de bestelvelden naar beneden af op
+hele millimeters; tussentijds ronden we niet af.
+
+## Vóór betaling
+
+De klant ziet per raam alleen: gescand of niet, welke opname opnieuw moet en waarom, en bij het betalen een eerlijk
+overzicht: "Bestelmaat mogelijk voor 0 van 3 ramen", met de redenen (regel niet gecontroleerd, ScanTag niet
+gevalideerd). Geen maat in de pagina en geen maat in het netwerkverkeer (e2e `scantag.spec.ts`).
+
+## Mobiel en desktop
+
+Op een computer of een toestel zonder AR-tracking zegt ScanTag dat eerlijk en biedt "Verder op een telefoon die kan
+scannen": een eenmalige, kortlevende QR-link (10 minuten; sleutel alleen in het `#`-deel) zet hetzelfde project
+versleuteld op de telefoon; de scans gaan op dezelfde manier terug (`lib/transfer`). Geen beelden, geen publieke URL's.
 
 ## Status per onderdeel
 
-| Onderdeel | Status | Waar |
-| --- | --- | --- |
-| Camera, upload, toestemming pas bij start, geweigerde camera | **Echt** | `CameraMeasure.tsx`, e2e `camera*.spec.ts` |
-| Meetkunde: vlak uit één of twee referenties, sub-pixel randen, foutmarge | **Echt**, getest op synthetische foto's | `photo.ts`, `edges.ts`, `tests/photo|edges.test.ts` |
-| Fotocontroles (onscherp, schuin, te klein, schittering) | **Echt**, drempels zijn startwaarden | `scantag/quality.ts` |
-| Schaalbewijs: alleen een fysieke referentie (A4, bankpas) in het meetvlak | **Echt**; BAG, plattegrond of overlay tellen nooit als schaal | `camera.ts` |
-| Maten pas na betaling, server-side vrijgegeven | **Echt** (punten naar de server, nooit foto's) | `api/scantag`, `tests/scantag.test.ts`, e2e `scantag.spec.ts` |
-| Drie lagen (geometrie, opening, bestelmaat), validatiestatus, auditlog | **Echt** | `projects/schema.ts`, `rules/engine.ts`, `projects/audit.ts` |
-| Productregelschema en engine | **Echt**, met golden fixtures en property-tests | `src/lib/rules`, `tests/rules.test.ts` |
-| Tuiss-adapter | **Concept**: samengevat, deels bevestigd, nog niet door een mens tegen de volledige bron gecontroleerd | `rules/tuiss.ts`, `docs/MEETREGELS.md` |
-| Mobiel ↔ desktop (QR, eenmalig, versleuteld) | **Echt**; in productie alleen met `DATABASE_URL` | `api/overdracht`, `lib/transfer`, e2e `transfer.spec.ts` |
-| Acceptatiegrenzen per productfamilie | **Leeg (bewust)**: geen ScanTag-maat is gevalideerd | `config/scantag.ts` |
-| Systematische marge 0,5 % | **Aanname**, zichtbaar bij elke maat | `config/site.ts` |
-| Fysieke metrologische validatie | **Nog uit te voeren**: plan, statistiek en harnas staan klaar | `docs/METROLOGIE.md`, `npm run validate` |
-| WebXR/AR-diepte | **Niet gebruikt**: alleen gedetecteerd | `capabilities.ts` |
-| Live-kaders in de camera | **Basis**: hulplijnen in de live camera; geen live-detectie (de camera-app maakt scherpere foto's) | `CameraMeasure.tsx` |
-
-Er is geen nepscan, nep-zekerheid of verzonnen meetwaarde in de app: elke maat komt uit aangetikte punten op een
-echte foto en de meetkunde hierboven, met de foutmarge erbij.
+| Onderdeel                                         | Status                                                                                                              | Waar                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Capability-detectie, AR-sessie, punten vastleggen | **Echt**; e2e met een WebXR-testdubbel (desktop-Chromium heeft geen AR)                                             | `ArScan.tsx`, `ar-session.ts`, `e2e/fake-webxr.ts`   |
+| Meetkunde, foutmarge, controles, statussen        | **Echt**, getest met synthetische scans                                                                             | `scan.ts`, `ar-geometry.ts`, `tests/scantag.test.ts` |
+| Onzekerheidsmodel (2 mm + 2 mm/m, 1 %)            | **Aanname**, zichtbaar bij elke maat                                                                                | `config/scantag.ts`                                  |
+| Kwaliteitsdrempels per product                    | **Startwaarden**, configureerbaar; `validated` overal leeg                                                          | `config/scantag.ts`                                  |
+| Servervrijgave na betaling                        | **Echt**                                                                                                            | `api/scantag`, `tests/scantag.test.ts`               |
+| Bestelmaat alleen met gecontroleerde regel        | **Echt**; Tuiss-regels zijn nog concept, dus nu geen Tuiss-bestelmaat                                               | `rules/engine.ts`, `docs/MEETREGELS.md`              |
+| Op echte telefoons getest                         | **Nog niet**: Android met ARCore (Chrome) is het doel; iPhone heeft geen WebXR-AR in Safari                         | `docs/METROLOGIE.md`                                 |
+| Contourherkenning (raamranden automatisch vinden) | **Niet gebouwd**: je richt zelf op de hoeken. Zonder metrische schaal zou herkenning ook geen millimeters opleveren | —                                                    |
+| LiDAR/ToF                                         | **Niet bereikbaar** vanuit een browser; alleen wat WebXR aanbiedt wordt gebruikt                                    | —                                                    |
 
 ## Tests
 
-- Unit en integratie (Vitest): regels per record incl. de 25 mm-grens, min/max-keuze en dubbele correcties; golden
-  fixtures; property-based tests (eenheden, ontbrekende en onmogelijke maten, tegelregel, concept nooit
-  `order_ready`); servervrijgave en weigering (onbetaald, verkeerd geheim, ander project, andere site, ongeldige
-  invoer); auditlog; scanstatus; fotocontroles; overdracht (versleuteling, eenmalig, verlopen, terug, API).
-- E2E (Playwright): camera geweigerd, camera met toestemming, foto uploaden, ScanTag vóór betaling zonder maat in
-  pagina of netwerk en vrijgave na betaling, geen verbinding en later verwerken, overdracht met twee apparaten
-  (incl. gebruikte en kapotte link), betaling geannuleerd en via Mollie (bestaande tests), rapportdownload.
-- Niet als e2e: een verlopen QR-token (tien minuten wachten); gedekt door unit- en API-tests met een gegeven tijd.
+- Unit (Vitest): opening op een gedraaide muur, ruwe waarden onafgerond, marge groeit met afstand, diepte langs de
+  normaal, paren; elke kwaliteitscontrole; drie statussen inclusief `accepted` met gevalideerde criteria; geen
+  metrische schaal → geen waarden; pixelpunten geweigerd; servervrijgave en weigering (onbetaald, verkeerd geheim, ander
+  project, client-vlag, andere site, ongeldige invoer); oude A4-scans vervallen bij laden; auditlog; scanstatus;
+  eerlijk overzicht vóór betaling; bestelmaat alleen met gecontroleerde regel en geaccepteerde maten, in hele mm.
+- E2E (Playwright, WebXR-testdubbel): scan vóór betaling zonder maat in pagina of netwerk en vrijgave na betaling;
+  na betaling maten met marge, de rest met de hand, bevestigen, geen bestelmaat; hoek op het glas → opnieuw scannen;
+  geen AR → eerlijk niet ondersteund en verder via QR; camera geweigerd; zonder verbinding bewaard en later
+  gecontroleerd; overdracht met twee apparaten.

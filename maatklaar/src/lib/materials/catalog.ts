@@ -664,7 +664,8 @@ function windowStatus(w: WindowResult): CategoryStatus {
   if (w.evaluation.status === "afwijking") return "extra_controle_nodig";
   const map: Record<OrderStatus, CategoryStatus> = {
     order_ready: "klaar_voor_bestellen",
-    concept: "wacht_op_controle",
+    rule_not_verified: "wacht_op_controle",
+    measurement_not_accepted: "wacht_op_controle",
     measuring_sheet: "wacht_op_controle",
     needs_more_data: "niet_genoeg_gegevens",
     needs_verification: "extra_controle_nodig",

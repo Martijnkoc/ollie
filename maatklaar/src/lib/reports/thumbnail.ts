@@ -3,7 +3,7 @@
 import { renderPageCanvas } from "@/lib/documents/render";
 import { centroid } from "@/lib/geometry/polygon";
 import type { Project } from "@/lib/projects/schema";
-import { loadFile, loadPhoto, shotPhotoKey } from "@/lib/projects/store";
+import { loadFile } from "@/lib/projects/store";
 
 /**
  * Renders the selected plan page with numbered rooms and window codes for the PDF, in the browser.
@@ -59,59 +59,4 @@ export async function planThumbnail(project: Project): Promise<{ png: Uint8Array
   } catch {
     return null;
   }
-}
-
-/**
- * JPEG crops of the window photos for the report: the measured opening (or all tapped points) plus a margin,
- * or the whole photo when nothing was tapped. Photos are read from this device only.
- */
-export async function windowPhotoCrops(project: Project): Promise<Record<string, { jpg: Uint8Array; width: number; height: number }>> {
-  const out: Record<string, { jpg: Uint8Array; width: number; height: number }> = {};
-  for (const w of project.windows) {
-    const shot = w.camera.find((s) => s.task === "opening") ?? w.camera[0];
-    const source = shot
-      ? {
-          key: shotPhotoKey(w.id, shot.id),
-          width: shot.width,
-          height: shot.height,
-          pts: shot.task === "opening" ? shot.points : [...shot.reference, ...shot.points],
-        }
-      : w.photo
-        ? { key: w.id, width: w.photo.width, height: w.photo.height, pts: w.photo.opening.length === 4 ? w.photo.opening : [] }
-        : null;
-    if (!source) continue;
-    const blob = await loadPhoto(project.id, source.key);
-    if (!blob) continue;
-    try {
-      const bitmap = await createImageBitmap(blob);
-      const pts = source.pts;
-      const sx = bitmap.width / source.width;
-      const sy = bitmap.height / source.height;
-      let x0 = 0;
-      let y0 = 0;
-      let x1 = bitmap.width;
-      let y1 = bitmap.height;
-      if (pts.length) {
-        const xs = pts.map((p) => p.x * sx);
-        const ys = pts.map((p) => p.y * sy);
-        const mx = (Math.max(...xs) - Math.min(...xs)) * 0.12;
-        const my = (Math.max(...ys) - Math.min(...ys)) * 0.12;
-        x0 = Math.max(0, Math.min(...xs) - mx);
-        y0 = Math.max(0, Math.min(...ys) - my);
-        x1 = Math.min(bitmap.width, Math.max(...xs) + mx);
-        y1 = Math.min(bitmap.height, Math.max(...ys) + my);
-      }
-      const scale = Math.min(1, 480 / Math.max(x1 - x0, y1 - y0));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round((x1 - x0) * scale));
-      canvas.height = Math.max(1, Math.round((y1 - y0) * scale));
-      canvas.getContext("2d")!.drawImage(bitmap, x0, y0, x1 - x0, y1 - y0, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
-      const jpg = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.82));
-      if (jpg) out[w.id] = { jpg: new Uint8Array(await jpg.arrayBuffer()), width: canvas.width, height: canvas.height };
-    } catch {
-      // A photo that cannot be decoded is simply left out of the report.
-    }
-  }
-  return out;
 }

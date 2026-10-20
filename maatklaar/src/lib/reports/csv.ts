@@ -1,5 +1,6 @@
 import type { ProjectComputation } from "@/lib/projects/compute";
 import { MEASURE_INFO } from "@/lib/measurements/schema";
+import { SCAN_STATUS_LABELS, shownMarginMm } from "@/lib/measurements/scan";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
 import { ORDER_STATUS_LABELS } from "@/lib/rules/engine";
 import { STATUS_META } from "@/lib/projects/status";
@@ -78,30 +79,55 @@ export function buildCsv(c: ProjectComputation, opts: { demo: boolean; materials
       "",
     ]);
 
-  for (const { window: w, rule, evaluation: e, roomName: rn } of c.windows) {
+  // Windows: every measuring point, then the explicit fields of the measured opening and the order size, all in
+  // whole millimetres. Scan values are shown rounded; their margin is in the note, rounded up.
+  for (const { window: w, rule, evaluation: e, opening: op, order: o, roomName: rn } of c.windows) {
+    const room = rn ? ` (${rn})` : "";
     for (const k of [...rule.required, ...rule.optional]) {
+      const v = w.measures[k];
+      const src = w.sources[k];
       rows.push([
         `Raam ${w.code}`,
-        `${MEASURE_INFO[k].label}${rn ? ` (${rn})` : ""}`,
-        w.measures[k] ?? null,
+        `${MEASURE_INFO[k].label}${room}`,
+        v === undefined ? null : Math.round(v),
         "mm",
         WINDOW_STATUS_LABELS[e.status],
-        w.sources[k] && w.measures[k] !== undefined
-          ? `ruwe maat; camera ±${w.sources[k]!.uncertaintyMm} mm (${w.sources[k]!.shots} foto${w.sources[k]!.shots > 1 ? "'s" : ""})`
-          : "ruwe maat",
+        src && v !== undefined
+          ? `ScanTag ±${shownMarginMm(src.uncertaintyMm)} mm, ${src.shots} scan${src.shots > 1 ? "s" : ""}, ${SCAN_STATUS_LABELS[src.status].toLowerCase()}`
+          : v === undefined
+            ? ""
+            : "zelf gemeten",
       ]);
     }
-    const o = c.windows.find((x) => x.window.id === w.id)!.order;
-    rows.push([
-      `Raam ${w.code}`,
-      "Bestelmaat (breedte x hoogte)",
-      o.order && !o.order.byCode ? `${o.order.widthMm ?? "navragen"} x ${o.order.heightMm ?? "navragen"}` : (o.order?.byCode ?? null),
-      o.order?.byCode ? "typecode" : "mm",
-      ORDER_STATUS_LABELS[o.status],
-      o.status === "measuring_sheet"
-        ? `volgens meetinstructie leverancier (${o.rule.title})`
-        : `${o.rule.title} regels ${o.rule.version}${o.rule.url ? ` (${o.rule.url})` : ""}${o.blockedBy.length || o.questions.length ? `; niet definitief: ${[...o.questions.map((q) => q.question), ...o.blockedBy].join(" | ")}` : ""}`,
-    ]);
+    const dimRow = (name: string, label: string, mm: number | null, margin: number | null) =>
+      rows.push([
+        `Raam ${w.code}`,
+        `${name} (${label})${room}`,
+        mm === null ? null : Math.round(mm),
+        "mm",
+        WINDOW_STATUS_LABELS[e.status],
+        margin === null ? "" : `measurementUncertaintyMm ${shownMarginMm(margin)}`,
+      ]);
+    dimRow("openingWidthMm", "gemeten opening, kleinste breedte", op.openingWidthMm, op.measurementUncertaintyMm.width);
+    dimRow("openingHeightMm", "gemeten opening, kleinste hoogte", op.openingHeightMm, op.measurementUncertaintyMm.height);
+    if (op.depthMm !== null) dimRow("depthMm", "diepte van de dag", op.depthMm, op.measurementUncertaintyMm.depth);
+    const why = [...o.questions.map((q) => q.question), ...o.blockedBy].join(" | ");
+    const rule$ = `${o.rule.title} regels ${o.rule.version}${o.rule.url ? ` (${o.rule.url})` : ""}`;
+    if (o.order?.byCode)
+      rows.push([`Raam ${w.code}`, "Bestellen op typecode", o.order.byCode, "typecode", ORDER_STATUS_LABELS[o.status], rule$]);
+    else
+      for (const [name, value] of [
+        ["orderWidthMm", o.order?.orderWidthMm ?? null],
+        ["orderHeightMm", o.order?.orderHeightMm ?? null],
+      ] as const)
+        rows.push([
+          `Raam ${w.code}`,
+          `${name} (bestelmaat)`,
+          value,
+          "mm",
+          ORDER_STATUS_LABELS[o.status],
+          o.status === "measuring_sheet" ? `volgens meetinstructie leverancier (${o.rule.title})` : `${rule$}${why ? `; ${why}` : ""}`,
+        ]);
   }
   for (const m of opts.materials ?? []) {
     for (const row of m.table.rows) {

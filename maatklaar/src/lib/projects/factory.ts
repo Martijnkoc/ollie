@@ -32,7 +32,7 @@ export function newProject(now = new Date()): Project {
     payment: null,
     report: { includeAddress: false },
     materials: { selected: ["verf"], rooms: {}, inputs: {} },
-    camera: [],
+    scans: [],
   };
 }
 
@@ -99,13 +99,13 @@ export function newWindow(windows: readonly ProjectWindow[], extra: Partial<Proj
     confirmed: false,
     fullness: null,
     planWidthMm: null,
-    camera: [],
+    scans: [],
+    scanVerdicts: null,
     sources: {},
     answers: {},
     shape: "rechthoek",
     confirmedAt: null,
     audit: [],
-    photo: null,
     ...extra,
   };
 }

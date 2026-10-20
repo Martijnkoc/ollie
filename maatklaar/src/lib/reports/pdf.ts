@@ -19,6 +19,7 @@ const C = {
 
 const STATUS_COLOR: Record<ReportStatus, RGB> = {
   auto: rgb(0.55, 0.42, 0.06),
+  measured: rgb(0.2, 0.3, 0.5),
   confirmed: rgb(0.11, 0.42, 0.26),
   derived: rgb(0.12, 0.33, 0.47),
   check: rgb(0.65, 0.33, 0.07),
@@ -366,7 +367,7 @@ export async function renderReportPdf(model: ReportModel): Promise<{ bytes: Uint
 
   if (model.windows.cards.length) {
     L.paragraph("Per raam", { font: L.bold, gap: 4 });
-    for (const card of model.windows.cards) await L.card(card.title, card.photo, card.rows);
+    for (const card of model.windows.cards) await L.card(card.title, null, card.rows);
   }
 
   // 6b. Materialen

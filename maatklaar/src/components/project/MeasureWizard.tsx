@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SCAN_STATUS_LABELS, shownMarginMm } from "@/lib/measurements/scan";
 import { formatMm, parseWholeMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, evaluateWindow, groupSignature } from "@/lib/measurements/evaluate";
 import {
@@ -62,10 +63,10 @@ function screensFor(rule: MeasurementRuleSet, product: ProductRule): Screen[] {
   return screens;
 }
 
-/** Where to continue after measuring with the camera: the first missing measurement, else the questions. */
 /** A screen for a length that depends on a check is skipped while that check does not ask for it. */
 const applies = (s: Screen, w: ProjectWindow) => s.kind !== "measure" || !s.when || w.checks[s.when.check] === s.when.equals;
 
+/** Where to continue after scanning: the first missing measurement, else the questions. */
 function resumeAt(screens: Screen[], w: ProjectWindow) {
   const missing = screens.findIndex((s) => s.kind === "measure" && !s.optional && applies(s, w) && !w.measures[s.key]);
   if (missing >= 0) return missing;
@@ -87,7 +88,7 @@ export function MeasureWizard({
   /** The product rule behind `rule`: its answer inputs and the order layer. */
   product: ProductRule;
   order: OrderResult;
-  /** Start where the camera left off instead of at the introduction. */
+  /** Start where the scan left off instead of at the introduction. */
   resume?: boolean;
   onChange: (w: ProjectWindow) => void;
   onClose: () => void;
@@ -109,7 +110,7 @@ export function MeasureWizard({
   }, []);
 
   useEffect(() => {
-    if (screen.kind === "measure") setText(w.measures[screen.key] ? String(w.measures[screen.key]) : "");
+    if (screen.kind === "measure") setText(w.measures[screen.key] ? String(Math.round(w.measures[screen.key]!)) : "");
     setInvalid(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
@@ -129,8 +130,10 @@ export function MeasureWizard({
       return false;
     }
     // A changed measurement needs a new confirmation; an acknowledged spread lapses by itself (signature).
-    // A value typed over a camera value is the user's own measurement from then on.
-    if (w.measures[key] !== mm) {
+    // A scan value shown rounded and left as it is stays the scan value (unrounded, with its margin); a value
+    // typed over it is the user's own measurement from then on.
+    const unchangedScan = w.sources[key] && w.measures[key] !== undefined && Math.round(w.measures[key]!) === mm;
+    if (!unchangedScan && w.measures[key] !== mm) {
       const sources = { ...w.sources };
       delete sources[key];
       onChange({ ...w, measures: { ...w.measures, [key]: mm }, sources, confirmed: false });
@@ -195,8 +198,8 @@ export function MeasureWizard({
               <MeasureDiagram active={null} keys={keys} />
             </div>
             <p style={{ margin: 0 }}>
-              We vragen alleen de maten die nodig zijn voor <strong>{rule.title.toLowerCase()}</strong>. Meet met een stalen rolmaat in
-              millimeters, op elk punt opnieuw, of sluit dit venster en kies &ldquo;Meten met camera&rdquo;. We middelen niets weg:
+              We vragen alleen de maten die nodig zijn voor <strong>{rule.title.toLowerCase()}</strong>, in hele millimeters. Gescand met
+              ScanTag? Dan staan die maten hier al; vul alleen in wat nog ontbreekt of wat je zelf anders meet. We middelen niets weg:
               verschillen tussen meetpunten blijven zichtbaar.
             </p>
             <div className="field">
@@ -247,8 +250,8 @@ export function MeasureWizard({
               <span id="maat-hint" className="hint">
                 {invalid ? (
                   <span style={{ color: "var(--danger)" }}>Vul hele millimeters in, bijvoorbeeld 1250.</span>
-                ) : w.sources[screen.key] && String(w.measures[screen.key]) === text ? (
-                  `Met de camera gemeten: ± ${formatMm(w.sources[screen.key]!.uncertaintyMm)} (${w.sources[screen.key]!.shots} foto${w.sources[screen.key]!.shots > 1 ? "'s" : ""}). Meet je zelf iets anders, vul dat dan in.`
+                ) : w.sources[screen.key] && String(Math.round(w.measures[screen.key]!)) === text ? (
+                  `Gemeten met ScanTag: ± ${formatMm(shownMarginMm(w.sources[screen.key]!.uncertaintyMm))} (${w.sources[screen.key]!.shots} scan${w.sources[screen.key]!.shots > 1 ? "s" : ""}, ${SCAN_STATUS_LABELS[w.sources[screen.key]!.status].toLowerCase()}). Meet je zelf iets anders, vul dat dan in.`
                 ) : (
                   MEASURE_INFO[screen.key].hint
                 )}
@@ -420,7 +423,7 @@ export function MeasureWizard({
                       <th scope="row">{MEASURE_INFO[k].label}</th>
                       <td className="num">
                         {w.measures[k]
-                          ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ± ${w.sources[k]!.uncertaintyMm} (camera)` : ""}`
+                          ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ± ${formatMm(shownMarginMm(w.sources[k]!.uncertaintyMm))} (ScanTag)` : ""}`
                           : rule.required.includes(k)
                             ? "nog meten"
                             : "—"}

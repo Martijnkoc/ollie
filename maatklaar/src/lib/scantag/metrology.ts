@@ -1,15 +1,15 @@
 /**
- * Statistics for the physical validation of ScanTag (docs/METROLOGIE.md): each record compares one camera
- * value with a reference instrument. Kept apart on purpose from software tests: a green unit test says the
+ * Statistics for the physical validation of ScanTag (docs/METROLOGIE.md): each record compares one ScanTag
+ * value with a calibrated reference instrument. Kept apart on purpose from software tests: a green unit test says the
  * code does what it should, only these numbers on real windows say how accurate it is.
  *
  * Terms: display resolution (we show whole mm) is not repeatability (spread of repeated scans of one
- * window) is not uncertainty (the margin we report) is not error (camera value minus reference).
+ * window) is not uncertainty (the margin we report) is not error (ScanTag value minus reference).
  */
 export type MetrologyRecord = {
   /** Reference instrument value (mm). */
   truthMm: number;
-  /** Camera value (mm); null when the scan gave no value (failed, needs another photo). */
+  /** ScanTag value (mm); null when the scan gave no value (retake required or not supported). */
   measuredMm: number | null;
   /** Reported uncertainty (mm, about 95 %). */
   uncertaintyMm: number | null;

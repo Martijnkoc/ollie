@@ -6,26 +6,30 @@ alleen toe wat een record zegt. Er is geen universele regel: elke leveranciersre
 
 ## Het schema (`src/lib/rules/schema.ts`)
 
-| Veld | Betekenis |
-| --- | --- |
-| `source` | leverancier, titel, URL, `checkedOn` (wanneer een mens het record tegen de bron controleerde), `rulesVersion`, `status` (`concept` of `published`), notities |
-| `families`, `variant`, `variantLabel` | productfamilie(s) en variant (bijv. `hout-50`: houten jaloezie met 50 mm lamel) |
-| `mount` | `in_day`, `on_day`, `ceiling`, `wall`, `screwless`, `roof_window` (en rolluiktypen) |
-| `inputs` | verplichte en optionele maten (ook "alleen als er tegels zijn") en antwoorden (bevestiging, dakraamcode, eindpunt, ophanging, nieuwe rail) |
-| `checks` | obstakelvragen (grepen, tegels, vensterbank, …) |
-| `selection` | per breedte en hoogte: `minimum`, `maximum`, `position` (vaste meetpositie), `chosen` (jouw keuze, rail), `by_code` (dakraam) of `unspecified` met de vraag die de bron openlaat |
-| `depth` | minimale diepte per variant, of per antwoord (rolgordijn: plafond/wand), `straight` voor schroefloos; `null` = onbekend → vraag |
-| `narrowest` | smalste doorgang: onder de drempel de brede maat, erboven de smalle, precies op de drempel een vraag |
-| `overlap` | richtlijn of minimum boven/zijkant/onder |
-| `deductions` + `supplierMakesDeduction` | aftrek en wie hem doet; door de leverancier = wij trekken niets af (het schema weigert een dubbele aftrek) |
-| `supplierAdds` | wat de leverancier zelf optelt (30 mm bij ringen), nooit door ons opgeteld |
-| `rounding`, `limits` | alleen als de bron ze noemt; anders ronden we niet af |
-| `ambiguous` | open vragen uit de bron, altijd getoond |
+| Veld                                    | Betekenis                                                                                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source`                                | leverancier, titel, URL, `checkedOn` (wanneer een mens het record tegen de bron controleerde), `rulesVersion`, `status` (`concept` of `published`), notities                     |
+| `families`, `variant`, `variantLabel`   | productfamilie(s) en variant (bijv. `hout-50`: houten jaloezie met 50 mm lamel)                                                                                                  |
+| `mount`                                 | `in_day`, `on_day`, `ceiling`, `wall`, `screwless`, `roof_window` (en rolluiktypen)                                                                                              |
+| `inputs`                                | verplichte en optionele maten (ook "alleen als er tegels zijn") en antwoorden (bevestiging, dakraamcode, eindpunt, ophanging, nieuwe rail)                                       |
+| `checks`                                | obstakelvragen (grepen, tegels, vensterbank, …)                                                                                                                                  |
+| `selection`                             | per breedte en hoogte: `minimum`, `maximum`, `position` (vaste meetpositie), `chosen` (jouw keuze, rail), `by_code` (dakraam) of `unspecified` met de vraag die de bron openlaat |
+| `depth`                                 | minimale diepte per variant, of per antwoord (rolgordijn: plafond/wand), `straight` voor schroefloos; `null` = onbekend → vraag                                                  |
+| `narrowest`                             | smalste doorgang: onder de drempel de brede maat, erboven de smalle, precies op de drempel een vraag                                                                             |
+| `overlap`                               | richtlijn of minimum boven/zijkant/onder                                                                                                                                         |
+| `deductions` + `supplierMakesDeduction` | aftrek en wie hem doet; door de leverancier = wij trekken niets af (het schema weigert een dubbele aftrek)                                                                       |
+| `supplierAdds`                          | wat de leverancier zelf optelt (30 mm bij ringen), nooit door ons opgeteld                                                                                                       |
+| `rounding`, `limits`                    | alleen als de bron ze noemt; anders ronden we niet af                                                                                                                            |
+| `ambiguous`                             | open vragen uit de bron, altijd getoond                                                                                                                                          |
 
-Statussen van de bestelmaat: `order_ready`, `concept`, `needs_verification`, `needs_more_data`, `not_suitable`,
-`unsupported`, `measuring_sheet`. **`order_ready` alleen** als de regel `published` is, binnen een jaar is
-gecontroleerd, alle beslissende maten door de gebruiker bevestigd of gevalideerd zijn, er geen open vragen zijn en
-de diepte past.
+Statussen van de bestelmaat: `order_ready`, `rule_not_verified`, `measurement_not_accepted`, `needs_verification`,
+`needs_more_data`, `not_suitable`, `unsupported`, `measuring_sheet`. **Een bestelmaat (`orderWidthMm`,
+`orderHeightMm`, hele millimeters) bestaat alleen bij `order_ready`**: de regel is `published` en binnen een jaar
+gecontroleerd, alle beslissende maten zijn door de gebruiker bevestigd of als ScanTag-maat `accepted`, er zijn geen
+open vragen en de diepte en productgrenzen passen. In alle andere gevallen is er geen getal, ook geen voorlopig, maar
+een status met redenen. Met een regel die nog `concept` is (`rule_not_verified`) rekent de engine zelfs de keuze van de
+maat en de aftrek niet uit; hij noemt alleen wat er gemeten moet worden. Zonder afrondingsregel uit de bron rondt de
+engine de bestelvelden naar beneden af op hele millimeters; tussentijds rondt hij niet af.
 
 ## Tuiss-adapter (`src/lib/rules/tuiss.ts`) — status: concept
 

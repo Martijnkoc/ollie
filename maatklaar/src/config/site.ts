@@ -65,24 +65,6 @@ export const SOURCES = {
 /** Default warning threshold between measuring points of one window. An adjustable check, not a supplier norm. */
 export const MEASURE_DEVIATION_WARNING_MM = 3;
 
-/**
- * Measuring with the camera and a reference object (A4 sheet, bank card) in the measured plane.
- * `systematicPercent` covers what a single photo cannot reveal (residual lens distortion, a reference just
- * outside the measured plane). It is an assumption, shown with every result, until real windows measured
- * both ways are in the validation set (docs/VALIDATIE.md).
- */
-export const CAMERA_MEASURE = {
-  systematicPercent: 0.5,
-  /** Above this share of the value a camera measurement is not used. */
-  maxRelativeUncertainty: 0.05,
-  /** The shorter side of the reference must span at least this many photo pixels. */
-  minReferencePx: 60,
-  /** Two photos from slightly different spots catch a bad tap or a moved sheet. */
-  recommendedShots: 2,
-  /** Longest side of a stored photo; enough for sub-millimetre edges on a window, small enough for the device. */
-  maxPhotoSide: 3200,
-};
-
 export const FAQ = [
   {
     q: "Hoe nauwkeurig is het?",
@@ -94,15 +76,15 @@ export const FAQ = [
   },
   {
     q: "Hoe zit het met mijn ramen?",
-    a: "Op de plattegrond vinden we waar ramen zitten en geven we ze een code (R01, R02 …), met een indicatieve breedte. Hoe hoog een raam is staat niet op een plattegrond: dat meet je met ScanTag (je telefoon en twee A4-vellen op de muur) of met een rolmaat. Elke maat houdt zijn bron en foutmarge; we middelen niets weg. Een bestelmaat rekenen we uit met de meetregels van de leverancier die je kiest, met bron en versie. Zolang die regels of de ScanTag-maten niet gecontroleerd zijn, heet het een concept-bestelmaat.",
+    a: "Op de plattegrond vinden we waar ramen zitten en geven we ze een code (R01, R02 …), met een indicatieve breedte. Hoe hoog een raam is staat niet op een plattegrond: dat meet je met ScanTag, de AR-scan van je telefoon (geen papier, geen rolmaat). Elke maat houdt zijn bron, foutmarge en status, in millimeters; we middelen niets weg. Een bestelmaat rekenen we alleen uit met de meetregels van de leverancier die je kiest, als die regels door een mens tegen de bron zijn gecontroleerd en je maten geschikt zijn om op te bestellen. Anders krijg je geen getal, maar de reden.",
   },
   {
     q: "Hoe nauwkeurig is ScanTag?",
-    a: "Elke ScanTag-maat krijgt een foutmarge: hoe precies de hoeken zijn aangetikt en gevonden, plus een vaste marge voor wat één foto niet laat zien, zoals lensvervorming. Op testfoto's lag de fout binnen een paar millimeter, maar dat zegt nog niets over jouw telefoon en jouw raam. Daarom noemen we ScanTag-maten 'niet gevalideerd' tot we ze in echte woningen naast een gekalibreerde meting hebben gelegd. Een getal in hele millimeters is geen belofte dat het op de millimeter klopt.",
+    a: "Elke ScanTag-maat krijgt een foutmarge: hoe stil elk punt lag, hoe ver je stond, en een vaste marge voor de schaal van de AR-tracking. Die marges zijn een aanname tot we ScanTag in echte woningen naast een gekalibreerd meetinstrument hebben gelegd. Daarom heten ScanTag-maten nu 'niet geschikt om op te bestellen': je krijgt de gemeten opening met marge, geen bestelmaat. Voor een rolgordijn of plissé in de dag is telefoon-AR volgens dat model zelfs te grof. Een getal in hele millimeters is geen belofte dat het op de millimeter klopt.",
   },
   {
-    q: "Wat gebeurt er met mijn plattegrond en foto's?",
-    a: "Je plattegrond en raamfoto's worden in je eigen browser verwerkt en op je eigen apparaat bewaard, zodat je verder kunt na verversen. We sturen ze niet naar onze server en niet naar een AI-, vision- of OCR-dienst. Alleen je adreszoekopdracht gaat via onze server naar PDOK, en bij ScanTag de aangetikte punten (geen foto), zonder dat we die bewaren. Ga je verder op je telefoon, dan gaat je project versleuteld mee; wij kunnen het niet lezen en het verdwijnt binnen enkele uren. Je kunt je project met één knop verwijderen.",
+    q: "Wat gebeurt er met mijn plattegrond en scans?",
+    a: "Je plattegrond wordt in je eigen browser verwerkt en op je eigen apparaat bewaard, zodat je verder kunt na verversen. We sturen hem niet naar onze server en niet naar een AI-, vision- of OCR-dienst. ScanTag maakt geen foto's. Alleen je adreszoekopdracht gaat via onze server naar PDOK, en bij ScanTag de vastgelegde punten (geen beeld), zonder dat we die bewaren. Ga je verder op je telefoon, dan gaat je project versleuteld mee; wij kunnen het niet lezen en het verdwijnt binnen enkele uren. Je kunt je project met één knop verwijderen.",
   },
   {
     q: "Wat kost het, en is het een abonnement?",
@@ -110,7 +92,7 @@ export const FAQ = [
   },
   {
     q: "Wat kan MaatKlaar (nog) niet?",
-    a: "We zien geen plafondhoogtes, raamhoogtes of montagediepte op een plattegrond. We verzinnen geen leveranciersregels en geen standaard aftrek voor raamdecoratie. Een adres onthult geen binnenmaten. Een foto zonder bekende referentie (A4-vel of bankpas in hetzelfde vlak) geeft geen maat in millimeters. Erkers en ronde of schuine ramen meet ScanTag niet. Waar iets ontbreekt, staat dat er duidelijk bij.",
+    a: "We zien geen plafondhoogtes, raamhoogtes of montagediepte op een plattegrond. We verzinnen geen leveranciersregels en geen standaard aftrek voor raamdecoratie. Een adres onthult geen binnenmaten. Een camera zonder AR-tracking (zoals Safari op een iPhone) geeft geen maat in millimeters; dan ga je via een QR-code verder op een Android-telefoon die het kan. Erkers en ronde of schuine ramen meet ScanTag niet. Waar iets ontbreekt, staat dat er duidelijk bij.",
   },
   {
     q: "Waarom wijkt de som van mijn kamers af van de oppervlakte in de BAG?",

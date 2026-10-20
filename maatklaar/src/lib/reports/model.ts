@@ -2,7 +2,7 @@ import { BRAND, SOURCES } from "@/config/site";
 import { formatCount, formatM2, formatMFromMm, formatMm, formatPercent } from "@/lib/format";
 import { CATALOG, CATEGORY_STATUS_LABELS, computeCategory, type CategoryStatus } from "@/lib/materials/catalog";
 import { patternByKey } from "@/lib/materials/patterns";
-import { cameraResults, ceilingHeightM, type MeasureSource } from "@/lib/measurements/camera";
+import { ceilingHeightM, combinedValues, SCAN_STATUS_LABELS, shownMarginMm, type MeasureSource } from "@/lib/measurements/scan";
 import { WINDOW_STATUS_LABELS } from "@/lib/measurements/evaluate";
 import { ORDER_STATUS_LABELS, orderSummary, type OrderResult } from "@/lib/rules/engine";
 import { MEASURE_GROUPS, MEASURE_INFO, MOUNTING_SHORT, PRODUCT_LABELS, PRODUCT_SHORT, type MeasureKey } from "@/lib/measurements/schema";
@@ -25,8 +25,6 @@ export type MaterialSection = {
 
 export type WindowCard = {
   title: string;
-  /** JPEG crop of the window from the user's photo, when there is one. */
-  photo: { jpg: Uint8Array; width: number; height: number } | null;
   rows: { label: string; value: string }[];
 };
 
@@ -86,32 +84,38 @@ export const statusText = (s: ReportStatus) => (s === "neutral" ? "" : STATUS_ME
 
 type Sources = Partial<Record<MeasureKey, MeasureSource>>;
 
-/** "boven 1203 · midden 1201±8 · onder 1202 mm": every point named, camera values with their ±, the unit once at the end. */
+/** Whole millimetres for display; the stored value stays unrounded. */
+const wholeMm = (mm: number) => String(Math.round(mm));
+
+/** "boven 1203 · midden 1201±8 · onder 1202 mm": every point named, scan values with their ±, the unit once at the end. */
 function measureList(keys: readonly MeasureKey[], measures: Partial<Record<MeasureKey, number>>, sources: Sources) {
   const parts = keys
     .filter((k) => typeof measures[k] === "number")
-    .map((k) => `${k.split("_").pop()} ${measures[k]}${sources[k] ? `±${sources[k]!.uncertaintyMm}` : ""}`);
+    .map((k) => `${k.split("_").pop()} ${wholeMm(measures[k]!)}${sources[k] ? `±${shownMarginMm(sources[k]!.uncertaintyMm)}` : ""}`);
   return parts.length ? `${parts.join(" · ")} mm` : "nog meten";
 }
 
-/** The order size in a table cell: "1200 × 1495 mm", sides that need asking say so. */
+/** The order size in a table cell: "1200 × 1495 mm" only when it may be ordered; otherwise why not. */
 function orderCell(o: OrderResult) {
-  if (!o.order) return o.status === "measuring_sheet" ? "volgens leverancier" : ORDER_STATUS_LABELS[o.status].toLowerCase();
+  if (!o.order)
+    return o.status === "measuring_sheet"
+      ? "volgens leverancier"
+      : ORDER_STATUS_LABELS[o.status].replace(/^Nog geen bestelmaat: /, "nog niet: ");
   if (o.order.byCode) return `op typecode ${o.order.byCode}`;
-  const side = (mm: number | null) => (mm === null ? "navragen" : formatMm(mm));
-  return `${side(o.order.widthMm)} × ${side(o.order.heightMm)}${o.status === "order_ready" ? "" : " (concept)"}`;
+  const side = (mm: number | null) => (mm === null ? "navragen" : String(mm));
+  return `${side(o.order.orderWidthMm)} × ${side(o.order.orderHeightMm)} mm`;
 }
 
 /** The order layer of a window card: rule and source, selected sizes, corrections, depth, status, open points. */
 function orderRows(o: OrderResult): { label: string; value: string }[] {
   const rows = [
     {
-      label: "Regel",
-      value: `${o.rule.title}, regels ${o.rule.version}${o.rule.url ? ` — ${o.rule.url}` : ""}${o.rule.status === "concept" ? " (concept, nog niet volledig tegen de bron gecontroleerd)" : o.rule.checkedOn ? ` (gecontroleerd ${o.rule.checkedOn})` : ""}`,
+      label: "Productregel",
+      value: `${o.rule.title}, regels ${o.rule.version}${o.rule.url ? ` — ${o.rule.url}` : ""}${o.rule.status === "concept" ? " (nog niet tegen de volledige bron gecontroleerd)" : o.rule.checkedOn ? ` (gecontroleerd ${o.rule.checkedOn})` : ""}`,
     },
   ];
-  if (o.width) rows.push({ label: "Gekozen breedte", value: `${formatMm(o.width.mm)}: ${o.width.how}` });
-  if (o.height) rows.push({ label: "Gekozen hoogte", value: `${formatMm(o.height.mm)}: ${o.height.how}` });
+  if (o.width) rows.push({ label: "Telt voor de breedte", value: `${formatMm(o.width.mm)}: ${o.width.how}` });
+  if (o.height) rows.push({ label: "Telt voor de hoogte", value: `${formatMm(o.height.mm)}: ${o.height.how}` });
   if (o.suggestion)
     rows.push({
       label: "Overlap",
@@ -120,35 +124,33 @@ function orderRows(o: OrderResult): { label: string; value: string }[] {
   for (const k of o.corrections)
     rows.push({
       label: "Correctie",
-      value: `${k.what} (${k.appliedBy === "leverancier" ? "door de leverancier" : "door MaatKlaar"}): ${k.reason}`,
+      value: `${k.what} (${k.appliedBy === "leverancier" ? "door de leverancier" : `door ${BRAND.name}`}): ${k.reason}`,
     });
   if (o.depth)
     rows.push({
-      label: "Diepte",
+      label: "Montagediepte",
       value: `${o.depth.measuredMm !== null ? formatMm(o.depth.measuredMm) : "niet gemeten"}; nodig ${o.depth.requiredMm !== null ? formatMm(o.depth.requiredMm) : "onbekend"}${o.depth.ok === null ? "" : o.depth.ok ? " — voldoende" : " — te weinig"}`,
     });
   rows.push({ label: "Bestelmaat", value: orderSummary(o) });
   for (const q of o.questions) rows.push({ label: "Navragen", value: q.question });
-  for (const b of o.blockedBy) rows.push({ label: "Niet definitief", value: b });
+  for (const b of o.blockedBy) rows.push({ label: "Waarom (nog) niet", value: b });
   return rows;
 }
 
-/** Provenance of one window measurement, as in the room sources: camera values are browser_scan_estimate. */
+/** Provenance of one window measurement: ScanTag with its scale source, margin and status, or the user's own. */
 function measureProvenance(source: MeasureSource | undefined, confirmed: boolean) {
-  const code = source
-    ? `browser_scan_estimate ±${source.uncertaintyMm} mm, ${source.shots} foto${source.shots > 1 ? "'s" : ""}`
-    : "user_input";
-  return confirmed ? `${code} · user_confirmed` : code;
+  if (!source) return confirmed ? "zelf gemeten · door jou bevestigd" : "zelf gemeten · nog niet bevestigd";
+  return `ScanTag (${source.scaleSource === "webxr_hit_test_depth" ? "AR-tracking met dieptekaart" : "AR-tracking"}), ${source.shots} scan${source.shots > 1 ? "s" : ""}, ${SCAN_STATUS_LABELS[source.status].toLowerCase()}`;
 }
 
 /**
- * Lower bound of a group of camera measurements: the smallest value minus its uncertainty. What still fits
- * between two walls when every camera value is as far off as its margin allows.
+ * Lower bound of a group of scan measurements: the smallest value minus its margin. What still fits between
+ * two walls when every scan value is as far off as its margin allows.
  */
 export function lowerBound(keys: readonly MeasureKey[], measures: Partial<Record<MeasureKey, number>>, sources: Sources) {
   const values = keys.filter((k) => typeof measures[k] === "number");
   if (!values.some((k) => sources[k])) return null;
-  return Math.min(...values.map((k) => measures[k]! - (sources[k]?.uncertaintyMm ?? 0)));
+  return Math.min(...values.map((k) => measures[k]! - (sources[k] ? shownMarginMm(sources[k]!.uncertaintyMm) : 0)));
 }
 
 /**
@@ -161,8 +163,6 @@ export function buildReportModel(
   opts: {
     now: Date;
     plan?: { png: Uint8Array; width: number; height: number; page: number } | null;
-    /** JPEG crops of window photos, by window id. */
-    photos?: Record<string, { jpg: Uint8Array; width: number; height: number }>;
   },
 ): ReportModel {
   const demo = project.payment?.mode === "demo";
@@ -239,33 +239,33 @@ export function buildReportModel(
     },
   ];
 
-  // Windows
-  const windowRows: Cell[][] = c.windows.map(({ window: w, rule, evaluation: e, order: o, roomName: rn }) => {
+  // Windows: the measured opening (observedOpeningDimensions) and the order size (orderDimensions), both in mm.
+  const marginCell = (mm: number | null) => (mm === null ? "" : ` ±${shownMarginMm(mm)}`);
+  const windowRows: Cell[][] = c.windows.map(({ window: w, rule, evaluation: e, opening: op, order: o, roomName: rn }) => {
     const keys = [...rule.required, ...rule.optional];
-    const grouped = new Set<MeasureKey>(Object.values(MEASURE_GROUPS).flat());
-    const width = keys.filter((k) => (MEASURE_GROUPS.breedte as readonly MeasureKey[]).includes(k));
-    const height = keys.filter(
-      (k) =>
-        (MEASURE_GROUPS.hoogte as readonly MeasureKey[]).includes(k) || (MEASURE_GROUPS.ophanghoogte as readonly MeasureKey[]).includes(k),
-    );
+    const grouped = new Set<MeasureKey>([...MEASURE_GROUPS.breedte, ...MEASURE_GROUPS.hoogte, "diepte"]);
     const other = keys
       .filter((k) => !grouped.has(k))
       .map(
         (k) =>
-          `${MEASURE_INFO[k].label}: ${w.measures[k] ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${w.sources[k]!.uncertaintyMm}` : ""}` : rule.required.includes(k) ? "nog meten" : "—"}`,
+          `${MEASURE_INFO[k].label}: ${typeof w.measures[k] === "number" ? `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${shownMarginMm(w.sources[k]!.uncertaintyMm)}` : ""}` : rule.required.includes(k) ? "nog meten" : "—"}`,
       );
-    const camera = keys.some((k) => w.sources[k] && w.measures[k]);
+    const scanned = keys.some((k) => w.sources[k] && w.measures[k]);
     const typed = keys.some((k) => !w.sources[k] && w.measures[k]);
-    const source = camera ? (typed ? "camera en zelf ingevuld" : "camera") : SOURCE_LABEL[w.measureSource];
-    const status: Status = { "nog-meten": "missing", afwijking: "check", ingevoerd: "auto", bevestigd: "confirmed", bestelmaat: "derived" }[
+    const source = scanned ? (typed ? "ScanTag en zelf gemeten" : "ScanTag") : SOURCE_LABEL[w.measureSource];
+    const status: Status = { "nog-meten": "missing", afwijking: "check", ingevoerd: scanned ? "measured" : "auto", bevestigd: "confirmed" }[
       e.status
     ] as Status;
+    const opening =
+      op.openingWidthMm === null && op.openingHeightMm === null
+        ? "nog meten"
+        : `${op.openingWidthMm === null ? "?" : wholeMm(op.openingWidthMm)}${marginCell(op.measurementUncertaintyMm.width)} × ${op.openingHeightMm === null ? "?" : wholeMm(op.openingHeightMm)}${marginCell(op.measurementUncertaintyMm.height)}`;
     return [
       { text: `${w.code}${w.label ? ` ${w.label}` : ""}` },
       { text: rn ?? "—" },
       { text: `${PRODUCT_SHORT[w.product]}, ${MOUNTING_SHORT[w.mounting]}` },
-      { text: width.length ? measureList(width, w.measures, w.sources) : "—" },
-      { text: height.length ? measureList(height, w.measures, w.sources) : "—" },
+      { text: opening },
+      { text: op.depthMm === null ? "—" : `${wholeMm(op.depthMm)}${marginCell(op.measurementUncertaintyMm.depth)}` },
       {
         text:
           [
@@ -307,10 +307,10 @@ export function buildReportModel(
     if (o.status === "order_ready" && o.order)
       order.push(`${w.code}: bestelmaat ${orderCell(o)} (${PRODUCT_LABELS[w.product]}, ${o.rule.title}).`);
     else if (e.status === "bevestigd")
-      order.push(
-        o.order
-          ? `${w.code}: ${orderSummary(o).toLowerCase()} — nog niet definitief: ${o.blockedBy[0] ?? o.questions[0]?.question ?? ""}`
-          : `${w.code}: ruwe maten compleet; laat je leverancier de bestelmaat bepalen.`,
+      todo.push(
+        o.status === "measuring_sheet"
+          ? `${w.code}: maten compleet; laat je leverancier de bestelmaat bepalen.`
+          : `${w.code}: nog geen bestelmaat — ${o.blockedBy[0] ?? o.questions[0]?.question ?? ORDER_STATUS_LABELS[o.status]}`,
       );
     else
       todo.push(
@@ -350,42 +350,40 @@ export function buildReportModel(
   ];
 
   // Window cards: every window with its measurements and their sources, and what is still missing.
-  const cards: WindowCard[] = c.windows.map(({ window: w, evaluation: e, order: o, roomName: rn }) => {
+  const cards: WindowCard[] = c.windows.map(({ window: w, evaluation: e, opening: op, order: o, roomName: rn }) => {
+    const dim = (mm: number | null, margin: number | null) =>
+      mm === null ? "nog meten" : `${formatMm(mm)}${margin === null ? "" : ` ± ${formatMm(shownMarginMm(margin))}`}`;
     const rows = [
       { label: "Ruimte", value: rn ?? "niet gekoppeld" },
       { label: "Product en montage", value: `${PRODUCT_SHORT[w.product]}, ${MOUNTING_SHORT[w.mounting]}` },
+      {
+        label: "Gemeten opening",
+        value: `breedte ${dim(op.openingWidthMm, op.measurementUncertaintyMm.width)} · hoogte ${dim(op.openingHeightMm, op.measurementUncertaintyMm.height)}${op.depthMm !== null ? ` · diepte ${dim(op.depthMm, op.measurementUncertaintyMm.depth)}` : ""} (kleinste van de meetpunten)`,
+      },
       ...(Object.keys(w.measures).length
         ? (Object.entries(w.measures) as [MeasureKey, number][]).map(([k, v]) => ({
             label: MEASURE_INFO[k].label,
-            value: `${formatMm(v)}${w.sources[k] ? ` ± ${formatMm(w.sources[k]!.uncertaintyMm)}` : ""} (bron: ${measureProvenance(w.sources[k], w.confirmed)})`,
+            value: `${formatMm(v)}${w.sources[k] ? ` ± ${formatMm(shownMarginMm(w.sources[k]!.uncertaintyMm))}` : ""} (${measureProvenance(w.sources[k], w.confirmed)})`,
           }))
-        : [{ label: "Gemeten maten", value: "nog niet gemeten" }]),
+        : [{ label: "Meetpunten", value: "nog niet gemeten" }]),
       ...(["breedte", "hoogte"] as const).flatMap((g) => {
         const lb = lowerBound(MEASURE_GROUPS[g], w.measures, w.sources);
-        return lb === null ? [] : [{ label: `Ondergrens ${g}`, value: `${formatMm(lb)} (kleinste ${g} min de foutmarge van de camera)` }];
+        return lb === null ? [] : [{ label: `Ondergrens ${g}`, value: `${formatMm(lb)} (kleinste ${g} min de foutmarge van de scan)` }];
       }),
-      ...(w.photo?.estimate && !w.camera.length
-        ? [
-            {
-              label: "Schatting uit foto",
-              value: `ca. ${formatMm(Math.round(Math.max(w.photo.estimate.topMm, w.photo.estimate.bottomMm)))} × ${formatMm(Math.round(Math.max(w.photo.estimate.leftMm, w.photo.estimate.rightMm)))} ± ${formatMm(w.photo.estimate.uncertaintyMm)} (browser_scan_estimate, A4-referentie; geen meting)`,
-            },
-          ]
-        : []),
       ...(w.planWidthMm
-        ? [{ label: "Op de plattegrond", value: `opening ongeveer ${formatMFromMm(w.planWidthMm)} breed (indicatief, geen raammaat)` }]
+        ? [{ label: "Op de plattegrond", value: `opening ongeveer ${formatMm(w.planWidthMm)} breed (indicatief, geen raammaat)` }]
         : []),
       { label: "Ontbreekt", value: e.missing.length ? e.missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ") : "niets" },
       { label: "Meetstatus", value: WINDOW_STATUS_LABELS[e.status] },
       ...orderRows(o),
     ];
-    return { title: `${w.code}${w.label ? ` · ${w.label}` : ""}`, photo: opts.photos?.[w.id] ?? null, rows };
+    return { title: `${w.code}${w.label ? ` · ${w.label}` : ""}`, rows };
   });
 
   // Material library: the categories the user chose, in catalogue order.
-  const ceilingResult = cameraResults(project.camera).find((r) => r.target === "plafondhoogte" && r.usable);
-  const ceiling = ceilingResult
-    ? { m: ceilingHeightM(ceilingResult.mm), uncertaintyMm: ceilingResult.uncertaintyMm, shots: ceilingResult.shots }
+  const ceilingScan = combinedValues(project.scans).plafondhoogte;
+  const ceiling = ceilingScan?.agree
+    ? { m: ceilingHeightM(ceilingScan.mm), uncertaintyMm: ceilingScan.uncertaintyMm, shots: ceilingScan.shots }
     : null;
   const doorsOnPlan = project.analyses.reduce((n, a) => n + (a.auto?.doors ?? 0), 0);
   const materials: MaterialSection[] = CATALOG.filter((m) => project.materials.selected.includes(m.key)).map((m) => {
@@ -417,7 +415,7 @@ export function buildReportModel(
         ...(r.used.length ? [`Voor: ${r.used.join(", ")}.`] : []),
         ...(ceiling && m.inputs.some((i) => i.key === "plafondhoogte") && project.materials.inputs[m.key]?.plafondhoogte === ceiling.m
           ? [
-              `Plafondhoogte ${ceiling.m.toLocaleString("nl-NL")} m met de camera gemeten (± ${formatMm(ceiling.uncertaintyMm)}, ${ceiling.shots} foto${ceiling.shots > 1 ? "'s" : ""}; browser_scan_estimate).`,
+              `Plafondhoogte ${ceiling.m.toLocaleString("nl-NL")} m gemeten met ScanTag (± ${formatMm(shownMarginMm(ceiling.uncertaintyMm))}, ${ceiling.shots} scan${ceiling.shots > 1 ? "s" : ""}; AR-tracking van je telefoon).`,
             ]
           : []),
         ...r.steps,
@@ -478,14 +476,14 @@ export function buildReportModel(
     windows: {
       table: {
         columns: [
-          { header: "Raam", width: 0.1 },
-          { header: "Ruimte", width: 0.11 },
-          { header: "Product en montage", width: 0.15 },
-          { header: "Breedtes (ruw)", width: 0.13 },
-          { header: "Hoogtes (ruw)", width: 0.13 },
+          { header: "Raam", width: 0.09 },
+          { header: "Ruimte", width: 0.1 },
+          { header: "Product en montage", width: 0.14 },
+          { header: "Opening b × h (mm)", width: 0.15 },
+          { header: "Diepte (mm)", width: 0.09 },
           { header: "Overige maten", width: 0.15 },
-          { header: "Bestelmaat", width: 0.11 },
-          { header: "Status", width: 0.12 },
+          { header: "Bestelmaat", width: 0.13 },
+          { header: "Status", width: 0.15 },
         ],
         rows: windowRows,
       },

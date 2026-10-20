@@ -17,7 +17,7 @@ const COMPARE: [string, boolean][] = [
   ["Verfcalculator voor je muren", true],
   ["Plinten per wand, met deuren en marge", false],
   ["Laminaat, PVC, tegels, ondervloer, profielen, primer en behang", false],
-  ["Raamregister met meetbegeleiding en foto-assistent", false],
+  ["Raamregister met ScanTag-maten in mm, foutmarge en status", false],
   ["Gordijnen, rolgordijnen, jaloezieën, plissés, vouwgordijnen, rolluiken: status per raam", false],
   ["PDF-rapport en CSV-bestellijst", false],
 ];
@@ -132,20 +132,22 @@ export default function Home() {
         <div className="container grid-2" style={{ alignItems: "center" }}>
           <div>
             <p className="eyebrow">ScanTag</p>
-            <h2>Je ramen meten met je telefoon, zonder rolmaat</h2>
+            <h2>Je ramen meten met je telefoon, zonder papier of rolmaat</h2>
             <p className="muted">
-              Plak twee A4-vellen naast het raam, maak een foto en tik de hoeken aan. ScanTag rekent het perspectief terug en geeft elke
-              maat met zijn foutmarge. Gewoon in je browser, geen app nodig, en je kunt op je computer verder.
+              Richt je telefoon op elke hoek van het raam en houd even stil. ScanTag gebruikt de AR-tracking van je telefoon om te weten
+              waar die hoek in de ruimte zit, en geeft elke maat in millimeters met zijn foutmarge. Gewoon in je browser, geen app.
             </p>
             <ul className="ticks">
-              <li>Breedte op drie hoogtes, hoogte op drie plekken, diepte met je bankpas</li>
-              <li>Hoeken klikken vast op de randen in de foto; een slechte foto vragen we opnieuw</li>
-              <li>Je foto blijft op je telefoon; alleen de aangetikte punten gaan naar ons</li>
-              <li>Bestelmaat volgens de meetregels van je leverancier, met bron en versie</li>
+              <li>Breedte op drie hoogtes, hoogte op drie plekken, en de diepte van de dag</li>
+              <li>Een onrustige of onlogische scan vragen we opnieuw, met de reden</li>
+              <li>Er wordt geen foto gemaakt; alleen de vastgelegde punten gaan naar ons</li>
+              <li>
+                Werkt in Chrome op Android-telefoons met AR; op een iPhone of computer ga je via een QR-code verder op zo&apos;n telefoon
+              </li>
             </ul>
             <p className="small muted" style={{ margin: 0 }}>
-              Eerlijk: ScanTag-maten zijn nog niet gevalideerd tegen metingen in echte woningen. Tot dat gebeurd is, krijg je een
-              concept-bestelmaat met foutmarge, nooit een stille belofte op de millimeter.
+              Eerlijk: ScanTag-maten zijn nog niet gevalideerd tegen metingen in echte woningen. Tot dat gebeurd is, rekenen we er geen
+              bestelmaat mee uit; je krijgt de gemeten opening met foutmarge.
             </p>
           </div>
           <div className="scantag-visual" aria-hidden="true">
@@ -166,7 +168,7 @@ export default function Home() {
             <ul className="ticks">
               <li>Ruimtes worden opgemeten langs de wanden op je tekening, ook L-vormen</li>
               <li>De schaal komt uit de maatlijnen op de tekening, en die moeten onderling kloppen</li>
-              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je met ScanTag of een rolmaat</li>
+              <li>Ramen krijgen een code (R01, R02 …); hun maten meet je met ScanTag</li>
               <li>Elke waarde houdt zijn label: herkend, door jou bevestigd, berekend of nog te meten</li>
             </ul>
           </div>
@@ -256,7 +258,7 @@ export default function Home() {
             <ul className="ticks">
               <li>Vloer, laminaat, PVC, tegels, ondervloer, verf, primer en behang met status per categorie</li>
               <li>Plinten per wand: omtrek, bevestigde deuropeningen eraf, marge, handelslengtes</li>
-              <li>Een kaart per raam (R01, R02 …) met maten, bron, foto en bestelstatus</li>
+              <li>Een kaart per raam (R01, R02 …) met maten in mm, foutmarge, bron en bestelstatus</li>
               <li>Printvriendelijk A4 met paginanummers, en ook als CSV-bestellijst</li>
             </ul>
           </div>

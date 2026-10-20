@@ -1,4 +1,5 @@
 import { devices, expect, test } from "@playwright/test";
+import { installFakeWebXR } from "./fake-webxr";
 import { newProject, scanOpening, step } from "./helpers";
 
 test("verder op je telefoon: QR-link één keer bruikbaar, scannen op de telefoon, terug naar de computer", async ({ page, browser }) => {
@@ -17,6 +18,7 @@ test("verder op je telefoon: QR-link één keer bruikbaar, scannen op de telefoo
   // Phone: opens the link, gets the project (decrypted on the phone) and lands in the window register.
   const phone = await browser.newContext({ ...devices["Pixel 7"], baseURL: "http://localhost:3100", locale: "nl-NL" });
   const mobile = await phone.newPage();
+  await installFakeWebXR(mobile);
   await mobile.goto(link);
   await mobile.waitForURL(/\/project\/[a-z0-9]+#plinten-ramen$/);
   expect(mobile.url()).not.toContain("overdracht#");
@@ -24,10 +26,9 @@ test("verder op je telefoon: QR-link één keer bruikbaar, scannen op de telefoo
 
   // Scan on the phone (before payment: status only) and send it back.
   await mobile.locator(".window-card").getByRole("button", { name: "Scannen met ScanTag" }).click();
-  const scan = mobile.getByRole("dialog", { name: "ScanTag: meten met je camera" });
+  const scan = mobile.getByRole("dialog", { name: "ScanTag: meten met je telefoon" });
   const opening = await scanOpening(mobile, scan);
-  await scan.getByRole("button", { name: "Scan opslaan" }).click();
-  await expect(opening).toContainText("1 foto · Scan verwerkt");
+  await expect(opening).toContainText("1 scan · Gescand");
   await scan.getByRole("button", { name: "Klaar" }).click();
   await mobile.getByRole("button", { name: "Terugsturen naar je computer" }).click();
   await expect(mobile.getByText("Verstuurd. Je computer haalt je scans op")).toBeVisible();

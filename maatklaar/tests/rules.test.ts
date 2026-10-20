@@ -19,15 +19,17 @@ const input = (patch: Partial<OrderInput> = {}): OrderInput => ({
   measures: { ...OPENING, diepte: 90 },
   answers: {},
   checks: OK_CHECKS,
-  validation: {},
+  status: {},
   confirmed: true,
   shape: "rechthoek",
   today: "2026-10-19",
   ...patch,
 });
-const rule = (id: string) => productRule(id)!;
-/** A copy of a rule as if a person had checked it against the source today: for testing the order_ready path only. */
+/** A copy of a rule as if a person had checked it against the source today: to test the arithmetic of a record. */
 const published = (r: ProductRule): ProductRule => ({ ...r, source: { ...r.source, status: "published", checkedOn: "2026-10-19" } });
+/** The record as it is in the app: Tuiss records are concept until a person checks them. */
+const asIs = (id: string) => productRule(id)!;
+const rule = (id: string) => published(asIs(id));
 
 describe("regelrecords", () => {
   it("alle records zijn geldig, uniek en Tuiss-regels zijn concept met bron-URL", () => {
@@ -39,10 +41,10 @@ describe("regelrecords", () => {
   });
 
   it("het schema weigert een dubbele leverancierscorrectie, een gepubliceerde regel zonder bron en onbekende maten", () => {
-    const wave = rule("tuiss-wave-in-de-dag");
+    const wave = asIs("tuiss-wave-in-de-dag");
     expect(productRuleSchema.safeParse({ ...wave, deductions: { ...wave.deductions!, appliedBy: "maatklaar" } }).success).toBe(false);
     expect(productRuleSchema.safeParse({ ...wave, source: { ...wave.source, status: "published" } }).success).toBe(false);
-    const roller = rule("tuiss-rolgordijn-enkel-in-de-dag");
+    const roller = asIs("tuiss-rolgordijn-enkel-in-de-dag");
     expect(productRuleSchema.safeParse({ ...roller, inputs: roller.inputs.filter((i) => i.key !== "breedte_boven") }).success).toBe(false);
   });
 
@@ -95,7 +97,8 @@ describe("regelrecords", () => {
 
   it("de leverancier verwerkt de aftrek: wij trekken niets af en zeggen dat erbij", () => {
     const r = orderDimensions(rule("tuiss-wave-in-de-dag"), input());
-    expect(r.order).toMatchObject({ widthMm: 1198, heightMm: 1496 });
+    expect(r.status).toBe("order_ready");
+    expect(r.order).toEqual({ orderWidthMm: 1198, orderHeightMm: 1496, byCode: null });
     expect(r.corrections.map((c) => [c.mm, c.appliedBy])).toEqual([
       [-10, "leverancier"],
       [-15, "leverancier"],
@@ -114,26 +117,52 @@ describe("regelrecords", () => {
       }),
     );
     expect(r.corrections).toEqual([expect.objectContaining({ mm: 30, appliedBy: "leverancier" })]);
-    expect(r.order).toEqual({ widthMm: 2200, heightMm: null, byCode: null });
+    expect(r.width!.mm).toBe(2200);
+    // The curtain length is an open question in this rule: no order size until it is answered.
+    expect(r.status).toBe("needs_verification");
+    expect(r.order).toBeNull();
   });
 
-  it("order_ready alleen met een gecontroleerde, actuele regel én bevestigde of gevalideerde maten", () => {
-    const blind = rule("tuiss-jaloezie-hout-50-in-de-dag");
-    expect(orderDimensions(blind, input()).status).toBe("concept");
-    expect(orderDimensions(blind, input()).blockedBy.join(" ")).toMatch(/concept/);
+  it("met een niet-gecontroleerde regel bestaat er geen bestelmaat, ook geen voorlopige", () => {
+    const r = orderDimensions(asIs("tuiss-jaloezie-hout-50-in-de-dag"), input());
+    expect(r.status).toBe("rule_not_verified");
+    expect(r.order).toBeNull();
+    expect(r.width).toBeNull();
+    expect(r.suggestion).toBeNull();
+    expect(r.corrections).toEqual([]);
+    expect(r.blockedBy.join(" ")).toMatch(/niet door een mens tegen de volledige bron gecontroleerd/);
+    // What still has to be measured is said, from the record's inputs.
+    expect(orderDimensions(asIs("tuiss-rolgordijn-enkel-in-de-dag"), input()).status).toBe("needs_more_data");
+  });
 
-    const checked = published(blind);
+  it("order_ready alleen met een gecontroleerde, actuele regel én bevestigde of geaccepteerde maten", () => {
+    const checked = rule("tuiss-jaloezie-hout-50-in-de-dag");
     expect(orderDimensions(checked, input()).status).toBe("order_ready");
     expect(orderDimensions(checked, input()).blockedBy).toEqual([]);
     // Not confirmed by the user.
-    expect(orderDimensions(checked, input({ confirmed: false })).status).toBe("concept");
-    // A ScanTag value without an acceptance limit is not validated.
-    expect(orderDimensions(checked, input({ validation: { breedte_onder: "not_validated" } })).status).toBe("concept");
-    expect(orderDimensions(checked, input({ validation: { breedte_onder: "validated" } })).status).toBe("order_ready");
+    expect(orderDimensions(checked, input({ confirmed: false }))).toMatchObject({ status: "measurement_not_accepted", order: null });
+    // A ScanTag value that is not accepted for ordering, or needs a retake, never gives an order size.
+    for (const s of ["not_supported_for_ordering", "retake_required", "unconfirmed"] as const)
+      expect(orderDimensions(checked, input({ status: { breedte_onder: s } }))).toMatchObject({
+        status: "measurement_not_accepted",
+        order: null,
+      });
+    expect(orderDimensions(checked, input({ status: { breedte_onder: "accepted" } })).status).toBe("order_ready");
     // A rule not checked for over a year is no longer current.
     const old = { ...checked, source: { ...checked.source, checkedOn: "2025-01-01" } };
     expect(RULE_MAX_AGE_DAYS).toBe(365);
-    expect(orderDimensions(old, input()).status).toBe("concept");
+    expect(orderDimensions(old, input())).toMatchObject({ status: "rule_not_verified", order: null });
+  });
+
+  it("bestelvelden zijn hele millimeters; ruwe waarden blijven onafgerond in de gekozen maat", () => {
+    const r = orderDimensions(
+      rule("tuiss-jaloezie-hout-50-in-de-dag"),
+      input({ measures: { ...OPENING, breedte_onder: 1197.82, hoogte_midden: 1495.4, diepte: 90 } }),
+    );
+    expect(r.width!.mm).toBe(1197.82);
+    expect(r.order).toEqual({ orderWidthMm: 1197, orderHeightMm: 1495, byCode: null });
+    expect(Number.isInteger(r.order!.orderWidthMm)).toBe(true);
+    expect(r.warnings.join(" ")).toMatch(/hele millimeters, naar beneden/);
   });
 
   it("per product en montage: algemeen meetblad eerst, dan de Tuiss-varianten", () => {
@@ -171,11 +200,13 @@ describe("golden fixtures: ruwe opening → gekozen maat → bestelmaat", () => 
       expect(r.status).toBe(c.expect.status);
       expect(r.width?.mm ?? null).toBe(c.expect.width);
       expect(r.height?.mm ?? null).toBe(c.expect.height);
-      if (c.expect.order) expect([r.order?.widthMm ?? null, r.order?.heightMm ?? null]).toEqual(c.expect.order);
+      // An order size exists only when it may be ordered; otherwise there is none at all.
+      if (r.status !== "order_ready") expect(r.order).toBeNull();
+      else if (c.expect.order) expect([r.order?.orderWidthMm ?? null, r.order?.orderHeightMm ?? null]).toEqual(c.expect.order);
       if (c.expect.depthOk !== undefined) expect(r.depth?.ok).toBe(c.expect.depthOk);
       if (c.expect.question) expect(r.questions.map((q) => q.id)).toContain(c.expect.question);
       if (c.expect.suggestion) expect([r.suggestion?.widthMm, r.suggestion?.heightMm]).toEqual(c.expect.suggestion);
-      if (c.expect.byCode) expect(r.order?.byCode).toBe(c.expect.byCode);
+      if (c.expect.byCode && r.status === "order_ready") expect(r.order?.byCode).toBe(c.expect.byCode);
     });
   }
 });
@@ -194,7 +225,7 @@ describe("eigenschappen (property-based, 500 willekeurige ramen per eigenschap)"
       const widths = [m.breedte_boven, m.breedte_midden, m.breedte_onder];
       expect(widths).toContain(res.width!.mm);
       expect(widths.every((w) => res.width!.mm <= w)).toBe(true);
-      expect(res.order!.widthMm).toBe(res.width!.mm);
+      expect(res.order!.orderWidthMm).toBe(res.width!.mm);
     }
   });
 
@@ -216,7 +247,7 @@ describe("eigenschappen (property-based, 500 willekeurige ramen per eigenschap)"
     }
   });
 
-  it("met een conceptregel is de uitkomst nooit order_ready", () => {
+  it("met een conceptregel is de uitkomst nooit order_ready en nooit een getal", () => {
     const r = rng(3);
     const concepts = PRODUCT_RULES.filter((x) => x.source.status === "concept");
     for (let i = 0; i < 500; i++) {
@@ -233,6 +264,7 @@ describe("eigenschappen (property-based, 500 willekeurige ramen per eigenschap)"
         }),
       );
       expect(res.status).not.toBe("order_ready");
+      expect(res.order).toBeNull();
     }
   });
 

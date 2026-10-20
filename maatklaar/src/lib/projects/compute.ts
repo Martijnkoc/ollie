@@ -6,7 +6,7 @@ import { evaluateWindow, type WindowEvaluation } from "@/lib/measurements/evalua
 import { defaultRuleFor, findRule } from "@/lib/measurements/protocols";
 import type { MeasureKey, MeasurementRuleSet } from "@/lib/measurements/schema";
 import { productRule } from "@/lib/rules";
-import { orderDimensions, type OrderInput, type OrderResult } from "@/lib/rules/engine";
+import { orderDimensions, type MeasureStatus, type OrderInput, type OrderResult } from "@/lib/rules/engine";
 import type { Project, ProjectWindow, Room } from "./schema";
 import { combine, type Status } from "./status";
 
@@ -20,14 +20,32 @@ export type RoomResult = {
   issues: string[];
 };
 
+export type ScaleSource = "webxr_hit_test" | "webxr_hit_test_depth" | "handmatig";
+
 /**
- * One window in three layers: its camera geometry and opening measurements (`window`), the evaluation of
- * those measurements (`evaluation`) and the order size from its product rule (`order`).
+ * The measured opening of a window (observed layer), in millimetres, unrounded. Width and height are the
+ * smallest of their measuring points: the clear opening. Kept apart from the order size, which only a
+ * product rule decides.
+ */
+export type ObservedOpeningDimensions = {
+  openingWidthMm: number | null;
+  openingHeightMm: number | null;
+  depthMm: number | null;
+  /** Margin at about 95 % per dimension; null for a value measured by the user (no margin known). */
+  measurementUncertaintyMm: { width: number | null; height: number | null; depth: number | null };
+  scaleSource: { width: ScaleSource | null; height: ScaleSource | null; depth: ScaleSource | null };
+  status: { width: MeasureStatus | null; height: MeasureStatus | null; depth: MeasureStatus | null };
+};
+
+/**
+ * One window in three layers: its scan geometry and opening measurements (`window`, `opening`), the evaluation
+ * of those measurements (`evaluation`) and the order size from its product rule (`order`).
  */
 export type WindowResult = {
   window: ProjectWindow;
   rule: MeasurementRuleSet;
   evaluation: WindowEvaluation;
+  opening: ObservedOpeningDimensions;
   order: OrderResult;
   roomName: string | null;
 };
@@ -81,12 +99,40 @@ export function windowRule(w: ProjectWindow) {
   return defaultRuleFor(w.product, w.mounting);
 }
 
-/** What the rule engine needs from a window: measurements with their validation, answers, checks, shape. */
+/** Status of one measurement: a ScanTag value keeps its verdict, a typed value counts once confirmed. */
+export function measureStatus(w: ProjectWindow, k: MeasureKey): MeasureStatus {
+  const s = w.sources[k];
+  return s ? s.status : w.confirmed ? "user_confirmed" : "unconfirmed";
+}
+
+/** What the rule engine needs from a window: measurements with their status, answers, checks, shape. */
 export function orderInputFor(w: ProjectWindow): OrderInput {
-  const validation: OrderInput["validation"] = {};
-  for (const k of Object.keys(w.measures) as MeasureKey[])
-    validation[k] = w.sources[k] ? w.sources[k]!.validation : w.confirmed ? "user_confirmed" : "unconfirmed";
-  return { measures: w.measures, answers: w.answers, checks: w.checks, validation, confirmed: w.confirmed, shape: w.shape };
+  const status: OrderInput["status"] = {};
+  for (const k of Object.keys(w.measures) as MeasureKey[]) status[k] = measureStatus(w, k);
+  return { measures: w.measures, answers: w.answers, checks: w.checks, status, confirmed: w.confirmed, shape: w.shape };
+}
+
+export function observedOpening(w: ProjectWindow): ObservedOpeningDimensions {
+  const smallest = (keys: readonly MeasureKey[]) => {
+    const present = keys.filter((k) => typeof w.measures[k] === "number");
+    if (!present.length) return null;
+    return present.reduce((a, b) => (w.measures[b]! < w.measures[a]! ? b : a));
+  };
+  const width = smallest(["breedte_boven", "breedte_midden", "breedte_onder"]);
+  const height = smallest(["hoogte_links", "hoogte_midden", "hoogte_rechts"]);
+  const depth = typeof w.measures.diepte === "number" ? ("diepte" as const) : null;
+  const mm = (k: MeasureKey | null) => (k ? w.measures[k]! : null);
+  const margin = (k: MeasureKey | null) => (k && w.sources[k] ? w.sources[k]!.uncertaintyMm : null);
+  const scale = (k: MeasureKey | null): ScaleSource | null => (k ? (w.sources[k]?.scaleSource ?? "handmatig") : null);
+  const status = (k: MeasureKey | null) => (k ? measureStatus(w, k) : null);
+  return {
+    openingWidthMm: mm(width),
+    openingHeightMm: mm(height),
+    depthMm: mm(depth),
+    measurementUncertaintyMm: { width: margin(width), height: margin(height), depth: margin(depth) },
+    scaleSource: { width: scale(width), height: scale(height), depth: scale(depth) },
+    status: { width: status(width), height: status(height), depth: status(depth) },
+  };
 }
 
 /** The order layer of a window: its rule applied to its measurements. */
@@ -151,6 +197,7 @@ export function computeProject(project: Project): ProjectComputation {
       window: w,
       rule,
       evaluation: evaluateWindow(w, rule),
+      opening: observedOpening(w),
       order: windowOrder(w, rule),
       roomName: w.roomId ? (roomNames.get(w.roomId) ?? null) : null,
     };

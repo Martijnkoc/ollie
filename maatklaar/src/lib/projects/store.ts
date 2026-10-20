@@ -149,38 +149,11 @@ export async function deleteFile(projectId: string): Promise<void> {
   );
 }
 
-/** Window photos share the files store under their own key; they never leave the device either. */
-const photoKey = (projectId: string, windowId: string) => `${projectId}#foto#${windowId}`;
-
-/** Key of a camera measurement photo, for savePhoto/loadPhoto/deletePhoto: per window (or "woning") and shot. */
-export const shotPhotoKey = (owner: string, shotId: string) => `${owner}#${shotId}`;
-
-export async function savePhoto(projectId: string, windowId: string, blob: Blob): Promise<void> {
-  const value: StoredFile = { projectId: photoKey(projectId, windowId), blob, type: blob.type, savedAt: new Date().toISOString() };
-  await withFallback(
-    () => tx(FILES, "readwrite", (s) => void s.put(value)).then(() => undefined),
-    () => void memory.files.set(value.projectId, value),
-  );
-}
-
-export async function loadPhoto(projectId: string, windowId: string): Promise<Blob | null> {
-  const key = photoKey(projectId, windowId);
-  const f = await withFallback(
-    () => tx<StoredFile>(FILES, "readonly", (s) => s.get(key)),
-    () => memory.files.get(key),
-  );
-  return f?.blob ?? null;
-}
-
-export async function deletePhoto(projectId: string, windowId: string): Promise<void> {
-  const key = photoKey(projectId, windowId);
-  await withFallback(
-    () => tx(FILES, "readwrite", (s) => void s.delete(key)).then(() => undefined),
-    () => void memory.files.delete(key),
-  );
-}
-
-async function deletePhotos(projectId: string): Promise<void> {
+/**
+ * Earlier versions kept window photos (scans with a printed reference) in the files store. ScanTag no longer
+ * uses photos; whatever is left of them is removed when the project is opened or deleted.
+ */
+export async function deletePhotos(projectId: string): Promise<void> {
   const prefix = `${projectId}#foto#`;
   const keys = await withFallback(
     () => tx<IDBValidKey[]>(FILES, "readonly", (s) => s.getAllKeys()).then((k) => k ?? []),

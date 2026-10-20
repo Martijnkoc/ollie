@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatMFromMm, formatMm } from "@/lib/format";
+import { formatMm } from "@/lib/format";
 import { WINDOW_STATUS_LABELS, type WindowStatus } from "@/lib/measurements/evaluate";
 import { rulesFor } from "@/lib/measurements/protocols";
 import {
@@ -18,14 +18,14 @@ import { defaultRuleFor } from "@/lib/measurements/protocols";
 import { newWindow } from "@/lib/projects/factory";
 import type { ProjectWindow } from "@/lib/projects/schema";
 import type { Status } from "@/lib/projects/status";
-import { applyCameraToWindow, tasksFor, type CameraShot } from "@/lib/measurements/camera";
+import { applyScanToWindow, SCAN_REASONS, shownMarginMm, tasksFor, type ScanShot } from "@/lib/measurements/scan";
 import { findRule } from "@/lib/measurements/protocols";
 import { withAudit } from "@/lib/projects/audit";
 import { productRule } from "@/lib/rules";
 import { ORDER_STATUS_LABELS, orderSummary, type OrderStatus } from "@/lib/rules/engine";
-import { scanStatus } from "@/lib/scantag/status";
-import { CameraMeasure } from "./CameraMeasure";
-import { mergeResults, processShots } from "./scantag-client";
+import { scanStatus, verdictsCurrent } from "@/lib/scantag/status";
+import { ArScan } from "./ArScan";
+import { mergeWindowResult, processWindows } from "./scantag-client";
 import { TransferDialog } from "./TransferDialog";
 import { loadReturnContext, sendBack, type ReturnContext } from "./transfer-client";
 import { MeasureWizard } from "./MeasureWizard";
@@ -42,7 +42,8 @@ const STATUS_FOR: Record<WindowStatus, Status> = {
 
 const ORDER_STATUS_FOR: Record<OrderStatus, Status> = {
   order_ready: "derived",
-  concept: "check",
+  rule_not_verified: "check",
+  measurement_not_accepted: "check",
   needs_verification: "check",
   needs_more_data: "missing",
   not_suitable: "missing",
@@ -61,7 +62,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
   const [open, setOpen] = useState<{ id: string; resume: boolean } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [moving, setMoving] = useState<string | null>(null);
-  const [cameraFor, setCameraFor] = useState<string | null>(null);
+  const [scanFor, setScanFor] = useState<string | null>(null);
   const [transfer, setTransfer] = useState(false);
   const [back, setBack] = useState<ReturnContext | null>(null);
   const [backStatus, setBackStatus] = useState<string | null>(null);
@@ -73,45 +74,70 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
 
   // Every change to a window goes through the audit log.
   const setWindow = (w: ProjectWindow) => update((p) => ({ ...p, windows: p.windows.map((x) => (x.id === w.id ? withAudit(x, w) : x)) }));
-  const saveShots = (windowId: string, shots: CameraShot[]) =>
+  const ruleOf = (windowId: string) => computed.windows.find((c) => c.window.id === windowId)?.rule;
+  const saveShots = (windowId: string, shots: ScanShot[]) =>
     update((p) => ({
       ...p,
       windows: p.windows.map((x) => {
         if (x.id !== windowId) return x;
-        const rule = computed.windows.find((c) => c.window.id === windowId)?.rule;
-        const next = { ...x, camera: shots };
-        return withAudit(x, rule ? applyCameraToWindow(next, rule) : next);
+        const rule = ruleOf(windowId);
+        const next = { ...x, scans: shots };
+        return withAudit(x, rule ? applyScanToWindow(next, rule) : next);
       }),
     }));
-  const process = (shots: CameraShot[]) => processShots(project, shots).then((r) => mergeResults(shots, r.released, r.results));
 
-  // After payment: send scans that have no sizes yet, so the server releases them. Once per set of shots.
+  // Scans without a current verdict (new, or product/mounting/shape changed) go to the server; after payment
+  // also scans whose measurements were not released yet. One request per change, retried on the next change.
   const asked = useRef(new Set<string>());
+  const [processing, setProcessing] = useState<string | null>(null);
+  // Back online: try the scans that could not be checked again.
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!paid) return;
-    for (const w of project.windows) {
-      const waiting = w.camera.filter((s) => !s.processed || (s.quality.status === "ok" && !Object.keys(s.values).length));
-      const key = waiting.map((s) => s.id).join(",");
-      if (!waiting.length || asked.current.has(key)) continue;
-      asked.current.add(key);
-      void process(waiting)
-        .then((done) =>
-          saveShots(
-            w.id,
-            w.camera.map((s) => done.find((d) => d.id === s.id) ?? s),
-          ),
-        )
-        .catch(() => asked.current.delete(key));
-    }
+    const on = () => setRetry((n) => n + 1);
+    window.addEventListener("online", on);
+    return () => window.removeEventListener("online", on);
+  }, []);
+  useEffect(() => {
+    const due = project.windows.filter(
+      (w) =>
+        w.scans.length > 0 &&
+        (!verdictsCurrent(w.scans, w.scanVerdicts, { product: w.product, mounting: w.mounting, shape: w.shape }) ||
+          (paid && w.scans.some((s) => s.quality.status === "ok" && !Object.keys(s.values).length))),
+    );
+    const key =
+      due.map((w) => `${w.id}:${w.product}:${w.mounting}:${w.shape}:${w.scans.map((s) => s.id).join(",")}`).join("|") + `:${paid}`;
+    if (!due.length || asked.current.has(key)) return;
+    asked.current.add(key);
+    setProcessing("Je scans worden gecontroleerd…");
+    processWindows(project, due)
+      .then(({ released, results }) => {
+        setProcessing(null);
+        update((p) => ({
+          ...p,
+          windows: p.windows.map((x) => {
+            const r = results.find((y) => y.id === x.id);
+            if (!r) return x;
+            const next = { ...x, ...mergeWindowResult(x, released, r) };
+            const rule = ruleOf(x.id);
+            return withAudit(x, rule && released ? applyScanToWindow(next, rule) : next);
+          }),
+        }));
+      })
+      .catch(() => {
+        asked.current.delete(key);
+        setProcessing(navigator.onLine ? "De controle lukte nu niet; we proberen het bij de volgende wijziging opnieuw." : null);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paid, project.windows]);
-  // A new rule may ask for other measurements: camera values follow it, typed values stay.
+  }, [paid, project.windows, retry]);
+  // A new rule may ask for other measurements: scan values follow it, typed values stay.
   const setProduct = (w: ProjectWindow, product: ProductFamily, mounting: Mounting) => {
     const rule = defaultRuleFor(product, mounting);
-    setWindow(applyCameraToWindow({ ...w, product, mounting, ruleId: rule.id, confirmed: false }, rule));
+    setWindow(applyScanToWindow({ ...w, product, mounting, ruleId: rule.id, confirmed: false }, rule));
   };
   const opened = computed.windows.find((x) => x.window.id === open?.id);
-  const camera = computed.windows.find((x) => x.window.id === cameraFor);
+  const scanning = computed.windows.find((x) => x.window.id === scanFor);
+  const stateOf = (w: ProjectWindow, rule: (typeof computed.windows)[number]["rule"]) =>
+    scanStatus(w.scans, tasksFor(rule), w.scanVerdicts, { product: w.product, mounting: w.mounting, shape: w.shape });
 
   return (
     <section className="panel stack" aria-labelledby={`${id}-title`}>
@@ -122,13 +148,22 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
           </h2>
           <p className="muted" style={{ margin: 0 }}>
             {paid
-              ? "Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die meet je met ScanTag (je camera en twee A4-vellen) of zelf met een rolmaat. Elke maat houdt zijn bron, foutmarge en validatiestatus."
-              : "Scan je ramen met je telefoon: twee A4-vellen op de muur, een foto, de hoeken aantikken. We controleren elke scan. De maten en bestelmaten zie je na het ontgrendelen van je rapport."}
+              ? "Elk raam krijgt een code. Een plattegrond van bovenaf vertelt niet hoe groot een raam echt is: die meet je met ScanTag, de AR-scan van je telefoon. Elke maat houdt zijn bron, foutmarge en status; een bestelmaat rekenen we alleen uit met een gecontroleerde meetregel en maten die daarvoor geschikt zijn."
+              : "Scan je ramen met je telefoon: richt op de hoeken van elk raam en houd even stil. Geen papier, geen rolmaat. We controleren elke scan; de maten zie je na het ontgrendelen van je rapport."}
           </p>
-          {!paid && computed.windows.length > 0 && (
+          {computed.windows.length > 0 && (
             <p className="small" style={{ margin: "6px 0 0" }} aria-live="polite">
-              {computed.windows.length} {computed.windows.length === 1 ? "raam" : "ramen"} ·{" "}
-              {computed.windows.filter((c) => scanStatus(c.window.camera, tasksFor(c.rule)).label === "Scan verwerkt").length} gescand
+              {(() => {
+                const states = computed.windows.map((c) => stateOf(c.window, c.rule));
+                const scanned = states.filter((x) => x.done === x.total && x.total > 0).length;
+                const retake = states.filter((x) => x.retake.length > 0).length;
+                return `${computed.windows.length} ${computed.windows.length === 1 ? "raam" : "ramen"} · ${scanned} gescand${retake ? ` · ${retake} opnieuw scannen` : ""}`;
+              })()}
+            </p>
+          )}
+          {processing && (
+            <p className="small muted" role="status" style={{ margin: "4px 0 0" }}>
+              {processing}
             </p>
           )}
         </div>
@@ -158,9 +193,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
 
       {back && (
         <div className="notice stack-sm" role="region" aria-label="Terugsturen naar je computer">
-          <span className="small">
-            Dit project kwam van je computer. Klaar met scannen? Stuur je ramen terug; je foto&apos;s blijven op deze telefoon.
-          </span>
+          <span className="small">Dit project kwam van je computer. Klaar met scannen? Stuur je ramen terug; ze gaan versleuteld mee.</span>
           <div className="row">
             <button
               type="button"
@@ -223,7 +256,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
         {computed.windows.map(({ window: w, rule, evaluation, order }) => {
           const rules = rulesFor(w.product, w.mounting);
           const raw = [...rule.required, ...rule.optional].filter((k) => w.measures[k]);
-          const scan = scanStatus(w.camera, tasksFor(rule));
+          const scan = stateOf(w, rule);
           return (
             <article key={w.id} className="window-card" aria-labelledby={`${id}-${w.id}`}>
               <div className="row" style={{ justifyContent: "space-between" }}>
@@ -305,7 +338,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
                     value={rule.id}
                     onChange={(e) => {
                       const next = findRule(e.target.value) ?? rule;
-                      setWindow(applyCameraToWindow({ ...w, ruleId: next.id, confirmed: false }, next));
+                      setWindow(applyScanToWindow({ ...w, ruleId: next.id, confirmed: false }, next));
                     }}
                   >
                     {rules.map((r) => (
@@ -343,7 +376,7 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
                 <p className="small" style={{ margin: 0 }}>
                   {w.origin === "auto" ? "Herkend op de tekening. " : ""}
                   {w.planWidthMm
-                    ? `Opening op de tekening ongeveer ${formatMFromMm(w.planWidthMm)} breed: een indicatie om het juiste raam te vinden, geen raammaat.`
+                    ? `Opening op de tekening ongeveer ${formatMm(w.planWidthMm)} breed: een indicatie om het juiste raam te vinden, geen raammaat.`
                     : ""}
                 </p>
               )}
@@ -352,16 +385,27 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
                   Herkend op de tekening.
                 </p>
               )}
-              {paid && evaluation.camera && (
+              {scan.retake.length > 0 && w.scanVerdicts && (
+                <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                  {[
+                    ...new Set(Object.values(w.scanVerdicts.targets).flatMap((v) => (v?.status === "retake_required" ? v.reasons : []))),
+                  ].map((r) => (
+                    <li key={r}>{SCAN_REASONS[r]}</li>
+                  ))}
+                </ul>
+              )}
+              {paid && evaluation.scan && (
                 <p className="small" style={{ margin: 0 }}>
-                  Met ScanTag gemeten: {evaluation.camera.keys.length} {evaluation.camera.keys.length === 1 ? "maat" : "maten"}, foutmarge
-                  tot ± {formatMm(evaluation.camera.maxUncertaintyMm)}, niet gevalideerd.
+                  Met ScanTag gemeten: {evaluation.scan.keys.length} {evaluation.scan.keys.length === 1 ? "maat" : "maten"}, foutmarge tot ±{" "}
+                  {formatMm(shownMarginMm(evaluation.scan.maxUncertaintyMm))}.
                 </p>
               )}
               {paid && (
-                <p className="small muted" style={{ margin: 0 }}>
+                <p className="small muted num" style={{ margin: 0 }}>
                   {raw.length
-                    ? raw.map((k) => `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${w.sources[k]!.uncertaintyMm}` : ""}`).join(" · ")
+                    ? raw
+                        .map((k) => `${formatMm(w.measures[k]!)}${w.sources[k] ? ` ±${shownMarginMm(w.sources[k]!.uncertaintyMm)}` : ""}`)
+                        .join(" · ")
                     : "Nog geen maten."}{" "}
                   {evaluation.missing.length > 0 && raw.length > 0
                     ? `Nog nodig: ${evaluation.missing.map((k) => MEASURE_INFO[k].label.toLowerCase()).join(", ")}. `
@@ -379,12 +423,12 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
                 </p>
               )}
               <div className="row">
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => setCameraFor(w.id)}>
-                  {w.camera.length ? "ScanTag bekijken" : "Scannen met ScanTag"}
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => setScanFor(w.id)}>
+                  {w.scans.length ? "ScanTag bekijken" : "Scannen met ScanTag"}
                 </button>
                 {paid && (
                   <button type="button" className="btn btn-sm" onClick={() => setOpen({ id: w.id, resume: false })}>
-                    {raw.length ? "Maten nakijken en bevestigen" : "Zelf invullen (rolmaat)"}
+                    {raw.length ? "Maten nakijken en bevestigen" : "Zelf invullen"}
                   </button>
                 )}
                 <button
@@ -412,20 +456,30 @@ export function WindowSection({ project, update, computed, paid = true }: StepPr
           onClose={() => setOpen(null)}
         />
       )}
-      {camera && (
-        <CameraMeasure
-          projectId={project.id}
-          owner={camera.window.id}
-          heading={`${camera.window.code}${camera.window.label ? ` · ${camera.window.label}` : ""} · ${camera.rule.title}`}
-          tasks={tasksFor(camera.rule)}
-          shots={camera.window.camera}
+      {scanning && (
+        <ArScan
+          heading={`${scanning.window.code}${scanning.window.label ? ` · ${scanning.window.label}` : ""} · ${scanning.rule.title}`}
+          tasks={tasksFor(scanning.rule)}
+          shots={scanning.window.scans}
+          verdicts={
+            verdictsCurrent(scanning.window.scans, scanning.window.scanVerdicts, {
+              product: scanning.window.product,
+              mounting: scanning.window.mounting,
+              shape: scanning.window.shape,
+            })
+              ? scanning.window.scanVerdicts!.targets
+              : null
+          }
           reveal={paid}
-          process={process}
-          onSave={(shots) => saveShots(camera.window.id, shots)}
+          onSave={(shots) => saveShots(scanning.window.id, shots)}
+          onOtherDevice={() => {
+            setScanFor(null);
+            setTransfer(true);
+          }}
           onClose={() => {
-            setCameraFor(null);
+            setScanFor(null);
             // Measured: on to the remaining measurements, the questions and the confirmation.
-            if (paid && camera.window.camera.length) setOpen({ id: camera.window.id, resume: true });
+            if (paid && scanning.window.scans.length) setOpen({ id: scanning.window.id, resume: true });
           }}
         />
       )}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Project } from "@/lib/projects/schema";
-import { loadProject, persistent, purgeExpired, saveProject } from "@/lib/projects/store";
+import { deletePhotos, loadProject, persistent, purgeExpired, saveProject } from "@/lib/projects/store";
 
 export type SaveState = "saved" | "saving" | "error";
 
@@ -22,6 +22,7 @@ export function useProject(id: string) {
     (async () => {
       await purgeExpired().catch(() => 0);
       const p = await loadProject(id).catch(() => null);
+      if (p) void deletePhotos(p.id).catch(() => undefined);
       if (!alive) return;
       latest.current = p;
       setProject(p);

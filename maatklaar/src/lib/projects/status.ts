@@ -1,14 +1,19 @@
 /**
- * The four kinds of information MaatKlaar distinguishes, plus "nog controleren" for results that rest on
- * unconfirmed input. Every badge shows the label and an icon, never colour alone.
+ * The kinds of information we distinguish: recognised, measured, confirmed, calculated, still to check and
+ * missing. Every badge shows the label and an icon, never colour alone.
  */
-export type Status = "auto" | "confirmed" | "derived" | "check" | "missing";
+export type Status = "auto" | "measured" | "confirmed" | "derived" | "check" | "missing";
 
 export const STATUS_META: Record<Status, { label: string; icon: string; description: string }> = {
   auto: {
     label: "Automatisch herkend",
     icon: "◌",
     description: "Uit je bestand gehaald door de computer. Nog niet door jou nagekeken.",
+  },
+  measured: {
+    label: "Gemeten",
+    icon: "◎",
+    description: "Gemeten met de AR-tracking van je telefoon, met foutmarge. Nog niet door jou bevestigd.",
   },
   confirmed: {
     label: "Door jou bevestigd",
@@ -36,8 +41,8 @@ export const STATUS_META: Record<Status, { label: string; icon: string; descript
  * Status of a result computed from several inputs:
  * any missing input → missing; any unconfirmed input → check; otherwise derived from confirmed input.
  */
-export function combine(inputs: readonly ("auto" | "confirmed" | "derived" | "check" | "missing")[]): Status {
+export function combine(inputs: readonly Status[]): Status {
   if (inputs.includes("missing")) return "missing";
-  if (inputs.includes("auto") || inputs.includes("check")) return "check";
+  if (inputs.includes("auto") || inputs.includes("measured") || inputs.includes("check")) return "check";
   return "derived";
 }

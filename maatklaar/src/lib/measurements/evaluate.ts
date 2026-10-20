@@ -8,10 +8,10 @@ import {
   type MeasurementRuleSet,
 } from "./schema";
 import { formatMm } from "@/lib/format";
-import type { MeasureSource } from "./camera";
+import { shownMarginMm, type MeasureSource } from "./scan";
 
 export type WindowMeasurements = {
-  /** Raw measurements in whole millimetres, exactly as entered. */
+  /** Measurements in millimetres: typed values as entered, ScanTag values unrounded. */
   measures: Partial<Record<MeasureKey, number>>;
   /** Answers to the obstacle checks: true = yes, present; false = no; missing = not answered yet. */
   checks: Partial<Record<CheckKey, boolean>>;
@@ -24,7 +24,7 @@ export type WindowMeasurements = {
   confirmed: boolean;
   /** Curtains only: fullness factor chosen by the user (e.g. 2 for twice the rail width). Never a default. */
   fullness: number | null;
-  /** Measurements that came from the camera, with their uncertainty. Absent: typed in. */
+  /** Measurements that came from ScanTag, with their margin and status. Absent: typed in. */
   sources?: Partial<Record<MeasureKey, MeasureSource>>;
 };
 
@@ -64,8 +64,8 @@ export type WindowEvaluation = {
   checksPresent: CheckKey[];
   /** Curtains: rail width × the fullness the user chose. Labelled as derived from their choice. */
   fabricWidthMm: number | null;
-  /** Measurements of this rule that came from the camera, and their largest uncertainty. */
-  camera: { keys: MeasureKey[]; maxUncertaintyMm: number } | null;
+  /** Measurements of this rule that came from ScanTag, and their largest margin. */
+  scan: { keys: MeasureKey[]; maxUncertaintyMm: number } | null;
   warnings: string[];
 };
 
@@ -84,9 +84,9 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
     if (values.length < 2) continue;
     const minMm = Math.min(...values.map((v) => v.mm));
     const maxMm = Math.max(...values.map((v) => v.mm));
-    // Camera values differ by up to their uncertainty without the opening being uneven: never warn below it.
-    const cameraMm = Math.max(0, ...values.map((v) => input.sources?.[v.key]?.uncertaintyMm ?? 0));
-    const toleranceMm = Math.max(rule.toleranceMm[group], cameraMm);
+    // Scan values differ by up to their margin without the opening being uneven: never warn below it.
+    const scanMm = Math.max(0, ...values.map((v) => input.sources?.[v.key]?.uncertaintyMm ?? 0));
+    const toleranceMm = Math.max(rule.toleranceMm[group], scanMm);
     const exceeds = maxMm - minMm > toleranceMm;
     groups.push({
       group,
@@ -111,15 +111,15 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   const checksOpen = rule.checks.filter((c) => input.checks[c] === undefined);
   const checksPresent = rule.checks.filter((c) => input.checks[c] === true);
 
-  const cameraKeys = [...relevant].filter((k) => value(k) !== null && input.sources?.[k]);
-  const camera = cameraKeys.length
-    ? { keys: cameraKeys, maxUncertaintyMm: Math.max(...cameraKeys.map((k) => input.sources![k]!.uncertaintyMm)) }
+  const scanKeys = [...relevant].filter((k) => value(k) !== null && input.sources?.[k]);
+  const scan = scanKeys.length
+    ? { keys: scanKeys, maxUncertaintyMm: Math.max(...scanKeys.map((k) => input.sources![k]!.uncertaintyMm)) }
     : null;
 
   const warnings = [...rule.warnings];
-  if (camera) {
+  if (scan) {
     warnings.push(
-      `${camera.keys.length === 1 ? "Eén maat is" : `${camera.keys.length} maten zijn`} met de camera gemeten, met een foutmarge tot ±${formatMm(camera.maxUncertaintyMm)}. Geef je leverancier de maat én de foutmarge.`,
+      `${scan.keys.length === 1 ? "Eén maat is" : `${scan.keys.length} maten zijn`} met ScanTag gemeten, met een foutmarge tot ±${formatMm(shownMarginMm(scan.maxUncertaintyMm))}. Geef je leverancier de maat én de foutmarge.`,
     );
     if (rule.mounting === "in-de-dag" || rule.mounting === "inbouw" || rule.mounting === "voorzet")
       warnings.push(
@@ -151,5 +151,5 @@ export function evaluateWindow(input: WindowMeasurements, rule: MeasurementRuleS
   else if (!input.confirmed) status = "ingevoerd";
   else status = "bevestigd";
 
-  return { status, missing, groups, depth, checksOpen, checksPresent, fabricWidthMm, camera, warnings };
+  return { status, missing, groups, depth, checksOpen, checksPresent, fabricWidthMm, scan, warnings };
 }

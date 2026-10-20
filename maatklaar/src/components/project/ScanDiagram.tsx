@@ -1,130 +1,117 @@
-import type { CameraTaskId } from "@/lib/measurements/camera";
+import type { ScanTaskId } from "@/lib/measurements/scan";
 
-const INK = "#1c2420";
-const WALL = "#efe9dc";
-const GLASS = "#dbe8ef";
-const SHEET = "#ffffff";
-const SHEET_EDGE = "#b98c3c";
-const MEASURE = "#1f6f50";
+const INK = "var(--ink, #191c1a)";
+const WALL = "var(--surface-2, #e9e8e1)";
+const GLASS = "#dbe5ea";
+const MARK = "var(--accent, #ff6a35)";
 
-function Arrow({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: number }) {
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  const head = (x: number, y: number, ang: number) =>
-    `M ${x} ${y} l ${-8 * Math.cos(ang - 0.45)} ${-8 * Math.sin(ang - 0.45)} M ${x} ${y} l ${-8 * Math.cos(ang + 0.45)} ${-8 * Math.sin(ang + 0.45)}`;
+/** A numbered capture point: where the cross-hair goes, in this order. */
+function Point({ x, y, n }: { x: number; y: number; n: number }) {
   return (
-    <g stroke={MEASURE} strokeWidth={2.5} strokeLinecap="round" fill="none">
-      <line x1={x1} y1={y1} x2={x2} y2={y2} />
-      <path d={`${head(x2, y2, a)} ${head(x1, y1, a + Math.PI)}`} />
+    <g>
+      <circle cx={x} cy={y} r={9} fill={MARK} stroke="#fff" strokeWidth={2} />
+      <text x={x} y={y + 3.5} fontSize="10" fontWeight="700" textAnchor="middle" fill="#fff">
+        {n}
+      </text>
     </g>
   );
 }
 
-const Sheet = ({ x, y, w = 26, h = 36 }: { x: number; y: number; w?: number; h?: number }) => (
-  <rect x={x} y={y} width={w} height={h} fill={SHEET} stroke={SHEET_EDGE} strokeWidth={2} />
-);
-const Dot = ({ x, y }: { x: number; y: number }) => <circle cx={x} cy={y} r={4.5} fill={MEASURE} stroke="#fff" strokeWidth={1.5} />;
+/** The phone sweeping slowly: what the user does before the first point. */
+function Sweep() {
+  return (
+    <g aria-hidden="true">
+      <rect x="268" y="128" width="30" height="52" rx="5" fill="#fff" stroke={INK} strokeWidth={2} />
+      <circle cx="283" cy="154" r="6" fill="none" stroke={MARK} strokeWidth={2} />
+      <path d="M 256 196 q 27 12 54 0" fill="none" stroke={INK} strokeWidth={1.5} strokeDasharray="4 4" />
+      <path d="M 306 192 l 5 4 l -6 3" fill="none" stroke={INK} strokeWidth={1.5} />
+    </g>
+  );
+}
 
 /**
- * Our own drawings of where the references go and what to tap, one per ScanTag photo. Schematic, not to
- * scale: gold = A4 sheet or bank card, green = what you tap and measure.
+ * Our own drawings of what to aim at for each ScanTag capture: numbered points in capture order. Schematic,
+ * not to scale. Nothing is placed on the wall.
  */
-export function ScanDiagram({ task }: { task: CameraTaskId }) {
-  const label: Record<CameraTaskId, string> = {
-    opening: "Twee A4-vellen naast het raam op de muur; tik de vier hoeken van de opening op de voorkant van de muur aan",
-    gewenst: "Twee A4-vellen op de muur; tik de hoeken aan van waar het product komt",
-    ruimte_boven: "Een A4-vel boven het raam; meet van de bovenkant van het kozijn tot het plafond",
-    diepte: "Een bankpas plat tegen de zijkant van de dag; meet van de voorkant van de muur tot het glas",
-    rail: "Twee A4-vellen op de muur; meet van begin tot einde van de rail",
-    ophang: "Twee A4-vellen op de muur; meet links, midden en rechts van ophangpunt tot vloer",
-    plafond: "Een A4-vel op de muur; meet van de vloer tot het plafond",
+export function ScanDiagram({ task }: { task: ScanTaskId }) {
+  const label: Record<ScanTaskId, string> = {
+    opening:
+      "Leg de vier hoeken van de raamopening vast, op de voorkant van de muur, in de volgorde linksboven, rechtsboven, rechtsonder, linksonder",
+    gewenst: "Leg de vier hoeken vast van waar het product moet komen",
+    ruimte_boven: "Leg de bovenkant van het kozijn vast en daarna het plafond recht erboven",
+    diepte: "Leg een punt vast op de voorkant van de muur en daarna op dezelfde hoogte het kozijn",
+    rail: "Leg het begin en het einde van de rail vast",
+    ophang: "Leg links, midden en rechts het ophangpunt en de vloer eronder vast",
+    plafond: "Leg de vloer vast tegen de muur en daarna het plafond recht erboven",
   };
   return (
-    <svg viewBox="0 0 320 200" className="scan-diagram" role="img" aria-label={label[task]}>
-      <rect width="320" height="200" fill={WALL} />
+    <svg viewBox="0 0 320 210" className="scan-diagram" role="img" aria-label={label[task]}>
+      <rect width="320" height="210" fill={WALL} />
       {task === "diepte" ? (
         <>
-          {/* Recess seen from the side: wall, reveal, frame with glass, a bank card flat on the reveal. */}
-          <rect x="40" y="40" width="70" height="140" fill="#e0d8c6" stroke={INK} strokeWidth={2} />
-          <polygon points="110,40 230,70 230,150 110,180" fill="#f6f1e6" stroke={INK} strokeWidth={2} />
-          <rect x="230" y="66" width="18" height="88" fill="#fbfbf8" stroke={INK} strokeWidth={2} />
-          <rect x="248" y="72" width="8" height="76" fill={GLASS} stroke={INK} strokeWidth={1} />
-          <polygon points="140,95 182,105 182,128 140,120" fill={SHEET} stroke={SHEET_EDGE} strokeWidth={2} />
-          <Arrow x1={112} y1={150} x2={228} y2={142} />
-          <Dot x={112} y={150} />
-          <Dot x={228} y={142} />
-          <text x="30" y="26" fontSize="11" fill={INK}>
-            voorkant muur
-          </text>
-          <text x="200" y="176" fontSize="11" fill={INK}>
-            glas
-          </text>
+          {/* The recess seen at an angle: wall face, reveal, frame with glass. */}
+          <rect x="30" y="30" width="70" height="150" fill="#ddd9cc" stroke={INK} strokeWidth={2} />
+          <polygon points="100,30 210,62 210,148 100,180" fill="#f4f2ec" stroke={INK} strokeWidth={2} />
+          <rect x="210" y="58" width="18" height="94" fill="#fbfbf8" stroke={INK} strokeWidth={2} />
+          <rect x="228" y="64" width="8" height="82" fill={GLASS} stroke={INK} strokeWidth={1} />
+          <line x1="100" y1="110" x2="210" y2="108" stroke={MARK} strokeWidth={2} strokeDasharray="5 4" />
+          <Point x={100} y={110} n={1} />
+          <Point x={212} y={108} n={2} />
         </>
       ) : (
         <>
-          {/* Ceiling and floor lines for the height tasks. */}
           {(task === "plafond" || task === "ophang" || task === "ruimte_boven") && (
             <>
-              <line x1="0" y1="12" x2="320" y2="12" stroke="#8a8f8c" strokeWidth={2} />
-              <line x1="0" y1="190" x2="320" y2="190" stroke="#8a8f8c" strokeWidth={2} />
+              <line x1="0" y1="10" x2="320" y2="10" stroke="#8a8f8c" strokeWidth={2} />
+              <line x1="0" y1="200" x2="320" y2="200" stroke="#8a8f8c" strokeWidth={2} />
             </>
           )}
           {task !== "plafond" && (
             <>
-              <rect x="100" y="50" width="120" height="110" fill="#fbfbf8" stroke={INK} strokeWidth={2.5} />
-              <rect x="110" y="60" width="100" height="90" fill={GLASS} stroke="#9fb4c1" strokeWidth={1.5} />
-              <rect x="94" y="160" width="132" height="7" fill="#d8d0bf" stroke={INK} strokeWidth={1.5} />
+              <rect x="96" y="52" width="128" height="112" fill="#fbfbf8" stroke={INK} strokeWidth={2.5} />
+              <rect x="106" y="62" width="108" height="92" fill={GLASS} stroke="#9fb4c1" strokeWidth={1.5} />
+              <rect x="90" y="164" width="140" height="7" fill="#d8d0bf" stroke={INK} strokeWidth={1.5} />
             </>
           )}
           {task === "opening" && (
             <>
-              <Sheet x={44} y={70} />
-              <Sheet x={250} y={100} />
-              {[
-                [100, 50],
-                [220, 50],
-                [220, 160],
-                [100, 160],
-              ].map(([x, y]) => (
-                <Dot key={`${x}-${y}`} x={x!} y={y!} />
-              ))}
+              <rect x="96" y="52" width="128" height="112" fill="none" stroke={MARK} strokeWidth={2} strokeDasharray="6 5" />
+              <Point x={96} y={52} n={1} />
+              <Point x={224} y={52} n={2} />
+              <Point x={224} y={164} n={3} />
+              <Point x={96} y={164} n={4} />
             </>
           )}
           {task === "gewenst" && (
             <>
-              <Sheet x={30} y={80} />
-              <Sheet x={264} y={100} />
-              <rect x="84" y="38" width="152" height="134" fill="none" stroke={MEASURE} strokeWidth={2.5} strokeDasharray="7 5" />
-              <Dot x={84} y={38} />
-              <Dot x={236} y={38} />
-              <Dot x={236} y={172} />
-              <Dot x={84} y={172} />
+              <rect x="80" y="38" width="160" height="138" fill="none" stroke={MARK} strokeWidth={2} strokeDasharray="6 5" />
+              <Point x={80} y={38} n={1} />
+              <Point x={240} y={38} n={2} />
+              <Point x={240} y={176} n={3} />
+              <Point x={80} y={176} n={4} />
             </>
           )}
           {task === "ruimte_boven" && (
             <>
-              <Sheet x={240} y={18} w={36} h={26} />
-              <Arrow x1={160} y1={48} x2={160} y2={14} />
-              <Dot x={160} y={48} />
-              <Dot x={160} y={14} />
+              <line x1="160" y1="50" x2="160" y2="12" stroke={MARK} strokeWidth={2} strokeDasharray="5 4" />
+              <Point x={160} y={52} n={1} />
+              <Point x={160} y={14} n={2} />
             </>
           )}
           {(task === "rail" || task === "ophang") && (
             <>
-              <line x1="62" y1="32" x2="258" y2="32" stroke={INK} strokeWidth={4} />
-              <Sheet x={26} y={90} />
-              <Sheet x={268} y={110} />
+              <line x1="60" y1="30" x2="260" y2="30" stroke={INK} strokeWidth={4} />
               {task === "rail" ? (
                 <>
-                  <Arrow x1={62} y1={24} x2={258} y2={24} />
-                  <Dot x={62} y={32} />
-                  <Dot x={258} y={32} />
+                  <Point x={60} y={30} n={1} />
+                  <Point x={260} y={30} n={2} />
                 </>
               ) : (
-                [70, 160, 250].map((x) => (
+                [70, 160, 250].map((x, i) => (
                   <g key={x}>
-                    <Arrow x1={x} y1={34} x2={x} y2={188} />
-                    <Dot x={x} y={34} />
-                    <Dot x={x} y={188} />
+                    <line x1={x} y1={32} x2={x} y2={198} stroke={MARK} strokeWidth={2} strokeDasharray="5 4" />
+                    <Point x={x} y={32} n={i * 2 + 1} />
+                    <Point x={x} y={196} n={i * 2 + 2} />
                   </g>
                 ))
               )}
@@ -132,18 +119,18 @@ export function ScanDiagram({ task }: { task: CameraTaskId }) {
           )}
           {task === "plafond" && (
             <>
-              <Sheet x={140} y={86} />
-              <Arrow x1={220} y1={188} x2={220} y2={14} />
-              <Dot x={220} y={188} />
-              <Dot x={220} y={14} />
-              <text x="230" y="30" fontSize="11" fill={INK}>
+              <line x1="200" y1="196" x2="200" y2="14" stroke={MARK} strokeWidth={2} strokeDasharray="5 4" />
+              <Point x={200} y={196} n={1} />
+              <Point x={200} y={14} n={2} />
+              <text x="214" y="30" fontSize="11" fill={INK}>
                 plafond
               </text>
-              <text x="230" y="182" fontSize="11" fill={INK}>
+              <text x="214" y="190" fontSize="11" fill={INK}>
                 vloer
               </text>
             </>
           )}
+          {task !== "plafond" && task !== "ophang" && <Sweep />}
         </>
       )}
     </svg>

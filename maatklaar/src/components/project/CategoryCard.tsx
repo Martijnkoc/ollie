@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { formatCount, formatMm, parseDecimal } from "@/lib/format";
-import { CAMERA_TASKS, cameraResults, ceilingHeightM } from "@/lib/measurements/camera";
+import { ceilingHeightM, combinedValues, SCAN_TASKS, shownMarginMm, type ScanShot } from "@/lib/measurements/scan";
 import {
   CATALOG,
   CATEGORY_STATUS_LABELS,
@@ -14,7 +14,7 @@ import {
 } from "@/lib/materials/catalog";
 import type { ProjectComputation } from "@/lib/projects/compute";
 import type { Project } from "@/lib/projects/schema";
-import { CameraMeasure } from "./CameraMeasure";
+import { ArScan } from "./ArScan";
 import { processLocally } from "./scantag-client";
 
 const STATUS_STYLE: Record<CategoryStatus, { icon: string; data: string }> = {
@@ -76,18 +76,23 @@ export function CategoryCard({
       materials: { ...p.materials, inputs: { ...p.materials.inputs, [key]: { ...(p.materials.inputs[key] ?? {}), [k]: v } } },
     }));
   const [measuring, setMeasuring] = useState(false);
-  const ceiling = cameraResults(project.camera).find((r) => r.target === "plafondhoogte" && r.usable) ?? null;
-  // One ceiling height for the home: a camera measurement fills it in for every material that uses it.
-  const saveCeiling = (shots: Project["camera"]) =>
+  const usable = (shots: readonly ScanShot[]) => {
+    const c = combinedValues(shots).plafondhoogte;
+    return c && c.agree ? c : null;
+  };
+  const ceiling = usable(project.scans);
+  // One ceiling height for the home: a ScanTag measurement fills it in for every material that uses it.
+  // Paint is not window decoration and is free, so this scan is checked and measured on the device.
+  const saveCeiling = (shots: ScanShot[]) =>
     update((p) => {
-      const camera = [...p.camera.filter((s) => s.task !== "plafond"), ...shots];
-      const result = cameraResults(camera).find((r) => r.target === "plafondhoogte" && r.usable);
-      if (!result) return { ...p, camera };
+      const scans = [...p.scans.filter((s) => s.task !== "plafond"), ...processLocally(shots)];
+      const result = usable(scans);
+      if (!result) return { ...p, scans };
       const inputs = { ...p.materials.inputs };
       for (const m of CATALOG)
         if (m.inputs.some((i) => i.key === "plafondhoogte"))
           inputs[m.key] = { ...(inputs[m.key] ?? {}), plafondhoogte: ceilingHeightM(result.mm) };
-      return { ...p, camera, materials: { ...p.materials, inputs } };
+      return { ...p, scans, materials: { ...p.materials, inputs } };
     });
   const toggleRoom = (roomId: string, on: boolean) =>
     update((p) => {
@@ -134,12 +139,12 @@ export function CategoryCard({
                 </div>
                 {input.key === "plafondhoogte" && (
                   <button type="button" className="btn btn-sm" style={{ justifySelf: "start" }} onClick={() => setMeasuring(true)}>
-                    {ceiling ? "Camerameting bekijken" : "Meten met camera"}
+                    {ceiling ? "ScanTag-meting bekijken" : "Meten met ScanTag"}
                   </button>
                 )}
                 <span className="hint">
                   {input.key === "plafondhoogte" && ceiling && own === ceilingHeightM(ceiling.mm)
-                    ? `Met de camera gemeten: ± ${formatMm(ceiling.uncertaintyMm)} (${ceiling.shots} foto${ceiling.shots > 1 ? "'s" : ""}).`
+                    ? `Gemeten met ScanTag: ± ${formatMm(shownMarginMm(ceiling.uncertaintyMm))} (${ceiling.shots} scan${ceiling.shots > 1 ? "s" : ""}).`
                     : typeof own === "number"
                       ? input.help
                       : input.assumption
@@ -221,14 +226,12 @@ export function CategoryCard({
         )}
       </details>
       {measuring && (
-        <CameraMeasure
-          projectId={project.id}
-          owner="woning"
+        <ArScan
           heading="Plafondhoogte voor verf en behang"
-          tasks={[CAMERA_TASKS.plafond]}
-          shots={project.camera.filter((s) => s.task === "plafond")}
+          tasks={[SCAN_TASKS.plafond]}
+          shots={project.scans.filter((s) => s.task === "plafond")}
+          verdicts="local"
           reveal
-          process={processLocally}
           onSave={saveCeiling}
           onClose={() => setMeasuring(false)}
         />

@@ -16,15 +16,16 @@ export function mergeIncoming(local: Project, incoming: Project): { project: Pro
     byId.delete(w.id);
     if (JSON.stringify(other) === JSON.stringify(w)) return w;
     updated++;
-    // The old photo estimate lives only where it was made.
-    return { ...other, photo: w.photo ?? other.photo };
+    return other;
   });
   for (const w of byId.values()) {
     windows.push(w);
     added++;
   }
   const payment = local.payment?.status === "paid" ? local.payment : (incoming.payment ?? local.payment);
-  return { project: { ...local, windows, payment, updatedAt: new Date().toISOString() }, updated, added };
+  // Scans of the whole home (ceiling height) made on the other device come along too.
+  const scans = [...local.scans, ...incoming.scans.filter((s) => !local.scans.some((x) => x.id === s.id))];
+  return { project: { ...local, windows, scans, payment, updatedAt: new Date().toISOString() }, updated, added };
 }
 
 /** What travels to the other device: the project without the plan analyses (large and not needed to scan). */

@@ -1,0 +1,147 @@
+[
+  {
+    "naam": "Synthetisch voorbeeld: opening 1200 × 1500 mm op een gedraaide muur, 1,8 m afstand",
+    "task": "opening",
+    "product": "gordijn",
+    "mounting": "wand",
+    "points": [
+      {
+        "p": {
+          "x": -0.4,
+          "y": 0.2,
+          "z": -1.8
+        },
+        "n": {
+          "x": -0.422618262,
+          "y": 0,
+          "z": 0.906307787
+        },
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 1.854724,
+        "depthDiffMm": null
+      },
+      {
+        "p": {
+          "x": 0.686078868,
+          "y": 0.262803147,
+          "z": -1.293553106
+        },
+        "n": {
+          "x": -0.422618262,
+          "y": 0,
+          "z": 0.906307787
+        },
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 1.487632,
+        "depthDiffMm": null
+      },
+      {
+        "p": {
+          "x": 0.757227595,
+          "y": -1.235141155,
+          "z": -1.26037591
+        },
+        "n": {
+          "x": -0.422618262,
+          "y": 0,
+          "z": 0.906307787
+        },
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 1.92029,
+        "depthDiffMm": null
+      },
+      {
+        "p": {
+          "x": -0.328851273,
+          "y": -1.297944302,
+          "z": -1.766822804
+        },
+        "n": {
+          "x": -0.422618262,
+          "y": 0,
+          "z": 0.906307787
+        },
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 2.216859,
+        "depthDiffMm": null
+      }
+    ],
+    "tracking": {
+      "frames": 300,
+      "lost": 0
+    },
+    "device": {
+      "webxr": true,
+      "hitTest": true,
+      "depthSensing": false,
+      "domOverlay": true,
+      "platform": "android",
+      "browser": "synthetisch"
+    },
+    "waarheid": {
+      "breedte_boven": 1200,
+      "breedte_onder": 1200,
+      "hoogte_links": 1500,
+      "hoogte_rechts": 1500
+    },
+    "instrument": "exact (synthetisch)",
+    "tolerantieMm": 5
+  },
+  {
+    "naam": "Synthetisch voorbeeld: diepte 92 mm",
+    "task": "diepte",
+    "product": "rolgordijn",
+    "mounting": "in-de-dag",
+    "points": [
+      {
+        "p": {
+          "x": -0.371540509,
+          "y": -0.399177721,
+          "z": -1.786729121
+        },
+        "n": {
+          "x": -0.422618262,
+          "y": 0,
+          "z": 0.906307787
+        },
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 1.868097,
+        "depthDiffMm": null
+      },
+      {
+        "p": {
+          "x": -0.305507657,
+          "y": -0.397607642,
+          "z": -1.857448266
+        },
+        "n": null,
+        "spreadMm": 1.2,
+        "frames": 20,
+        "rangeM": 1.923939,
+        "depthDiffMm": null
+      }
+    ],
+    "tracking": {
+      "frames": 80,
+      "lost": 0
+    },
+    "device": {
+      "webxr": true,
+      "hitTest": true,
+      "depthSensing": false,
+      "domOverlay": true,
+      "platform": "android",
+      "browser": "synthetisch"
+    },
+    "waarheid": {
+      "diepte": 92
+    },
+    "instrument": "exact (synthetisch)",
+    "tolerantieMm": 3
+  }
+]

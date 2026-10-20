@@ -81,7 +81,7 @@ test("van adres tot rapport: gratis vloer, DEMO-betaling, plinten, raammeting, P
   const card = cards.last();
   await card.getByLabel("Product").selectOption("rolgordijn");
   await card.getByLabel("Montage").selectOption("in-de-dag");
-  await card.getByRole("button", { name: "Zelf invullen (rolmaat)" }).click();
+  await card.getByRole("button", { name: "Zelf invullen" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Volgende" }).click();

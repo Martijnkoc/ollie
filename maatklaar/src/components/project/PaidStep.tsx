@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { PRICE } from "@/config/site";
+import { tasksFor } from "@/lib/measurements/scan";
+import { productRule } from "@/lib/rules";
+import { ruleVerification } from "@/lib/rules/engine";
+import { scanStatus, windowsPreview } from "@/lib/scantag/status";
 import { startCheckout, refreshPayment } from "./payment-client";
 import { MaterialsSection } from "./MaterialsSection";
 import { PlinthSection } from "./PlinthSection";
@@ -66,6 +70,16 @@ function Checkout(props: StepProps) {
   }
 
   const roomsWithShape = computed.rooms.filter((r) => r.geometry.edgesMm).length;
+  const preview = windowsPreview(
+    computed.windows.map(({ window: w, rule }) => {
+      const pr = productRule(rule.id);
+      return {
+        state: scanStatus(w.scans, tasksFor(rule), w.scanVerdicts, { product: w.product, mounting: w.mounting, shape: w.shape }),
+        supplierRule: Boolean(pr?.selection),
+        ruleProblem: pr?.selection ? ruleVerification(pr) : null,
+      };
+    }),
+  );
 
   return (
     <section className="panel stack" aria-labelledby="stap-betaald">
@@ -91,9 +105,9 @@ function Checkout(props: StepProps) {
               : per wand, met deuren en marge
             </li>
             <li>
-              ScanTag-maten van je ramen
-              {project.windows.length ? ` (nu ${project.windows.length} ${project.windows.length === 1 ? "raam" : "ramen"})` : ""}, elk met
-              foutmarge en bron, plus begeleid meetprotocol, afwijkingscontrole en bestelmaat volgens de gekozen leveranciersregel
+              Raamregister met de gemeten opening van elk gescand raam in millimeters, met foutmarge, bron en status, plus meetprotocol en
+              afwijkingscontrole. Een bestelmaat alleen waar de meetregel van de leverancier gecontroleerd is en de maat geschikt is om op
+              te bestellen
             </li>
             <li>
               Materiaalbibliotheek: laminaat, PVC, tegels, ondervloer, overgangsprofielen, primer, behang, gordijnen, rolgordijnen,
@@ -102,9 +116,31 @@ function Checkout(props: StepProps) {
             <li>Persoonlijk PDF-rapport (A4) met winkelchecklist, aannames en bronnen</li>
             <li>CSV-bestellijst voor je eigen overzicht of de winkel</li>
           </ul>
+          {preview.total > 0 && (
+            <div className="card-flat stack-sm" role="region" aria-label="Wat je rapport bevat voor je ramen">
+              <strong>Je ramen in het rapport</strong>
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                <li>
+                  {preview.scanned} van {preview.total} {preview.total === 1 ? "raam" : "ramen"} gescand
+                  {preview.retake ? `, ${preview.retake} opnieuw scannen` : ""}
+                  {preview.notScanned ? `, ${preview.notScanned} nog niet gescand` : ""}
+                </li>
+                <li>
+                  Bestelmaat mogelijk voor {preview.orderPossible} van {preview.total} {preview.total === 1 ? "raam" : "ramen"}
+                </li>
+              </ul>
+              {preview.reasons.length > 0 && (
+                <ul className="tiny muted" style={{ margin: 0, paddingLeft: 18 }}>
+                  {preview.reasons.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <p className="small muted" style={{ margin: 0 }}>
-            Wat je krijgt is zo betrouwbaar als de maten die je invult en bevestigt. Bestelmaten voor raamdecoratie volgen de meetinstructie
-            van je leverancier; die verzinnen wij niet.
+            Wat je krijgt is zo betrouwbaar als de maten die je scant, invult en bevestigt. Bestelmaten voor raamdecoratie volgen de
+            meetinstructie van je leverancier; die verzinnen wij niet.
           </p>
         </div>
         <div className="card stack-sm">

@@ -114,31 +114,35 @@ describe("PDF-rapport", () => {
     // Pages with register rows: only table cells say "volgens leverancier".
     const withRegister = pages.filter((p) => p.includes("volgens leverancier"));
     expect(withRegister.length).toBeGreaterThan(1);
-    for (const p of withRegister) expect(p).toContain("Breedtes (ruw)");
+    for (const p of withRegister) expect(p).toContain("Opening b × h (mm)");
   });
 
-  it("met alle materiaalcategorieën, foto's en lange namen blijft alles binnen de pagina", async () => {
+  it("met alle materiaalcategorieën, ScanTag-maten en lange namen blijft alles binnen de pagina", async () => {
     const p = project(12);
     p.materials = {
       selected: [...CATEGORY_KEYS],
       rooms: { laminaat: p.rooms.filter((r) => r.name !== "Hal").map((r) => r.id) },
       inputs: { laminaat: { snijverlies: 7, pak_m2: 2.131 }, verf: { plafondhoogte: 2.6, lagen: 2, dekking: 9, blik_l: 2.5 } },
     };
+    const scan = {
+      method: "scantag_ar" as const,
+      scaleSource: "webxr_hit_test" as const,
+      rawMm: 1201.37,
+      uncertaintyMm: 27.4,
+      shots: 2,
+      status: "not_supported_for_ordering" as const,
+      reasons: ["sensor_too_coarse" as const],
+      device: { webxr: true, hitTest: true, depthSensing: false, domOverlay: true, platform: "android" as const, browser: "Chrome 141" },
+      capturedAt: NOW.toISOString(),
+    };
     p.windows[1] = {
       ...p.windows[1]!,
       planWidthMm: 1400,
-      photo: {
-        takenAt: NOW.toISOString(),
-        width: 1600,
-        height: 1700,
-        reference: [],
-        opening: [],
-        estimate: { topMm: 1201, bottomMm: 1198, leftMm: 1503, rightMm: 1499, uncertaintyMm: 9 },
-      },
+      measures: { ...p.windows[1]!.measures, breedte_boven: 1201.37 },
+      sources: { breedte_boven: scan },
     };
     const c = computeProject(p);
-    const jpg = fixture("raam-foto.jpg");
-    const model = buildReportModel(p, c, { now: NOW, plan: null, photos: { [p.windows[1]!.id]: { jpg, width: 1600, height: 1700 } } });
+    const model = buildReportModel(p, c, { now: NOW, plan: null });
     const { bytes, boxes } = await renderReportPdf(model);
     expect(inside(boxes)).toEqual([]);
     const text = (await pdfText(bytes)).join("\n");
@@ -147,7 +151,9 @@ describe("PDF-rapport", () => {
     expect(text).toContain("Laminaat — Geschat");
     expect(text).toContain("Pakken: afgerond omhoog(39,74 m² / 2,131 m²) = 19");
     expect(text).toContain("Rolluiken — Niet genoeg gegevens");
-    expect(text).toContain("browser_scan_estimate");
+    expect(text).toContain("ScanTag (AR-tracking)");
+    expect(text).toContain("1201 mm ± 28 mm");
+    expect(text).not.toMatch(/1201[,.]37/);
     expect(text).toContain("indicatief, geen raammaat");
     expect(text).toContain("PDF_explicit_dimension");
     expect(text).toMatch(/versie 1\.0/);
@@ -212,5 +218,20 @@ describe("CSV-bestellijst", () => {
     expect(csv).toContain(";22,14;m2;");
     expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);
     expect(csv).toContain("volgens meetinstructie leverancier");
+  });
+
+  it("raamdecoratie: expliciete velden in hele millimeters, nooit cm of inches", () => {
+    const csv = buildCsv(computeProject(project(3)), { demo: false });
+    const windowRows = csv.split("\r\n").filter((l) => l.startsWith("Raam "));
+    expect(windowRows.length).toBeGreaterThan(0);
+    expect(csv).toMatch(/openingWidthMm \(gemeten opening, kleinste breedte\)/);
+    expect(csv).toMatch(/openingHeightMm/);
+    expect(csv).toMatch(/orderWidthMm \(bestelmaat\)/);
+    for (const line of windowRows) {
+      const [, , qty, unit] = line.split(";");
+      expect(["mm", "typecode"]).toContain(unit);
+      if (qty && unit === "mm") expect(qty).toMatch(/^\d+$/);
+    }
+    expect(windowRows.join("\n")).not.toMatch(/\bcm\b|inch/);
   });
 });

@@ -51,6 +51,16 @@ export default function PrivacyPage() {
           verloopt via Mollie; welke gegevens Mollie verwerkt, staat in hun privacyverklaring.
         </li>
         <li>
+          <strong>ScanTag.</strong> De camera wordt alleen gebruikt tijdens een scan, nadat je toestemming hebt gegeven. Er wordt geen foto
+          gemaakt of verstuurd. Om je scan te controleren (en na betaling de maten vrij te geven) gaan alleen de vastgelegde punten naar
+          onze server: posities in de ruimte, hoe stil ze lagen en welk type browser je gebruikte. Wij slaan ze niet op.
+        </li>
+        <li>
+          <strong>Verder op je telefoon.</strong> Als je een QR-code maakt om op je telefoon verder te gaan, gaat je project versleuteld via
+          onze server. De sleutel staat alleen in de link zelf, dus wij kunnen het niet lezen. De code werkt één keer en verloopt na tien
+          minuten; alles is binnen enkele uren weg.
+        </li>
+        <li>
           Technische serverlogs van de hostingpartij kunnen IP-adressen bevatten. Wij gebruiken die alleen voor beveiliging en het tegengaan
           van misbruik.
         </li>

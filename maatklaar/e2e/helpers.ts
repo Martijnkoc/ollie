@@ -1,6 +1,5 @@
 import path from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { project } from "../src/lib/measurements/photo";
 
 export const fixture = (name: string) => path.resolve(import.meta.dirname, "../fixtures", name);
 
@@ -49,7 +48,7 @@ export async function confirmAllRooms(page: Page) {
   }
 }
 
-/** A paid (DEMO) project with one window, with the photo assistant of that window open. */
+/** A paid (DEMO) project with one window, with ScanTag of that window open. */
 export async function paidProjectWithWindow(page: Page) {
   await newProject(page);
   await step(page, /Plinten & ramen/);
@@ -59,40 +58,39 @@ export async function paidProjectWithWindow(page: Page) {
   await page.waitForURL(/#plinten-ramen$/);
   await page.getByRole("button", { name: "+ Raam toevoegen" }).click();
   await page.locator(".window-card").last().getByRole("button", { name: "Scannen met ScanTag" }).click();
-  await expect(page.getByRole("dialog", { name: "ScanTag: meten met je camera" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "ScanTag: meten met je telefoon" })).toBeVisible();
 }
 
-// fixtures/raam-foto.jpg: drawn by scripts/make-fixtures.mjs with this homography (wall mm → photo px).
-const RAAM_H = [0.9, 0.1, 460, -0.05, 0.95, 190, 0.00008, 0.00002, 1];
-export const RAAM_FOTO = { width: 2000, height: 1900 };
-const corners = (x0: number, y0: number, x1: number, y1: number) =>
-  [
-    [x0, y0],
-    [x1, y0],
-    [x1, y1],
-    [x0, y1],
-  ].map(([x, y]) => project(RAAM_H, { x: x!, y: y! }));
-/** Sheet left, sheet right, opening: in tap order. */
-export const RAAM_POINTS = [...corners(-380, 500, -170, 797), ...corners(1360, 900, 1570, 1197), ...corners(0, 0, 1200, 1500)];
-// A finger is never exact: every tap lands a few photo pixels off.
-const OFF = [
-  { x: 3, y: -3 },
-  { x: -3, y: 2 },
-  { x: 2, y: 3 },
-  { x: -2, y: -3 },
-];
+/** The opening of the simulated window (fake-webxr.ts): 1200 × 1500 mm, corners in capture order. */
+export const OPENING_CORNERS = [
+  [0, 0],
+  [1200, 0],
+  [1200, 1500],
+  [0, 1500],
+] as const;
 
-/** Opens the opening task in the ScanTag dialog, picks the window photo and taps all points. */
+/** Aims at each point in turn and captures it, with the WebXR test double installed. */
+export async function capturePoints(page: Page, points: readonly (readonly [number, number, number?])[]) {
+  const overlay = page.locator(".ar-overlay");
+  await expect(overlay).toBeVisible();
+  for (const [i, [x, y, out]] of points.entries()) {
+    await page.evaluate(
+      ([px, py, po]) => (window as unknown as { __xr: { aim: (a: number, b: number, c?: number) => void } }).__xr.aim(px!, py!, po),
+      [x, y, out ?? 0],
+    );
+    const capture = overlay.getByRole("button", { name: "Vastleggen" });
+    await expect(capture).toBeEnabled();
+    await capture.click();
+    if (i < points.length - 1) await expect(overlay.getByText(`Punt ${i + 2} van ${points.length}`)).toBeVisible();
+  }
+  await expect(overlay).toBeHidden();
+}
+
+/** Opens the opening task, starts the AR scan and captures the four corners of the simulated window. */
 export async function scanOpening(page: Page, dialog: Locator) {
   const opening = dialog.locator(".task-list > li").filter({ hasText: "Raamopening" });
-  await opening.getByRole("button", { name: "Foto maken" }).click();
-  await dialog.locator("input[type=file]:not([capture])").setInputFiles(fixture("raam-foto.jpg"));
-  await expect(dialog.getByText("Tik aan: A4-vel 1 (links): linksboven")).toBeVisible();
-  const svg = page.getByRole("application", { name: "Foto: punten aanwijzen" });
-  for (const [i, p] of RAAM_POINTS.entries()) {
-    const box = (await svg.boundingBox())!;
-    const q = { x: p.x + OFF[i % 4]!.x, y: p.y + OFF[i % 4]!.y };
-    await page.mouse.click(box.x + (q.x / RAAM_FOTO.width) * box.width, box.y + (q.y / RAAM_FOTO.height) * box.height);
-  }
+  await opening.getByRole("button", { name: /Scannen/ }).click();
+  await dialog.getByRole("button", { name: "Start de scan" }).click();
+  await capturePoints(page, OPENING_CORNERS);
   return opening;
 }
