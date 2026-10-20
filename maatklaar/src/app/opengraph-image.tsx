@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
+import { SHARE_IMAGE } from "@/components/seo/metadata";
 import { BRAND } from "@/config/brand";
 import { PRICE } from "@/config/site";
 
-export const alt = `${BRAND.name}: ${BRAND.promise}`;
-export const size = { width: 1200, height: 630 };
+export const alt = SHARE_IMAGE.alt;
+export const size = { width: SHARE_IMAGE.width, height: SHARE_IMAGE.height };
 export const contentType = "image/png";
 
 /** Link preview: the mark, the tagline and a schematic plan with measuring lines. Example drawing, no real home. */

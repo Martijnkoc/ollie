@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Icon } from "@/components/brand/Icon";
 import { GuideBlocks } from "@/components/seo/GuideBody";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/components/seo/metadata";
 import { BRAND, PRICE, siteUrl } from "@/config/site";
 import { GUIDE_INDEX } from "@/content/guide-index";
 import { GUIDES, guideBySlug } from "@/content/guides";
@@ -19,13 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/gidsen/[onderwerp
   const { onderwerp } = await params;
   const g = guideBySlug(onderwerp);
   if (!g) return {};
-  const path = `/gidsen/${g.slug}`;
-  return {
-    title: g.metaTitle,
-    description: g.description,
-    alternates: { canonical: path },
-    openGraph: { type: "article", title: g.metaTitle, description: g.description, url: path, siteName: BRAND.name, locale: BRAND.locale },
-  };
+  return pageMetadata({ title: g.metaTitle, description: g.description, path: `/gidsen/${g.slug}`, type: "article" });
 }
 
 export default async function GuidePage({ params }: PageProps<"/gidsen/[onderwerp]">) {

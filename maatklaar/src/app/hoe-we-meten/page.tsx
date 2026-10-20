@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/components/seo/metadata";
 import { AR_MEASURE } from "@/config/scantag";
 import { BRAND, MEASURE_DEVIATION_WARNING_MM, siteUrl, SOURCES } from "@/config/site";
 import { PATTERNS } from "@/lib/materials/patterns";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Hoe we meten en rekenen",
   description: `Waar de getallen van ${BRAND.name} vandaan komen: bronnen, rekenregels, afronding, foutmarges en wat we bewust niet doen. Met de status van elke methode.`,
-  alternates: { canonical: "/hoe-we-meten" },
-};
+  path: "/hoe-we-meten",
+  type: "article",
+});
 
 const UPDATED = "2026-10-20";
 

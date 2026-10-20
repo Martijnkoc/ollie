@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/brand/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { pageMetadata } from "@/components/seo/metadata";
 import { BRAND, siteUrl } from "@/config/site";
 import { GUIDE_GROUPS, GUIDE_INDEX } from "@/content/guide-index";
 import { guideBySlug } from "@/content/guides";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Gidsen: vloer, verf, plinten en raamdecoratie berekenen",
   description:
     "Praktische gidsen met formules en rekenvoorbeelden: vloeroppervlakte, laminaat, ondervloer, tegels, plinten, verf en het meten van gordijnen, jaloezieën, plissés en rolluiken.",
-  alternates: { canonical: "/gidsen" },
-};
+  path: "/gidsen",
+});
 
 export default function GuidesPage() {
   const url = siteUrl();

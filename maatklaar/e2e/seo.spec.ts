@@ -27,6 +27,20 @@ test("gidsenoverzicht en methode zijn indexeerbaar met canonical", async ({ page
   }
 });
 
+test("delen: elke publieke pagina heeft eigen Open Graph- en Twitter-teksten en een afbeelding", async ({ page }) => {
+  for (const [path, title] of [
+    ["/gidsen/laminaat-berekenen", /Laminaat/],
+    ["/gidsen", /Gidsen/],
+    ["/hoe-we-meten", /Hoe we meten/],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.locator('meta[property="og:title"]'), path).toHaveAttribute("content", title);
+    await expect(page.locator('meta[name="twitter:title"]'), path).toHaveAttribute("content", title);
+    await expect(page.locator('meta[property="og:url"]'), path).toHaveAttribute("content", new RegExp(`${path}$`));
+    await expect(page.locator('meta[property="og:image"]'), path).toHaveAttribute("content", /\/opengraph-image/);
+  }
+});
+
 test("onbekende gids geeft 404", async ({ page }) => {
   const res = await page.goto("/gidsen/bestaat-niet");
   expect(res?.status()).toBe(404);
