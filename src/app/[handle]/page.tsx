@@ -77,7 +77,7 @@ export default async function ProfilePage(props: PageProps<"/[handle]">) {
       </div>
       <div className="container">
         <header className="profile-head">
-          <Avatar name={p.display_name} url={p.avatar_url} size={152} className="lime" />
+          <Avatar name={p.display_name} url={p.avatar_url} size={null} className="lime" />
           <div className="stack-sm">
             <h1>{p.display_name}</h1>
             <p className="handle" style={{ margin: 0 }}>

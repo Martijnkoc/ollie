@@ -1780,6 +1780,8 @@ a.chip:hover {
 .cover.type-art {
   padding: var(--gutter);
   justify-content: flex-end;
+  align-items: flex-end;
+  text-align: right;
 }
 .cover.type-art .big {
   font-size: clamp(2.2rem, 8cqi, 8rem);
@@ -1788,8 +1790,8 @@ a.chip:hover {
 
 .profile-head {
   display: grid;
-  gap: 20px;
-  margin-top: -56px;
+  gap: 16px;
+  padding-top: 16px;
   position: relative;
 }
 @media (min-width: 900px) {
@@ -1797,16 +1799,18 @@ a.chip:hover {
     grid-template-columns: auto 1fr auto;
     align-items: end;
     gap: 28px;
-    margin-top: -72px;
   }
 }
+/* Only the photo overlaps the cover; the name always sits on the dark page. */
 .profile-head .avatar {
   --size: 112px;
   border: 4px solid var(--midnight);
+  margin-top: -72px;
 }
 @media (min-width: 900px) {
   .profile-head .avatar {
     --size: 152px;
+    margin-top: -96px;
   }
 }
 .profile-head h1 {
@@ -2491,6 +2495,9 @@ details > summary {
   }
   .inbox:not(:has(.chat)) > div:last-child {
     display: none;
+  }
+  .inbox:not(:has(.chat)) {
+    min-height: 0;
   }
   .inbox-list {
     border-right: 0;

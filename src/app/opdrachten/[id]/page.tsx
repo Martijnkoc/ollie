@@ -63,9 +63,9 @@ const EVENT: Record<string, string> = {
 
 const STEPS = [
   { key: "agree", label: "Afspraak" },
-  { key: "paid", label: "Betaald" },
-  { key: "work", label: "In uitvoering" },
-  { key: "delivered", label: "Opgeleverd" },
+  { key: "pay", label: "Betaling" },
+  { key: "work", label: "Uitvoering" },
+  { key: "delivered", label: "Oplevering" },
   { key: "done", label: "Afgerond" },
 ];
 
@@ -347,7 +347,9 @@ export default async function OrderDetail(props: PageProps<"/opdrachten/[id]">) 
                   <time dateTime={new Date(e.created_at).toISOString()}>{formatDateTime(e.created_at)}</time>
                   {EVENT[e.kind] ?? e.kind}
                   {e.actor_name && <span className="faint"> · {e.actor_id === v.user.id ? "jij" : e.actor_name}</span>}
-                  {e.note && e.kind !== "delivered" && <span className="faint small pre"> — {e.note}</span>}
+                  {e.note && !["delivered", "payment_mismatch", "duplicate_payment"].includes(e.kind) && (
+                    <span className="faint small pre"> — {e.note}</span>
+                  )}
                 </li>
               ))}
             </ol>

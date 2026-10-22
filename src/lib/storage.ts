@@ -230,7 +230,7 @@ export async function readLocal(key: string) {
 export async function deleteOrphans(db: Db, now = new Date()) {
   const rows = await db.query<{ id: string; storage_key: string }>(
     `select m.id, m.storage_key from media m
-     where m.created_at < $1 - interval '1 day'
+     where m.created_at < $1::timestamptz - interval '1 day'
        and (m.status = 'pending' or (
          not exists (select 1 from profiles p where p.avatar_id = m.id or p.cover_id = m.id)
          and not exists (select 1 from services s where s.cover_id = m.id)

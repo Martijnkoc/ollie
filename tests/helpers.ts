@@ -19,6 +19,7 @@ export async function freshDb() {
 
 export const NOW = new Date("2026-10-22T10:00:00Z");
 export const days = (n: number, base = NOW) => new Date(base.getTime() + n * 86_400_000);
+export const at = (minutes: number, base = NOW) => new Date(base.getTime() + minutes * 60_000);
 
 /** A user with a profile; `maker` publishes it with a headline and a category. */
 export async function makeUser(db: Db, name: string, opts: { maker?: boolean; region?: string; remote?: boolean } = {}): Promise<Rights> {
@@ -45,8 +46,8 @@ export async function makeUser(db: Db, name: string, opts: { maker?: boolean; re
 export async function makeMedia(db: Db, r: Rights, purpose: string, kind: "image" | "video" = "image") {
   const [{ id }] = await db.query<{ id: string }>(
     `insert into media (owner_id, purpose, kind, storage_key, content_type, size_bytes, status)
-     values ($1, $2, $3, $1 || '/' || gen_random_uuid() || '.jpg', 'image/jpeg', 1000, 'ready') returning id`,
-    [r.user.id, purpose, kind],
+     values ($1, $2, $3, $4 || '/' || gen_random_uuid() || '.jpg', 'image/jpeg', 1000, 'ready') returning id`,
+    [r.user.id, purpose, kind, r.user.id],
   );
   return id;
 }

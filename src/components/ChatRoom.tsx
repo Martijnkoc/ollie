@@ -62,13 +62,26 @@ export function ChatRoom({
 
   useEffect(() => {
     const source = new EventSource(`/api/stream/gesprek/${threadId}?after=${lastId.current}`);
-    source.addEventListener("message", (e) => {
+    // The server recycles the stream every ~25 s on purpose; only a reconnect that takes a while is worth showing.
+    let slow: ReturnType<typeof setTimeout> | undefined;
+    const ok = () => {
+      clearTimeout(slow);
       setStatus("live");
+    };
+    source.addEventListener("message", (e) => {
+      ok();
       add([JSON.parse((e as MessageEvent).data)]);
     });
-    source.onopen = () => setStatus("live");
-    source.onerror = () => setStatus(source.readyState === EventSource.CLOSED ? "closed" : "reconnecting");
-    return () => source.close();
+    source.onopen = ok;
+    source.onerror = () => {
+      clearTimeout(slow);
+      if (source.readyState === EventSource.CLOSED) return setStatus("closed");
+      slow = setTimeout(() => setStatus("reconnecting"), 4000);
+    };
+    return () => {
+      clearTimeout(slow);
+      source.close();
+    };
   }, [threadId, add]);
 
   useEffect(() => {

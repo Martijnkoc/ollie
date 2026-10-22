@@ -23,11 +23,31 @@ export function initials(name: string) {
 }
 
 /** A person's photo, or their initials. Decorative when a name is printed next to it. */
-export function Avatar({ name, url, size = 40, className = "" }: { name: string; url: string | null; size?: number; className?: string }) {
-  const style = { "--size": `${size}px` } as React.CSSProperties;
+export function Avatar({
+  name,
+  url,
+  size = 40,
+  className = "",
+}: {
+  name: string;
+  url: string | null;
+  /** null: the size comes from CSS (for responsive avatars). */
+  size?: number | null;
+  className?: string;
+}) {
+  const style = size == null ? undefined : ({ "--size": `${size}px` } as React.CSSProperties);
   if (url)
     return (
-      <img src={url} alt="" className={`avatar ${className}`} style={style} width={size} height={size} loading="lazy" decoding="async" />
+      <img
+        src={url}
+        alt=""
+        className={`avatar ${className}`}
+        style={style}
+        width={size ?? undefined}
+        height={size ?? undefined}
+        loading="lazy"
+        decoding="async"
+      />
     );
   return (
     <span className={`avatar ${className}`} style={style} aria-hidden="true">
