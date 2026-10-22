@@ -1,20 +1,52 @@
-import { type Rights, assertCommunity } from "./access";
+import { type Rights } from "./access";
 import { REPORT_REASONS } from "./config";
 import { type Db, one } from "./db";
 import { UserError } from "./errors";
 import { limit } from "./ratelimit";
 
-type Context = "message" | "thread_message" | "date" | "profile" | "invite";
+export type ReportContext = "profile" | "service" | "portfolio" | "review" | "message" | "order";
 
-/** The reporter must be able to see what they report; target and excerpt are taken from our data, not from the form. */
-async function resolveContext(db: Db, r: Rights, context: Context, id: string) {
+/** The reporter must be able to see what they report; target and excerpt come from our data, never from the form. */
+async function resolveContext(db: Db, r: Rights, context: ReportContext, id: string) {
+  if (!/^[0-9a-f-]{36}$/.test(id) && context !== "message") return undefined;
   switch (context) {
-    case "message": {
-      assertCommunity(r);
-      const m = await one<{ author_id: string; body: string }>(db, `select author_id, body from messages where id::text = $1`, [id]);
-      return m && { target: m.author_id, excerpt: m.body };
+    case "profile": {
+      const p = await one<{ user_id: string; display_name: string; headline: string; bio: string }>(
+        db,
+        `select user_id, display_name, headline, bio from profiles where user_id::text = $1 and published and hidden_at is null`,
+        [id],
+      );
+      return p && { target: p.user_id, excerpt: `${p.display_name}: ${p.headline}\n${p.bio}` };
     }
-    case "thread_message": {
+    case "service": {
+      const s = await one<{ owner_id: string; title: string; description: string }>(
+        db,
+        `select owner_id, title, description from services where id::text = $1 and status = 'published' and hidden_at is null`,
+        [id],
+      );
+      return s && { target: s.owner_id, excerpt: `${s.title}\n${s.description}` };
+    }
+    case "portfolio": {
+      const i = await one<{ owner_id: string; title: string; description: string }>(
+        db,
+        `select owner_id, title, description from portfolio_items where id::text = $1 and published and hidden_at is null`,
+        [id],
+      );
+      return i && { target: i.owner_id, excerpt: `${i.title}\n${i.description}` };
+    }
+    case "review": {
+      const v = await one<{ author_id: string | null; seller_id: string; body: string; reply: string | null }>(
+        db,
+        `select author_id, seller_id, body, reply from reviews where id::text = $1 and hidden_at is null`,
+        [id],
+      );
+      if (!v) return undefined;
+      // The maker reports the review about them; anyone else reports the maker's public reply.
+      return v.seller_id === r.user.id
+        ? v.author_id && { target: v.author_id, excerpt: v.body }
+        : { target: v.seller_id, excerpt: `${v.body}${v.reply ? `\n— reactie: ${v.reply}` : ""}` };
+    }
+    case "message": {
       const m = await one<{ author_id: string; body: string; user_a: string; user_b: string }>(
         db,
         `select tm.author_id, tm.body, t.user_a, t.user_b from thread_messages tm join threads t on t.id = tm.thread_id where tm.id::text = $1`,
@@ -22,28 +54,15 @@ async function resolveContext(db: Db, r: Rights, context: Context, id: string) {
       );
       return m && (m.user_a === r.user.id || m.user_b === r.user.id) ? { target: m.author_id, excerpt: m.body } : undefined;
     }
-    case "date": {
-      const p = await db.query<{ user_id: string }>(`select user_id from date_participants where date_id::text = $1`, [id]);
-      if (!p.some((x) => x.user_id === r.user.id)) return undefined;
-      const other = p.find((x) => x.user_id !== r.user.id);
-      return other?.user_id ? { target: other.user_id, excerpt: "" } : undefined;
-    }
-    case "profile": {
-      assertCommunity(r);
-      const p = await one<{ user_id: string; alias: string; bio: string }>(
+    case "order": {
+      const o = await one<{ buyer_id: string | null; seller_id: string | null; title: string; brief: string }>(
         db,
-        `select user_id, alias, bio from profiles where user_id::text = $1`,
+        `select buyer_id, seller_id, title, brief from orders where id::text = $1`,
         [id],
       );
-      return p && { target: p.user_id, excerpt: `${p.alias}: ${p.bio}` };
-    }
-    case "invite": {
-      const i = await one<{ organizer_id: string; message: string; guest_id: string | null }>(
-        db,
-        `select organizer_id, message, guest_id from invites where id::text = $1`,
-        [id],
-      );
-      return i && i.guest_id === r.user.id ? { target: i.organizer_id, excerpt: i.message } : undefined;
+      if (!o || (o.buyer_id !== r.user.id && o.seller_id !== r.user.id)) return undefined;
+      const other = o.buyer_id === r.user.id ? o.seller_id : o.buyer_id;
+      return other ? { target: other, excerpt: `${o.title}\n${o.brief}` } : undefined;
     }
   }
 }
@@ -51,13 +70,14 @@ async function resolveContext(db: Db, r: Rights, context: Context, id: string) {
 export async function createReport(
   db: Db,
   r: Rights,
-  input: { context: Context; contextId: string; reason: string; details: string },
+  input: { context: ReportContext; contextId: string; reason: string; details: string },
   now = new Date(),
 ) {
+  if (r.restricted) throw new UserError("Je account is beperkt.");
   if (!REPORT_REASONS.some((x) => x.key === input.reason)) throw new UserError("Kies een reden.");
   if (input.details.length > 2000) throw new UserError("Houd je toelichting onder de 2000 tekens.");
   const ctx = await resolveContext(db, r, input.context, input.contextId);
-  if (!ctx || ctx.target === r.user.id) throw new UserError("Dit kun je niet melden.");
+  if (!ctx || !ctx.target || ctx.target === r.user.id) throw new UserError("Dit kun je niet melden.");
   await limit(db, "reports", r.user.id, now);
   await db.query(
     `insert into reports (reporter_id, target_id, context, context_id, excerpt, reason, details, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -105,7 +125,8 @@ export async function resolveReport(
 
 /**
  * A restriction always comes from a human decision with a recorded reason. Nothing is restricted
- * automatically, and declined dates, no clicks or dislikes are never a reason.
+ * automatically. The person's public content disappears from the platform, unpaid orders stop, and paid
+ * orders keep running so buyers can still be refunded or receive their delivery.
  */
 export async function restrictUser(db: Db, r: Rights, targetId: string, reason: string, reportId?: string, now = new Date()) {
   requireStaff(r);
@@ -113,16 +134,58 @@ export async function restrictUser(db: Db, r: Rights, targetId: string, reason: 
   if (targetId === r.user.id) throw new UserError("Je kunt jezelf niet beperken.");
   await db.transaction(async (tx) => {
     await tx.query(`update users set restricted_at = $2, restricted_reason = $3 where id = $1`, [targetId, now, why]);
-    // Appointments that have not started stop; the organiser's credit returns.
-    await tx.query(
-      `update dates set status = case when status = 'proposed' then 'declined' else 'cancelled' end,
-         credit_status = case when credit_status = 'reserved' then 'released' else credit_status end
-       where status in ('proposed', 'scheduled') and id in (select date_id from date_participants where user_id = $1)`,
-      [targetId],
+    const open = await tx.query<{ id: string }>(
+      `update orders set status = 'cancelled', cancelled_at = $2, cancel_reason = 'Account beperkt door moderatie', updated_at = $2
+       where (buyer_id = $1 or seller_id = $1) and status in ('requested', 'quoted', 'awaiting_payment') and payment_status = 'none' returning id`,
+      [targetId, now],
     );
-    await tx.query(`update invites set status = 'cancelled' where organizer_id = $1 and status in ('open', 'accepted')`, [targetId]);
+    for (const o of open) {
+      await tx.query(`update quotes set status = 'withdrawn', responded_at = $2 where order_id = $1 and status = 'open'`, [o.id, now]);
+      await tx.query(`insert into order_events (order_id, actor_id, kind, created_at) values ($1, null, 'cancelled_moderation', $2)`, [
+        o.id,
+        now,
+      ]);
+    }
     await logAction(tx, r, targetId, "restrict", why, reportId);
   });
+}
+
+const HIDEABLE = { profile: "profiles", service: "services", portfolio: "portfolio_items", review: "reviews" } as const;
+
+/** Hides one piece of content with a reason the owner can read. Reversible. */
+export async function hideContent(
+  db: Db,
+  r: Rights,
+  context: keyof typeof HIDEABLE,
+  id: string,
+  reason: string,
+  reportId?: string,
+  now = new Date(),
+) {
+  requireStaff(r);
+  const why = requireReason(reason);
+  const table = HIDEABLE[context];
+  const key = context === "profile" ? "user_id" : "id";
+  const owner = context === "profile" ? "user_id" : context === "review" ? "author_id" : "owner_id";
+  const rows = await db.query<{ owner: string | null }>(
+    `update ${table} set hidden_at = $2, hidden_reason = $3 where ${key}::text = $1 returning ${owner} as owner`,
+    [id, now, why],
+  );
+  if (!rows.length) throw new UserError("Deze inhoud bestaat niet meer.");
+  await logAction(db, r, rows[0].owner, `hide_${context}`, why, reportId);
+}
+
+export async function unhideContent(db: Db, r: Rights, context: keyof typeof HIDEABLE, id: string, reason: string) {
+  requireStaff(r);
+  const why = requireReason(reason);
+  const table = HIDEABLE[context];
+  const key = context === "profile" ? "user_id" : "id";
+  const owner = context === "profile" ? "user_id" : context === "review" ? "author_id" : "owner_id";
+  const rows = await db.query<{ owner: string | null }>(
+    `update ${table} set hidden_at = null, hidden_reason = null where ${key}::text = $1 returning ${owner} as owner`,
+    [id],
+  );
+  if (rows.length) await logAction(db, r, rows[0].owner, `unhide_${context}`, why);
 }
 
 export async function liftRestriction(db: Db, r: Rights, targetId: string, reason: string) {

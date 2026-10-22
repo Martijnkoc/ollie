@@ -14,8 +14,9 @@ export async function assertNotBlocked(db: Db, a: string, b: string) {
 }
 
 /**
- * Blocking stops new requests, messages, invitations and proposals in both directions,
- * cancels appointments between the two that have not started and releases their credits.
+ * Blocking hides both people from each other, stops messages and follows in both directions and ends
+ * requests and quotes between them that have not been paid. A paid order keeps running so money is never
+ * stuck: it can still be delivered, completed, cancelled with a refund or brought to a moderator.
  */
 export async function block(db: Db, blockerId: string, blockedId: string, now = new Date()) {
   if (blockerId === blockedId) throw new UserError("Je kunt jezelf niet blokkeren.");
@@ -25,31 +26,24 @@ export async function block(db: Db, blockerId: string, blockedId: string, now = 
       blockedId,
       now,
     ]);
-    await tx.query(
-      `update contact_requests set status = 'declined', responded_at = $3
-       where status = 'pending' and ((from_id = $1 and to_id = $2) or (from_id = $2 and to_id = $1))`,
+    await tx.query(`delete from follows where (follower_id = $1 and followee_id = $2) or (follower_id = $2 and followee_id = $1)`, [
+      blockerId,
+      blockedId,
+    ]);
+    const open = await tx.query<{ id: string }>(
+      `update orders set status = 'cancelled', cancelled_at = $3, cancelled_by = $1, cancel_reason = 'Geblokkeerd', updated_at = $3
+       where status in ('requested', 'quoted', 'awaiting_payment') and payment_status = 'none'
+         and ((buyer_id = $1 and seller_id = $2) or (buyer_id = $2 and seller_id = $1))
+       returning id`,
       [blockerId, blockedId, now],
     );
-    const shared = await tx.query<{ id: string }>(
-      `select d.id from dates d
-       where d.status in ('proposed', 'scheduled')
-         and exists (select 1 from date_participants p where p.date_id = d.id and p.user_id = $1)
-         and exists (select 1 from date_participants p where p.date_id = d.id and p.user_id = $2)`,
-      [blockerId, blockedId],
-    );
-    for (const d of shared) {
-      await tx.query(
-        `update dates set status = case when status = 'proposed' then 'declined' else 'cancelled' end, cancelled_by = $2,
-           credit_status = case when credit_status = 'reserved' then 'released' else credit_status end
-         where id = $1`,
-        [d.id, blockerId],
-      );
+    for (const o of open) {
+      await tx.query(`update quotes set status = 'withdrawn', responded_at = $2 where order_id = $1 and status = 'open'`, [o.id, now]);
+      await tx.query(`insert into order_events (order_id, actor_id, kind, created_at) values ($1, null, 'cancelled_block', $2)`, [
+        o.id,
+        now,
+      ]);
     }
-    await tx.query(
-      `update invites set status = 'cancelled' where status in ('open', 'accepted')
-       and ((organizer_id = $1 and guest_id = $2) or (organizer_id = $2 and guest_id = $1))`,
-      [blockerId, blockedId],
-    );
   });
 }
 

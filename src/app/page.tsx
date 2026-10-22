@@ -1,228 +1,355 @@
 import Link from "next/link";
-import { HeroIllustration } from "@/components/HeroIllustration";
+import { ArrowUpRight, Arrow } from "@/components/Icons";
+import { ServiceTile, WorkTile, PriceLabel } from "@/components/Tiles";
+import { Avatar, TypeArt } from "@/components/Visuals";
 import { viewer } from "@/lib/access";
-import { DATE_MINUTES, MATCH_ORIGINS, MEMBERSHIP } from "@/lib/config";
+import { CATEGORIES, HEADLINE, categoryLabel } from "@/lib/config";
+import { getDb } from "@/lib/db";
+import { feed } from "@/lib/feed";
+import { categoryCounts, spotlight, wallImages } from "@/lib/home";
+import { feePercentLabel } from "@/lib/money";
+import { stripeMode } from "@/lib/payments-client";
+import { savedIds } from "@/lib/social";
 
-const apps = MATCH_ORIGINS.slice(0, -1).join(", ");
+const TALENTS: [string, string][] = [
+  ["Creator", "creators"],
+  ["Fotograaf", "creatief"],
+  ["Developer", "digitaal"],
+  ["Schilder", "huis"],
+  ["Coach", "coaching"],
+  ["Videomaker", "creatief"],
+  ["Dj", "muziek"],
+  ["Installateur", "huis"],
+  ["Designer", "digitaal"],
+  ["Personal trainer", "sport"],
+  ["Muzikant", "muziek"],
+  ["Marketeer", "digitaal"],
+  ["Illustrator", "creatief"],
+  ["Timmerman", "huis"],
+  ["Docent", "coaching"],
+];
 
-export default async function Home(props: PageProps<"/">) {
+const SELL_LINK = "/inloggen?next=%2Fwelkom%3Fverkopen%3D1";
+
+export default async function Home() {
+  const db = await getDb();
   const v = await viewer();
-  const query = await props.searchParams;
+  const [images, spot, counts, latest, saved] = await Promise.all([
+    wallImages(db),
+    spotlight(db),
+    categoryCounts(db),
+    feed(db, { kind: "all", limit: 8 }, v?.user.id),
+    savedIds(db, v?.user.id),
+  ]);
+  const sellHref = v?.profile ? "/dashboard" : v ? "/welkom?verkopen=1" : SELL_LINK;
+  const ctx = { saved, loggedIn: Boolean(v?.profile) };
+  const showcase = latest.items.filter((i) => i.type !== "maker");
+
+  // Three columns, each repeated so the slow scroll loops without a seam.
+  const columns = [0, 1, 2].map((c) =>
+    images.length >= 6 ? images.filter((_, i) => i % 3 === c) : TALENTS.filter((_, i) => i % 3 === c).map(([t, cat]) => ({ t, cat })),
+  );
+
   return (
     <>
-      {query.account === "verwijderd" && (
-        <div className="container" style={{ paddingTop: 24 }}>
-          <p className="notice good" role="status">
-            Je account en gegevens zijn verwijderd. Bedankt dat je er was.
-          </p>
-        </div>
-      )}
-      <section className="hero">
+      <section className="hero" aria-labelledby="hero-title">
         <div className="container hero-grid">
           <div>
-            <p className="eyebrow">Videodates van {DATE_MINUTES} minuten</p>
-            <h1>
-              Eerst een klik.
-              <span className="serif-accent">Dan een date.</span>
+            <p className="eyebrow">Voor creators, makers, freelancers en vakmensen</p>
+            <h1 id="hero-title">
+              <span className="line">Je hebt iets</span>
+              <span className="line">te bieden.</span>
+              <span className="line lime">Laat het zien.</span>
             </h1>
             <p className="lead">
-              Moe van steeds dezelfde gesprekken op verschillende apps? Zie en spreek elkaar eerst twintig minuten op video. Daarna kies je
-              rustig, en privé, of je echt wilt afspreken.
+              Ontdek talent, vind de juiste professional voor je klus, of verdien geld met wat jij kunt. Eén plek voor de fotograaf en de
+              schilder, de developer en de coach, de creator en de dj.
             </p>
-            <div className="row hero-actions">
-              <Link className="btn large" href={v?.community ? "/uitnodigen" : "/lidmaatschap"}>
-                Neem je match mee
+            <div className="hero-ctas">
+              <Link href="/ontdek" className="btn large white">
+                Ontdek talenten <Arrow />
               </Link>
-              <Link className="btn large secondary" href="#community">
-                Bekijk de community
+              <Link href={sellHref} className="btn large">
+                Verkoop jouw talent <Arrow />
               </Link>
             </div>
+            <p className="hero-note">Gratis account. Geen abonnement. Verkopers betalen alleen {feePercentLabel()} als ze verdienen.</p>
           </div>
-          <HeroIllustration />
+          <div
+            className="wall"
+            aria-hidden={images.length < 6 ? "true" : undefined}
+            aria-label={images.length >= 6 ? "Recent werk van makers" : undefined}
+          >
+            {columns.map((col, c) => (
+              <div className="wall-col" key={c}>
+                {[0, 1].flatMap((rep) =>
+                  col.map((item, i) =>
+                    "url" in item ? (
+                      <Link key={`${rep}-${item.id}`} href={`/werk/${item.id}`} className="wall-item" tabIndex={rep ? -1 : undefined}>
+                        <img src={item.url} alt={rep ? "" : `${item.title}, door ${item.name}`} loading="lazy" decoding="async" />
+                        <span className="cap">{item.name}</span>
+                      </Link>
+                    ) : (
+                      <TypeArt
+                        key={`${rep}-${i}`}
+                        seed={`${item.t}${c}`}
+                        title={item.t}
+                        kicker={categoryLabel(item.cat)}
+                        className="wall-item"
+                      />
+                    ),
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="container" aria-labelledby="ingangen">
-        <h2 id="ingangen" className="visually-hidden">
-          Twee manieren om te beginnen
-        </h2>
-        <div className="doors">
-          <Link href={v?.community ? "/uitnodigen" : "/lidmaatschap"} className="door primary">
-            <h3>Ik heb al een match</h3>
-            <p>
-              Matchte je via {apps} of ergens anders? Stuur een uitnodigingslink. Wij regelen een besloten videodate van twintig minuten. Je
-              match betaalt niets en hoeft vooraf geen app te downloaden.
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {[0, 1].map((rep) =>
+            [
+              "Creators",
+              "Fotografen",
+              "Programmeurs",
+              "Schilders",
+              "Coaches",
+              "Muzikanten",
+              "Designers",
+              "Installateurs",
+              "Trainers",
+              "Videomakers",
+            ].map((w) => <span key={`${rep}-${w}`}>{w}</span>),
+          )}
+        </div>
+      </div>
+
+      <section className="section" aria-labelledby="ontdek-titel">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Ontdek</p>
+              <h2 id="ontdek-titel">Werk dat je kunt zien. Diensten die je kunt boeken.</h2>
+            </div>
+            <Link href="/ontdek" className="btn secondary">
+              Alles bekijken <Arrow />
+            </Link>
+          </div>
+          {showcase.length > 0 ? (
+            <div className="rail" role="list" aria-label="Nieuw op het platform">
+              {showcase.map((item) => (
+                <div role="listitem" key={`${item.type}-${item.id}`}>
+                  {item.type === "service" ? (
+                    <ServiceTile item={item} ctx={ctx} />
+                  ) : item.type === "work" ? (
+                    <WorkTile item={item} ctx={ctx} />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid-3">
+              {CATEGORIES.slice(0, 3).map((c) => (
+                <div key={c.key} className="tile">
+                  <TypeArt seed={c.key} title={c.examples[0]} kicker={c.label} style={{ aspectRatio: "4 / 3" }} />
+                  <div className="tile-body">
+                    <p className="small muted" style={{ margin: 0 }}>
+                      Bijvoorbeeld. Hier verschijnen de eerste echte diensten zodra makers ze publiceren.
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="section" id="categorieen" aria-labelledby="cat-titel" style={{ paddingTop: 0 }}>
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Categorieën</p>
+              <h2 id="cat-titel">Elk talent. Dezelfde kwaliteit.</h2>
+              <p className="muted">Creators en traditionele zelfstandigen krijgen hier hetzelfde podium.</p>
+            </div>
+          </div>
+          <div className="cat-grid">
+            {CATEGORIES.map((c, i) => (
+              <Link key={c.key} href={`/ontdek?categorie=${c.key}`} className="cat">
+                <span className="n">
+                  {String(i + 1).padStart(2, "0")}
+                  {counts.get(c.key) ? ` · ${counts.get(c.key)} ${counts.get(c.key) === 1 ? "dienst" : "diensten"}` : ""}
+                </span>
+                <span>
+                  <span className="name">{c.label}</span>
+                  <span className="blurb">{c.blurb}</span>
+                </span>
+                <ArrowUpRight className="go" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section paper" aria-labelledby="makers-titel">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">{spot.editorial ? "Uitgelicht door de redactie" : "Nieuw op Sell Yourself"}</p>
+              <h2 id="makers-titel">Makers en hun aanbod</h2>
+              <p className="muted small">
+                {spot.editorial
+                  ? "Gekozen door ons team. Uitlichten is nooit betaald."
+                  : "De nieuwste makers met werk of een dienst online. Geen ranglijst, geen betaalde plekken."}
+              </p>
+            </div>
+          </div>
+          {spot.makers.length === 0 ? (
+            <div className="empty">
+              <h3>Hier staan straks de eerste makers.</h3>
+              <p>Sell Yourself is net begonnen. We tonen hier alleen echte profielen, dus nog even niets.</p>
+              <Link href={sellHref} className="btn dark">
+                Word een van de eersten <Arrow />
+              </Link>
+            </div>
+          ) : (
+            <div className="grid-4">
+              {spot.makers.map((m) => (
+                <article key={m.user_id} className="tile" style={{ background: "#fff" }}>
+                  <div className="media-frame" style={{ aspectRatio: "4 / 5" }}>
+                    {m.cover_url ? (
+                      <img src={m.cover_url} alt="" loading="lazy" decoding="async" />
+                    ) : (
+                      <TypeArt
+                        seed={m.username}
+                        title={m.display_name}
+                        kicker={categoryLabel(m.categories[0])}
+                        style={{ height: "100%" }}
+                      />
+                    )}
+                  </div>
+                  <div className="tile-body stack-sm">
+                    <div className="row tight">
+                      <Avatar name={m.display_name} url={m.avatar_url} size={28} />
+                      <h3 className="tile-title" style={{ margin: 0 }}>
+                        <Link href={`/@${m.username}`}>{m.display_name}</Link>
+                      </h3>
+                    </div>
+                    {m.headline && (
+                      <p className="small muted" style={{ margin: 0 }}>
+                        {m.headline}
+                      </p>
+                    )}
+                    {m.services.length > 0 && (
+                      <ul className="divided over" style={{ fontSize: "0.88rem" }}>
+                        {m.services.map((s) => (
+                          <li key={s.id} className="row between" style={{ padding: "8px 0" }}>
+                            <Link href={`/diensten/${s.id}`} style={{ textDecoration: "none" }}>
+                              {s.title}
+                            </Link>
+                            <PriceLabel kind={s.kind} price={s.price_cents} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="section paper" id="zo-werkt-het" aria-labelledby="hoe-titel" style={{ paddingTop: 0 }}>
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Zo werkt het</p>
+              <h2 id="hoe-titel">Boeken, overleggen, betalen. Helder vanaf de eerste klik.</h2>
+            </div>
+            <Link href="/hoe-het-werkt" className="btn secondary">
+              Alles over kosten en zekerheid <Arrow />
+            </Link>
+          </div>
+          <div className="steps">
+            <div className="step">
+              <h3>Ontdek en vergelijk</h3>
+              <p>Bekijk portfolio&apos;s, diensten met vaste prijzen en reviews. Reviews kunnen alleen na een afgeronde opdracht.</p>
+              <ul>
+                <li>Zoek op talent, categorie of provincie</li>
+                <li>Volg makers en bewaar wat je mooi vindt</li>
+              </ul>
+            </div>
+            <div className="step">
+              <h3>Boek direct of vraag maatwerk aan</h3>
+              <p>
+                <strong>Direct boeken</strong>: vaste prijs, vaste levertijd. <strong>Op aanvraag</strong>: je beschrijft je wens, stelt
+                vragen in de chat en krijgt een offerte.
+              </p>
+              <ul>
+                <li>Er is pas een afspraak als jij uitdrukkelijk bevestigt</li>
+                <li>Contact loopt via berichten op het platform</li>
+              </ul>
+            </div>
+            <div className="step">
+              <h3>Betaal veilig, keur goed</h3>
+              <p>Je betaalt via het platform. De maker krijgt het geld pas als jij de oplevering goedkeurt.</p>
+              <ul>
+                <li>Annuleren en klachten zijn geregeld, met terugbetaling</li>
+                <li>{stripeMode() === "none" ? "Online betalen wordt geactiveerd vóór de lancering" : "iDEAL en creditcard via Stripe"}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section" aria-labelledby="verkoop-titel">
+        <div className="container split wide-side">
+          <div>
+            <p className="eyebrow">Verkoop jouw talent</p>
+            <p className="big-statement" id="verkoop-titel">
+              Eén profiel.
+              <br />
+              <span className="lime">Al je talent.</span>
             </p>
-            <span className="go">Match uitnodigen →</span>
-          </Link>
-          <Link href={v?.community ? "/cafe/lounge" : "/lidmaatschap"} className="door">
-            <h3>Ik wil iemand ontmoeten</h3>
-            <p>Word lid van Cafe. Praat in de lounge of aan een tafel en nodig iemand uit voor zo&apos;n videodate.</p>
-            <span className="go">Naar Cafe →</span>
-          </Link>
-        </div>
-        <p className="muted small" style={{ marginTop: 12 }}>
-          Cafe is niet verbonden aan {apps}. Je deelt zelf een uitnodiging via de app waarop je matchte.
-        </p>
-      </section>
-
-      <section className="section container stack-lg" id="zo-werkt-het">
-        <div>
-          <p className="eyebrow">Zo werkt het</p>
-          <h2>Een beter geïnformeerde beslissing over je volgende date</h2>
-        </div>
-        <ol className="steps">
-          <li>
-            <strong>Uitnodigen</strong>
-            <span className="muted">
-              Kies een tijdstip en deel de link. Je match bevestigt met een eigen inlog; jij ziet wie er heeft geaccepteerd.
-            </span>
-          </li>
-          <li>
-            <strong>Twintig minuten</strong>
-            <span className="muted">
-              Test in de lobby je camera. De twintig minuten beginnen pas als jullie er allebei zijn, en de ruimte sluit daarna vanzelf.
-            </span>
-          </li>
-          <li>
-            <strong>Privé kiezen</strong>
-            <span className="muted">
-              Drie korte vragen, alleen voor jou. Alleen als jullie allebei verder willen, opent er een vervolg.
-            </span>
-          </li>
-        </ol>
-        <p className="muted" style={{ maxWidth: "40em" }}>
-          Een vriendelijke &lsquo;nee&rsquo; na twintig minuten is ook een goed resultaat: je weet het, zonder dat je er een hele avond voor
-          vrijmaakte.
-        </p>
-      </section>
-
-      <section className="section container" id="community">
-        <div className="grid-2" style={{ alignItems: "center" }}>
+          </div>
           <div className="stack">
-            <p className="eyebrow">De community</p>
-            <h2>Cafe: eerst wat sfeer proeven</h2>
-            <ul className="checks">
-              <li>
-                <strong>De lounge</strong> — het gezamenlijke gesprek, laagdrempelig aanschuiven.
-              </li>
-              <li>
-                <strong>Tafels</strong> — kleinere gesprekken rond regio en interesses.
-              </li>
-              <li>
-                <strong>Privé</strong> — begint met een verzoek dat de ander accepteert.
-              </li>
-              <li>
-                <strong>Even samen zitten?</strong> — plan vanuit het gesprek een videodate. Pas als jullie allebei bevestigen, staat de
-                afspraak.
-              </li>
+            <ul className="checklist">
+              <li>Een eigen pagina op sellyourself.nl/@jouwnaam met je werk, foto&apos;s en video&apos;s</li>
+              <li>Diensten met vaste prijzen én maatwerk via offertes</li>
+              <li>Berichten, opdrachten en uitbetalingen op één plek</li>
+              <li>Kopen en verkopen met hetzelfde account</li>
+              <li>Geen abonnement: {feePercentLabel()} platformkosten, alleen over wat je verdient</li>
             </ul>
-          </div>
-          <div className="card stack" aria-label="Voorbeeld van een gesprek aan een tafel">
-            <span className="badge demo">Voorbeeld · geen echte leden</span>
-            <div className="msg">
-              <div className="meta">
-                <strong>Noor</strong>
-              </div>
-              <div className="bubble">Iemand een tip voor een rustige wandeling rond Utrecht?</div>
-            </div>
-            <div className="msg mine">
-              <div className="meta">
-                <strong>Jij</strong>
-              </div>
-              <div className="bubble">Amelisweerd! Daar kun je ook prima koffie halen.</div>
-            </div>
-            <div className="msg">
-              <div className="meta">
-                <strong>Noor</strong>
-              </div>
-              <div className="bubble">Klinkt goed. Even samen zitten om het erover te hebben?</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section container">
-        <div className="grid-2">
-          <div className="card soft stack">
-            <h2>Jij houdt de regie</h2>
-            <ul className="checks">
-              <li>Je contactgegevens blijven verborgen. Delen doe je zelf, per gegeven.</li>
-              <li>Je feedback is vertrouwelijk. De ander ziet je antwoorden niet.</li>
-              <li>Een gesprek vroeg beëindigen kan altijd.</li>
-              <li>Blokkeren en melden kan altijd, ook tijdens het gesprek.</li>
-              <li>We zetten opnemen en transcriberen niet aan voor videodates.</li>
-            </ul>
-          </div>
-          <div className="card stack" id="lidmaatschap">
-            <p className="eyebrow">Lidmaatschap</p>
-            <p className="price">
-              {MEMBERSHIP.priceLabel} <small>per {MEMBERSHIP.period}</small>
-            </p>
-            <ul className="checks">
-              <li>De community: lounge, tafels en privégesprekken</li>
-              <li>
-                {MEMBERSHIP.datesPerPeriod} videodates van {DATE_MINUTES} minuten per {MEMBERSHIP.period}
-              </li>
-              <li>Je uitgenodigde match doet gratis mee aan die videodate</li>
-              <li>Maandelijks opzegbaar</li>
-            </ul>
-            <p className="muted small">{MEMBERSHIP.priceNote}</p>
-            <Link className="btn" href="/lidmaatschap">
-              Bekijk het lidmaatschap
+            <Link href={sellHref} className="btn large">
+              Maak je profiel <Arrow />
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="section container narrow faq" aria-labelledby="faq">
-        <h2 id="faq">Veelgestelde vragen</h2>
-        <details>
-          <summary>Moet mijn match betalen of een app installeren?</summary>
-          <p>
-            Nee. Je match logt in met een e-mailcode, bevestigt het moment en doet gratis mee aan die ene videodate, in de browser. Voor de
-            community is een eigen lidmaatschap nodig.
-          </p>
-        </details>
-        <details>
-          <summary>Wanneer beginnen de twintig minuten?</summary>
-          <p>
-            Pas als jullie er allebei zijn. Daarna liggen begin en eind vast op onze server: herladen of opnieuw verbinden geeft geen extra
-            tijd. Twee minuten voor het einde krijg je een seintje.
-          </p>
-        </details>
-        <details>
-          <summary>Wat als de ander niet komt?</summary>
-          <p>
-            Je wacht maximaal een kwartier na de afgesproken tijd. Daarna sluit de ruimte en telt de videodate niet mee voor je maandtegoed.
-          </p>
-        </details>
-        <details>
-          <summary>Wat ziet de ander van mijn feedback?</summary>
-          <p>
-            Niets van je antwoorden. De ander hoort alleen iets als jullie allebei verder willen. Geen antwoord geven betekent nooit
-            &lsquo;ja&rsquo;.
-          </p>
-        </details>
-        <details>
-          <summary>Is Cafe verbonden aan Tinder, Bumble of andere apps?</summary>
-          <p>Nee. Cafe werkt los van die apps. Je deelt zelf een uitnodigingslink in het gesprek waar jullie matchten.</p>
-        </details>
-        <details>
-          <summary>Hoe zeg ik op?</summary>
-          <p>Via je lidmaatschapspagina, op elk moment. Je houdt toegang tot het einde van de betaalde periode.</p>
-        </details>
-      </section>
-
-      <section className="section container">
-        <div className="card lime stack" style={{ textAlign: "center" }}>
-          <h2>
-            Eerst een klik. <span className="serif-accent">Dan een date.</span>
+      <section className="section lime-band" aria-labelledby="cta-titel">
+        <div className="container row between" style={{ alignItems: "flex-end", gap: 32 }}>
+          <h2 id="cta-titel" className="big-statement" style={{ maxWidth: "12ch" }}>
+            {HEADLINE.split(". ")[1]}
           </h2>
-          <div className="row" style={{ justifyContent: "center" }}>
-            <Link className="btn large" href={v ? "/lidmaatschap" : "/inloggen?next=/lidmaatschap"}>
-              Word lid
-            </Link>
+          <div className="stack" style={{ maxWidth: 380 }}>
+            <p style={{ fontSize: "1.1rem", fontWeight: 500 }}>
+              Maak gratis een account met alleen je e-mailadres. Binnen vijf minuten staat je profiel.
+            </p>
+            <div className="row">
+              <Link href={v ? sellHref : "/inloggen"} className="btn dark large">
+                Begin gratis <Arrow />
+              </Link>
+              <Link
+                href="/ontdek"
+                className="btn secondary large"
+                style={{ "--btn-ink": "#101112", "--btn-line": "#101112" } as React.CSSProperties}
+              >
+                Eerst rondkijken
+              </Link>
+            </div>
           </div>
         </div>
       </section>

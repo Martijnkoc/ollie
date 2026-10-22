@@ -4,7 +4,7 @@ import { cache } from "react";
 import { type Db, getDb, one } from "../db";
 import { hashToken, isTokenShaped, newToken } from "../tokens";
 
-const COOKIE = "cafe_session";
+const COOKIE = "sy_session";
 const SESSION_DAYS = 30;
 
 export type SessionUser = { id: string; email: string; restricted_at: Date | null; restricted_reason: string | null };

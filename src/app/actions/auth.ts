@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { requestCode, verifyCode } from "@/lib/auth/otp";
 import { safeNext, signIn, signOut } from "@/lib/auth/session";
-import { getDb } from "@/lib/db";
+import { getDb, one } from "@/lib/db";
 import { type FormState, UserError, errorState, formFields } from "@/lib/errors";
 import { clientIp } from "@/lib/url";
 
@@ -21,13 +21,19 @@ export async function requestCodeAction(_: FormState, formData: FormData): Promi
 
 export async function verifyCodeAction(_: FormState, formData: FormData): Promise<FormState> {
   const fields = formFields(formData);
+  const target = safeNext(fields.next, "/dashboard");
+  let onboarded = true;
   try {
-    const userId = await verifyCode(await getDb(), fields.email ?? "", fields.code ?? "");
+    const db = await getDb();
+    const userId = await verifyCode(db, fields.email ?? "", fields.code ?? "");
     await signIn(userId);
+    onboarded = Boolean(await one(db, `select 1 from profiles where user_id = $1`, [userId]));
   } catch (err) {
     return errorState(err, { ...fields, step: "code" });
   }
-  redirect(safeNext(fields.next, "/afspraken"));
+  // New accounts first choose a name; then they continue where they were going.
+  if (!onboarded && !target.startsWith("/welkom")) redirect(`/welkom?next=${encodeURIComponent(target)}`);
+  redirect(target);
 }
 
 export async function logoutAction() {

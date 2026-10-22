@@ -1,55 +1,57 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireStaff } from "@/lib/access";
-import { getDb } from "@/lib/db";
-import { stats } from "@/lib/stats";
+import { getDb, one } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Beheer", robots: { index: false } };
 
-const pct = (n: number, total: number) => (total ? `${Math.round((n / total) * 100)}%` : "–");
-
-function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="stat">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
-    </div>
-  );
-}
-
 export default async function StaffHome() {
   await requireStaff();
-  const s = await stats(await getDb());
-  const total = (s.helped.yes ?? 0) + (s.helped.somewhat ?? 0) + (s.helped.no ?? 0);
+  const s = (await one<Record<string, number>>(
+    await getDb(),
+    `select (select count(*)::int from users) as users,
+       (select count(*)::int from profiles where published and hidden_at is null) as public_profiles,
+       (select count(*)::int from services where status = 'published' and hidden_at is null) as services,
+       (select count(*)::int from portfolio_items where hidden_at is null) as portfolio,
+       (select count(*)::int from orders where status in ('in_progress', 'delivered')) as running,
+       (select count(*)::int from orders where status = 'completed') as completed,
+       (select count(*)::int from orders where status = 'disputed') as disputed,
+       (select count(*)::int from orders where status = 'completed' and payment_status = 'paid' and transfer_status in ('pending', 'failed')) as payouts_waiting,
+       (select count(*)::int from reports where status = 'open') as reports,
+       (select count(*)::int from appeals where status = 'open') as appeals,
+       (select count(*)::int from users where restricted_at is not null) as restricted`,
+  ))!;
+  const Stat = ({ label, value, href }: { label: string; value: number; href?: string }) =>
+    href ? (
+      <Link href={href} className="stat" style={{ textDecoration: "none" }}>
+        <div className="label">{label}</div>
+        <div className="value">{value}</div>
+      </Link>
+    ) : (
+      <div className="stat">
+        <div className="label">{label}</div>
+        <div className="value">{value}</div>
+      </div>
+    );
   return (
     <>
-      <h1>Overzicht</h1>
-      <section className="card stack" aria-labelledby="hoofdvraag">
-        <p className="eyebrow" id="hoofdvraag">
-          Hoofdvraag
-        </p>
-        <h2 style={{ fontSize: "1.3rem" }}>Heeft dit gesprek je geholpen te bepalen of je in het echt wilt afspreken?</h2>
-        <div className="hero-figure">{pct(s.helped.yes ?? 0, total)}</div>
-        <p className="muted" style={{ margin: 0 }}>
-          antwoordt &lsquo;ja&rsquo; ({total} antwoorden). Alleen totalen; individuele antwoorden tonen we hier niet.
-        </p>
-        <div className="grid-3">
-          <Stat label="Ja" value={s.helped.yes ?? 0} sub={pct(s.helped.yes ?? 0, total)} />
-          <Stat label="Een beetje" value={s.helped.somewhat ?? 0} sub={pct(s.helped.somewhat ?? 0, total)} />
-          <Stat label="Nee" value={s.helped.no ?? 0} sub={pct(s.helped.no ?? 0, total)} />
-        </div>
+      <h1>Beheer</h1>
+      <section className="grid-4" aria-label="Te behandelen">
+        <Stat label="Open meldingen" value={s.reports} href="/beheer/meldingen" />
+        <Stat label="Klachten" value={s.disputed} href="/beheer/klachten" />
+        <Stat label="Open bezwaren" value={s.appeals} href="/beheer/bezwaren" />
+        <Stat label="Uitbetalingen in de wacht" value={s.payouts_waiting} />
       </section>
-      <section className="grid-3" aria-label="Kerncijfers">
-        <Stat label="Accounts" value={s.users} sub={`${s.profiles} met profiel`} />
-        <Stat label="Betalende leden" value={s.members} />
-        <Stat label="Videodates gehouden" value={s.datesHeld} sub={`${s.noShows} niet doorgegaan`} />
-        <Stat label="Gepland of bezig" value={s.datesScheduled} />
-        <Stat label="Wederzijdse interesse" value={s.mutual} />
-        <Stat label="Berichten (7 dagen)" value={s.messages} />
-        <Stat label="Open meldingen" value={s.openReports} />
-        <Stat label="Open bezwaren" value={s.openAppeals} />
+      <section className="grid-4" aria-label="Platform">
+        <Stat label="Accounts" value={s.users} />
+        <Stat label="Openbare profielen" value={s.public_profiles} />
+        <Stat label="Gepubliceerde diensten" value={s.services} />
+        <Stat label="Portfolio-items" value={s.portfolio} />
+        <Stat label="Lopende opdrachten" value={s.running} />
+        <Stat label="Afgeronde opdrachten" value={s.completed} />
         <Stat label="Beperkte accounts" value={s.restricted} />
       </section>
+      <p className="small muted">Alleen totalen. Moderatoren zien berichten alleen bij een melding of klacht waar ze bij horen.</p>
     </>
   );
 }

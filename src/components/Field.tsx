@@ -29,3 +29,17 @@ export function Field({
     </div>
   );
 }
+
+/** A euro amount. Receives the id from Field and puts it on the input itself, so the label stays connected. */
+export function MoneyInput({
+  id,
+  "aria-describedby": describedBy,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { "aria-describedby"?: string }) {
+  return (
+    <div className="input-prefix">
+      <span aria-hidden="true">€</span>
+      <input id={id} aria-describedby={describedBy} type="text" inputMode="decimal" autoComplete="off" {...props} />
+    </div>
+  );
+}

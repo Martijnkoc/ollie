@@ -14,6 +14,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             <NavLink href="/beheer/meldingen">Meldingen</NavLink>
           </li>
           <li>
+            <NavLink href="/beheer/klachten">Klachten</NavLink>
+          </li>
+          <li>
             <NavLink href="/beheer/bezwaren">Bezwaren</NavLink>
           </li>
           {v.roles.includes("admin") && (
@@ -23,7 +26,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           )}
         </ul>
       </nav>
-      <div className="stack-lg">{children}</div>
+      <div className="stack-lg" style={{ minWidth: 0 }}>
+        {children}
+      </div>
     </div>
   );
 }

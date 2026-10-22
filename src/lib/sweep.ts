@@ -1,25 +1,21 @@
-import { settleAndClose } from "./dates/core";
 import { type Db } from "./db";
-import { videoProvider } from "./video/provider";
+import { autoTransitions } from "./orders";
+import { releaseFunds } from "./payments";
+import { deleteOrphans } from "./storage";
 
-/** Periodic housekeeping: time-based date transitions, closing rooms, and retention limits. */
+/** Daily housekeeping: time-based order transitions, payouts that still have to go out, and retention. */
 export async function sweep(db: Db, now = new Date()) {
-  const due = await db.query<{ id: string }>(
-    `select id from dates where (status = 'scheduled' and scheduled_at < $1 - interval '15 minutes')
-       or (status = 'live' and ends_at <= $1)
-       or (status = 'proposed' and scheduled_at < $1)
-       or (status in ('ended', 'cancelled', 'declined', 'no_show', 'failed') and video_room is not null and room_closed_at is null)
-     limit 200`,
-    [now],
+  const orders = await autoTransitions(db, now);
+  const payouts = await db.query<{ id: string }>(
+    `select id from orders where status = 'completed' and payment_status = 'paid' and transfer_status in ('pending', 'failed') limit 100`,
   );
-  const provider = videoProvider();
-  for (const d of due) await settleAndClose(db, d.id, provider, now);
+  let sent = 0;
+  for (const p of payouts) if ((await releaseFunds(db, p.id, now)) === "sent") sent++;
+  const media = await deleteOrphans(db, now);
   await db.query(`delete from login_codes where created_at < $1 - interval '1 day'`, [now]);
   await db.query(`delete from sessions where expires_at < $1`, [now]);
   await db.query(`delete from rate_events where created_at < $1 - interval '2 days'`, [now]);
   await db.query(`delete from mail_outbox where created_at < $1 - interval '7 days'`, [now]);
-  // Retention: confidential feedback and shared contact details are kept for twelve months.
-  await db.query(`delete from feedback where created_at < $1 - interval '12 months'`, [now]);
-  await db.query(`delete from contact_shares where shared_at < $1 - interval '12 months'`, [now]);
-  return { settled: due.length };
+  await db.query(`delete from stripe_events where received_at < $1 - interval '90 days'`, [now]);
+  return { ...orders, payoutsSent: sent, payoutsWaiting: payouts.length - sent, mediaRemoved: media };
 }

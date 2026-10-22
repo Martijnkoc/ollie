@@ -1,26 +1,35 @@
 import { type Db, one } from "./db";
+import { UserError } from "./errors";
+import { removeObjects } from "./storage";
 
 /**
- * Deletion policy: the account, profile, sessions, messages, feedback and shared contact details go.
- * Appointments that have not started are cancelled (credits released). Past appointments keep only
- * operational metadata without a link to the person. Reports about others stay for moderation, without
- * the reporter's identity.
+ * Deletion policy: the account, profile, services, portfolio, uploaded files, follows, favourites and
+ * messages go. Orders stay for the other party's records and bookkeeping, without a link to this person;
+ * reviews they wrote stay without their name. While an order is paid but not finished, deleting waits,
+ * so nobody loses money or a delivery.
  */
-export async function deleteAccount(db: Db, userId: string) {
-  return db.transaction(async (tx) => {
-    const m = await one<{ stripe_subscription_id: string | null; status: string }>(
-      tx,
-      `select stripe_subscription_id, status from memberships where user_id = $1`,
-      [userId],
+export async function deleteAccount(db: Db, userId: string, now = new Date()) {
+  const running = await one<{ n: number }>(
+    db,
+    `select count(*)::int as n from orders where (buyer_id = $1 or seller_id = $1) and status in ('in_progress', 'delivered', 'disputed')`,
+    [userId],
+  );
+  if ((running?.n ?? 0) > 0) {
+    throw new UserError(
+      "Je hebt nog lopende, betaalde opdrachten. Rond die eerst af of annuleer ze; daarna kun je je account verwijderen.",
     );
-    await tx.query(
-      `update dates set status = case when status = 'proposed' then 'declined' else 'cancelled' end,
-         credit_status = case when credit_status = 'reserved' then 'released' else credit_status end
-       where status in ('proposed', 'scheduled') and id in (select date_id from date_participants where user_id = $1)`,
-      [userId],
+  }
+  const keys = await db.transaction(async (tx) => {
+    const open = await tx.query<{ id: string }>(
+      `update orders set status = case when seller_id = $1 then 'declined' else 'withdrawn' end, cancelled_at = $2,
+         cancel_reason = 'Account verwijderd', updated_at = $2
+       where (buyer_id = $1 or seller_id = $1) and status in ('requested', 'quoted', 'awaiting_payment') returning id`,
+      [userId, now],
     );
-    await tx.query(`update date_participants set display_name = 'Verwijderd account' where user_id = $1`, [userId]);
+    for (const o of open) await tx.query(`update quotes set status = 'withdrawn' where order_id = $1 and status = 'open'`, [o.id]);
+    const media = await tx.query<{ storage_key: string }>(`select storage_key from media where owner_id = $1`, [userId]);
     await tx.query(`delete from users where id = $1`, [userId]);
-    return m?.stripe_subscription_id && m.status !== "canceled" ? m.stripe_subscription_id : null;
+    return media.map((m) => m.storage_key);
   });
+  await removeObjects(keys);
 }

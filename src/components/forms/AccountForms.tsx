@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 export function DeleteAccountForm() {
   const [state, action] = useActionState(deleteAccountAction, undefined);
   return (
-    <form action={action} className="stack">
+    <form action={action} className="stack" style={{ marginTop: 16 }}>
       <Field id="delete-confirm" label="Typ VERWIJDER om te bevestigen">
         <input type="text" name="confirm" required autoComplete="off" />
       </Field>

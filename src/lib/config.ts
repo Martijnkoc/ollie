@@ -1,101 +1,157 @@
-export const BRAND = "Cafe";
-export const TAGLINE = "Eerst een klik. Dan een date.";
+export const BRAND = "Sell Yourself";
+export const TAGLINE = "Same energy. Different talents.";
+export const HEADLINE = "Je hebt iets te bieden. Laat het zien.";
 
 export const TIME_ZONE = "Europe/Amsterdam";
+export const LOCALE = "nl-NL";
+export const CURRENCY = "eur";
 
-/** Every videodate lasts exactly this long, counted from the moment both people are present. */
-export const DATE_MINUTES = 20;
-/** The lobby opens this long before the agreed time, for a camera and microphone check. */
-export const LOBBY_MINUTES = 5;
-/** If the two of you are not both present this long after the agreed time, it counts as a no-show. */
-export const JOIN_WINDOW_MINUTES = 15;
-/** A participant counts as present while heartbeats keep arriving within this many seconds. */
-export const PRESENCE_TTL_SECONDS = 20;
-/** Warn this long before the end. */
-export const WARNING_MINUTES = 2;
-/** Without an answer from the other person we stop waiting for feedback after this many days. */
-export const FEEDBACK_DAYS = 7;
-
-export const MAX_PROPOSED_MOMENTS = 3;
-export const MIN_LEAD_MINUTES = 15;
-export const MAX_DAYS_AHEAD = 60;
-export const MIN_AGE = 18;
-
-/** Membership: price and quota are configuration, not a validated commercial model. */
-export const MEMBERSHIP = {
-  priceLabel: process.env.MEMBERSHIP_PRICE_LABEL ?? "€4,99",
-  period: "maand",
-  datesPerPeriod: Number(process.env.MEMBERSHIP_DATES_PER_PERIOD ?? 5),
-  /** Shown next to the price until tax treatment has been confirmed for launch. */
-  priceNote: process.env.MEMBERSHIP_PRICE_NOTE ?? "Testprijs. Of de prijs inclusief btw is, leggen we vast vóór de lancering.",
-};
-
-/** Hours a membership keeps access after its paid period ends, to absorb a late renewal webhook. */
-export const BILLING_GRACE_HOURS = 48;
+export const CATEGORIES = [
+  {
+    key: "creators",
+    label: "Creators",
+    blurb: "Content, UGC, social media en samenwerkingen.",
+    examples: ["UGC-video's", "Instagram-content", "TikTok-campagnes"],
+  },
+  {
+    key: "digitaal",
+    label: "Digitaal",
+    blurb: "Websites, apps, design, marketing en data.",
+    examples: ["Webshop bouwen", "Logo-ontwerp", "SEO-advies"],
+  },
+  {
+    key: "creatief",
+    label: "Creatief",
+    blurb: "Fotografie, video, illustratie en kunst.",
+    examples: ["Portretshoot", "Bedrijfsvideo", "Illustratie op maat"],
+  },
+  {
+    key: "sport",
+    label: "Sport & Gezondheid",
+    blurb: "Training, voeding, yoga en herstel.",
+    examples: ["Personal training", "Voedingsschema", "Yogales aan huis"],
+  },
+  {
+    key: "huis",
+    label: "Huis & Klus",
+    blurb: "Schilderen, installeren, timmeren en tuin.",
+    examples: ["Woonkamer schilderen", "Laadpaal installeren", "Tuin aanleggen"],
+  },
+  {
+    key: "muziek",
+    label: "Muziek & Audio",
+    blurb: "Muzikanten, dj's, productie en les.",
+    examples: ["Dj voor een feest", "Mixen en masteren", "Gitaarles"],
+  },
+  {
+    key: "coaching",
+    label: "Coaching",
+    blurb: "Loopbaan, business, studie en persoonlijke groei.",
+    examples: ["Loopbaancoaching", "Bijles wiskunde", "Pitchtraining"],
+  },
+  {
+    key: "overig",
+    label: "Overig",
+    blurb: "Talent dat nergens anders in past.",
+    examples: ["Kalligrafie", "Vertaling", "Dierenoppas"],
+  },
+] as const;
+export type CategoryKey = (typeof CATEGORIES)[number]["key"];
+export const CATEGORY_KEYS = CATEGORIES.map((c) => c.key) as CategoryKey[];
 
 export const REGIONS = [
-  { key: "noord", label: "Noord-Nederland" },
-  { key: "oost", label: "Oost-Nederland" },
-  { key: "randstad-noord", label: "Amsterdam e.o." },
-  { key: "randstad-zuid", label: "Rotterdam, Den Haag e.o." },
-  { key: "utrecht", label: "Utrecht e.o." },
-  { key: "zuid", label: "Zuid-Nederland" },
-  { key: "belgie", label: "België" },
-  { key: "elders", label: "Elders" },
+  { key: "groningen", label: "Groningen" },
+  { key: "friesland", label: "Friesland" },
+  { key: "drenthe", label: "Drenthe" },
+  { key: "overijssel", label: "Overijssel" },
+  { key: "flevoland", label: "Flevoland" },
+  { key: "gelderland", label: "Gelderland" },
+  { key: "utrecht", label: "Utrecht" },
+  { key: "noord-holland", label: "Noord-Holland" },
+  { key: "zuid-holland", label: "Zuid-Holland" },
+  { key: "zeeland", label: "Zeeland" },
+  { key: "noord-brabant", label: "Noord-Brabant" },
+  { key: "limburg", label: "Limburg" },
 ] as const;
 
-export const INTENTS = [
-  { key: "relatie", label: "Een serieuze relatie" },
-  { key: "open", label: "Open voor wat er komt" },
-  { key: "ontdekken", label: "Eerst ontdekken wat ik zoek" },
+export const AVAILABILITY = [
+  { key: "available", label: "Beschikbaar voor opdrachten" },
+  { key: "limited", label: "Beperkt beschikbaar" },
+  { key: "unavailable", label: "Nu niet beschikbaar" },
 ] as const;
 
-export const INTERESTS = [
-  "Wandelen",
-  "Koken",
-  "Muziek",
-  "Film & series",
-  "Lezen",
-  "Sport",
-  "Reizen",
-  "Kunst & cultuur",
-  "Natuur",
-  "Spelletjes",
-  "Uitgaan",
-  "Dieren",
+export const LOCATION_MODES = [
+  { key: "remote", label: "Op afstand" },
+  { key: "on_site", label: "Op locatie" },
+  { key: "both", label: "Op afstand of op locatie" },
 ] as const;
 
-/** Where people matched. Plain text only: these services are not partners of Cafe. */
-export const MATCH_ORIGINS = ["Tinder", "Bumble", "Hinge", "Happn", "Breeze", "Ergens anders"] as const;
+export const SELLER_TYPES = [
+  { key: "private", label: "Particulier" },
+  { key: "business", label: "Zakelijk (KvK)" },
+] as const;
+
+/**
+ * Platform fee in basis points of the agreed price, paid out of the seller's amount.
+ * Buyers pay exactly the price they see; the split is shown to both sides before anything is agreed.
+ * The value is configuration, not a validated commercial model.
+ */
+export const PLATFORM_FEE_BPS = Math.round(Number(process.env.PLATFORM_FEE_PERCENT ?? 10) * 100);
+export const MIN_PRICE_CENTS = 500;
+export const MAX_PRICE_CENTS = 2_500_000;
+export const MAX_DELIVERY_DAYS = 365;
+
+/** After delivery the buyer has this many days to accept or open a complaint; then the order completes by itself. */
+export const AUTO_COMPLETE_DAYS = 7;
+/** A buyer may cancel and get a refund once delivery is this many days overdue. */
+export const OVERDUE_GRACE_DAYS = 2;
+export const QUOTE_VALID_DAYS = 14;
+/** Version of the order terms the buyer confirms; stored with every order. */
+export const TERMS_VERSION = "2026-10-concept";
+
+export const MAX_SKILLS = 12;
+export const MAX_INCLUDES = 10;
+export const MAX_EXTRAS = 5;
+export const MAX_SERVICES = 20;
+export const MAX_PORTFOLIO = 60;
+
+export const UPLOAD_LIMITS = {
+  avatar: { kinds: ["image"], maxBytes: 5 * 1024 * 1024 },
+  cover: { kinds: ["image"], maxBytes: 8 * 1024 * 1024 },
+  service: { kinds: ["image"], maxBytes: 8 * 1024 * 1024 },
+  portfolio: { kinds: ["image", "video"], maxBytes: 60 * 1024 * 1024 },
+} as const;
+export type UploadPurpose = keyof typeof UPLOAD_LIMITS;
+export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 export const REPORT_REASONS = [
-  { key: "gedrag", label: "Ongepast of seksueel gedrag" },
+  { key: "oplichting", label: "Oplichting, fraude of betalen buiten het platform om" },
+  { key: "misleidend", label: "Misleidend aanbod of nepprofiel" },
+  { key: "ongepast", label: "Seksueel getinte of ongepaste inhoud" },
   { key: "intimidatie", label: "Intimiderend, bedreigend of beledigend" },
-  { key: "nep", label: "Nepprofiel, oplichting of geld vragen" },
-  { key: "minderjarig", label: "Lijkt minderjarig" },
-  { key: "spam", label: "Spam of reclame" },
+  { key: "rechten", label: "Inbreuk op auteursrecht of andermans werk" },
+  { key: "verboden", label: "Verboden of illegaal aanbod" },
+  { key: "spam", label: "Spam" },
   { key: "anders", label: "Iets anders" },
 ] as const;
-
-export const CONTACT_FIELDS = [
-  { key: "phone", label: "Telefoonnummer", placeholder: "06 12 34 56 78" },
-  { key: "email", label: "E-mailadres", placeholder: "naam@voorbeeld.nl" },
-  { key: "social", label: "Social media", placeholder: "@gebruikersnaam" },
-] as const;
-export type ContactField = (typeof CONTACT_FIELDS)[number]["key"];
 
 /** Rate limits: [max events, window in seconds]. */
 export const LIMITS = {
   otpPerEmail: [5, 15 * 60],
   otpPerIp: [30, 60 * 60],
-  channelMessages: [20, 60],
   threadMessages: [40, 60],
-  contactRequests: [10, 24 * 3600],
-  invites: [10, 24 * 3600],
-  proposals: [10, 24 * 3600],
+  newThreads: [20, 24 * 3600],
+  orders: [20, 24 * 3600],
+  quotes: [60, 24 * 3600],
   reports: [10, 24 * 3600],
+  uploads: [80, 3600],
+  follows: [200, 3600],
 } as const satisfies Record<string, readonly [number, number]>;
 
 export function label<T extends { key: string; label: string }>(list: readonly T[], key: string | null | undefined) {
   return list.find((item) => item.key === key)?.label ?? key ?? "";
+}
+
+export function categoryLabel(key: string | null | undefined) {
+  return label(CATEGORIES, key);
 }

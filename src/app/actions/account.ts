@@ -3,10 +3,11 @@
 import { redirect } from "next/navigation";
 import { deleteAccount } from "@/lib/account";
 import { signOut } from "@/lib/auth/session";
-import { cancelImmediately } from "@/lib/billing/stripe";
 import { getDb } from "@/lib/db";
 import { type FormState, UserError, errorState, formFields } from "@/lib/errors";
 import { submitAppeal } from "@/lib/moderation";
+import { dashboardLink, onboardingLink } from "@/lib/payments";
+import { baseUrl } from "@/lib/url";
 import { caller } from "./guard";
 
 export async function deleteAccountAction(_: FormState, formData: FormData): Promise<FormState> {
@@ -14,16 +15,7 @@ export async function deleteAccountAction(_: FormState, formData: FormData): Pro
   try {
     const r = await caller();
     if ((fields.confirm ?? "").trim().toUpperCase() !== "VERWIJDER") throw new UserError("Typ VERWIJDER om te bevestigen.");
-    const db = await getDb();
-    // Stop billing first; if that fails we keep the account so nothing is charged without an account.
-    if (r.membership?.stripe_subscription_id && r.membership.status !== "canceled") {
-      try {
-        await cancelImmediately(r.membership.stripe_subscription_id);
-      } catch {
-        throw new UserError("We konden je abonnement nu niet stopzetten. Probeer het later opnieuw of neem contact op.");
-      }
-    }
-    await deleteAccount(db, r.user.id);
+    await deleteAccount(await getDb(), r.user.id);
     await signOut();
   } catch (err) {
     return errorState(err, fields);
@@ -39,4 +31,24 @@ export async function appealAction(_: FormState, formData: FormData): Promise<Fo
   } catch (err) {
     return errorState(err, fields);
   }
+}
+
+export async function payoutOnboardingAction(_: FormState, __: FormData): Promise<FormState> {
+  let url: string;
+  try {
+    url = await onboardingLink(await getDb(), await caller(), await baseUrl());
+  } catch (err) {
+    return errorState(err);
+  }
+  redirect(url);
+}
+
+export async function payoutDashboardAction(_: FormState, __: FormData): Promise<FormState> {
+  let url: string;
+  try {
+    url = await dashboardLink(await getDb(), (await caller()).user.id);
+  } catch (err) {
+    return errorState(err);
+  }
+  redirect(url);
 }

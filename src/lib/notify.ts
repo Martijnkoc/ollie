@@ -1,96 +1,113 @@
 import "server-only";
-import { DATE_MINUTES, LOBBY_MINUTES } from "./config";
 import { getDb, one } from "./db";
-import { outcomeFor } from "./feedback";
 import { sendMail } from "./mail";
-import { formatMoment } from "./time";
+import { formatEuro } from "./money";
 import { baseUrl } from "./url";
 
-// E-mails only ever link to pages that require logging in; they never carry access tokens.
+// E-mails only link to pages that require logging in; they never carry access tokens or message content.
 
-async function emailOf(userId: string | null) {
-  if (!userId) return undefined;
-  return (await one<{ email: string }>(await getDb(), `select email from users where id = $1`, [userId]))?.email;
-}
+type OrderInfo = { ref: number; title: string; buyer_id: string | null; seller_id: string | null; price_cents: number | null };
 
-export async function inviteAccepted(organizerId: string, guestName: string, moment: Date) {
-  const to = await emailOf(organizerId);
-  if (!to) return;
-  await sendMail({
-    to,
-    subject: `${guestName} heeft je uitnodiging aangenomen`,
-    text: `${guestName} heeft gekozen voor ${formatMoment(moment)}.\nBevestig in Cafe dat dit je match is; pas dan staat de videodate vast:\n${await baseUrl()}/afspraken`,
-  });
-}
-
-async function participants(dateId: string) {
+async function info(orderId: string) {
   const db = await getDb();
-  const date = await one<{ scheduled_at: Date; proposed_by: string | null }>(
+  const o = await one<OrderInfo & { buyer_email: string | null; seller_email: string | null; buyer_name: string; seller_name: string }>(
     db,
-    `select scheduled_at, proposed_by from dates where id = $1`,
-    [dateId],
+    `select o.ref::int as ref, o.title, o.buyer_id, o.seller_id, o.price_cents, bu.email as buyer_email, su.email as seller_email,
+       coalesce(bp.display_name, 'De koper') as buyer_name, coalesce(sp.display_name, 'De maker') as seller_name
+     from orders o left join users bu on bu.id = o.buyer_id left join users su on su.id = o.seller_id
+     left join profiles bp on bp.user_id = o.buyer_id left join profiles sp on sp.user_id = o.seller_id where o.id = $1`,
+    [orderId],
   );
-  const people = await db.query<{ user_id: string | null; display_name: string }>(
-    `select user_id, display_name from date_participants where date_id = $1`,
-    [dateId],
-  );
-  return { date, people };
+  return o;
 }
 
-export async function dateScheduled(dateId: string) {
-  const { date, people } = await participants(dateId);
-  if (!date) return;
-  const base = await baseUrl();
-  for (const p of people) {
-    const to = await emailOf(p.user_id);
-    const other = people.find((x) => x !== p)?.display_name ?? "je match";
-    if (!to) continue;
-    await sendMail({
-      to,
-      subject: `Videodate met ${other}: ${formatMoment(date.scheduled_at)}`,
-      text: `Je videodate met ${other} staat vast: ${formatMoment(date.scheduled_at)}.\nDe lobby gaat ${LOBBY_MINUTES} minuten van tevoren open. De ${DATE_MINUTES} minuten beginnen zodra jullie er allebei zijn.\n${base}/afspraken/${dateId}`,
-    });
+const TEXT: Record<
+  string,
+  { to: "buyer" | "seller" | "both"; subject: (o: OrderInfo & { buyer_name: string; seller_name: string }) => string; body: string }
+> = {
+  ordered: {
+    to: "seller",
+    subject: (o) => `Nieuwe bestelling: ${o.title}`,
+    body: "Er is een bestelling geplaatst. Zodra de betaling binnen is, kun je beginnen.",
+  },
+  requested: {
+    to: "seller",
+    subject: (o) => `${o.buyer_name} vraagt een offerte: ${o.title}`,
+    body: "Je hebt een nieuwe aanvraag voor maatwerk. Stel vragen of stuur een offerte.",
+  },
+  quoted: {
+    to: "buyer",
+    subject: (o) => `Offerte van ${o.seller_name}: ${o.title}`,
+    body: "Je hebt een offerte ontvangen. Bekijk de prijs en de levertijd en beslis of je akkoord gaat.",
+  },
+  quote_accepted: {
+    to: "seller",
+    subject: (o) => `Offerte geaccepteerd: ${o.title}`,
+    body: "Je offerte is geaccepteerd. Zodra de betaling binnen is, kun je beginnen.",
+  },
+  paid: {
+    to: "both",
+    subject: (o) => `Betaling ontvangen voor SY-${o.ref}`,
+    body: "De betaling is binnen. De opdracht staat op 'in uitvoering'.",
+  },
+  delivered: {
+    to: "buyer",
+    subject: (o) => `Opgeleverd: ${o.title}`,
+    body: "De maker heeft de opdracht opgeleverd. Bekijk het resultaat en rond af, of vraag om aanpassingen.",
+  },
+  changes_requested: {
+    to: "seller",
+    subject: (o) => `Aanpassingen gevraagd: ${o.title}`,
+    body: "De koper vraagt om aanpassingen. Lees de toelichting bij de opdracht.",
+  },
+  completed: {
+    to: "seller",
+    subject: (o) => `Afgerond: ${o.title}`,
+    body: "De koper heeft de opdracht afgerond. De uitbetaling wordt klaargezet.",
+  },
+  declined: {
+    to: "buyer",
+    subject: (o) => `Niet aangenomen: ${o.title}`,
+    body: "De maker kan deze opdracht helaas niet aannemen. Er is niets betaald.",
+  },
+  withdrawn: { to: "seller", subject: (o) => `Ingetrokken: ${o.title}`, body: "De koper heeft de aanvraag ingetrokken." },
+  cancel_requested: {
+    to: "seller",
+    subject: (o) => `Verzoek om te annuleren: ${o.title}`,
+    body: "De koper wil de opdracht annuleren. Ga akkoord (de koper krijgt het bedrag terug) of reageer via een bericht.",
+  },
+  refunded: {
+    to: "both",
+    subject: (o) => `Geannuleerd en terugbetaald: SY-${o.ref}`,
+    body: "De opdracht is geannuleerd. Het volledige bedrag gaat terug naar de koper.",
+  },
+  disputed: {
+    to: "both",
+    subject: (o) => `Klacht over SY-${o.ref}`,
+    body: "Er is een klacht ingediend. Een moderator bekijkt de opdracht en jullie berichten en neemt een besluit.",
+  },
+};
+
+export async function orderMail(orderId: string, kind: keyof typeof TEXT | string) {
+  const t = TEXT[kind];
+  if (!t) return;
+  const o = await info(orderId);
+  if (!o) return;
+  const link = `${await baseUrl()}/opdrachten/${orderId}`;
+  const recipients = [t.to !== "seller" ? o.buyer_email : null, t.to !== "buyer" ? o.seller_email : null].filter(Boolean) as string[];
+  const amount = o.price_cents ? `\nBedrag: ${formatEuro(o.price_cents)}` : "";
+  for (const to of recipients) {
+    await sendMail({ to, subject: t.subject(o), text: `${t.body}\n\nOpdracht SY-${o.ref}: ${o.title}${amount}\n${link}` });
   }
 }
 
-export async function proposalReceived(dateId: string) {
-  const { date, people } = await participants(dateId);
-  if (!date) return;
-  const proposer = people.find((p) => p.user_id === date.proposed_by);
-  const recipient = people.find((p) => p.user_id !== date.proposed_by);
-  const to = await emailOf(recipient?.user_id ?? null);
-  if (!to) return;
-  await sendMail({
-    to,
-    subject: `${proposer?.display_name ?? "Iemand"} stelt een videodate voor`,
-    text: `${proposer?.display_name ?? "Iemand"} wil graag ${formatMoment(date.scheduled_at)} twintig minuten met je videobellen.\nAccepteer of wijs af:\n${await baseUrl()}/afspraken/${dateId}`,
-  });
-}
-
-export async function dateCancelled(userId: string, byName: string, when: Date) {
-  const to = await emailOf(userId);
-  if (!to) return;
-  await sendMail({
-    to,
-    subject: "Je videodate gaat niet door",
-    text: `${byName} heeft de videodate van ${formatMoment(when)} afgezegd. Jammer, maar zo weet je het op tijd.`,
-  });
-}
-
-/** Mail both only when the interest is mutual. One-sided interest is never announced. */
-export async function mutualIfAny(dateId: string) {
+export async function newMessageMail(toUserId: string, fromName: string, threadId: string) {
   const db = await getDb();
-  const { people } = await participants(dateId);
-  const first = people.find((p) => p.user_id);
-  if (!first?.user_id || (await outcomeFor(db, first.user_id, dateId)).state !== "mutual") return;
-  const base = await baseUrl();
-  for (const p of people) {
-    const to = await emailOf(p.user_id);
-    if (!to) continue;
-    await sendMail({
-      to,
-      subject: "Jullie willen allebei verder",
-      text: `Goed nieuws: na jullie videodate willen jullie elkaar allebei verder leren kennen.\nWat je deelt, kies je zelf per gegeven:\n${base}/afspraken/${dateId}`,
-    });
-  }
+  const u = await one<{ email: string }>(db, `select email from users where id = $1`, [toUserId]);
+  if (!u) return;
+  await sendMail({
+    to: u.email,
+    subject: `Nieuw bericht van ${fromName}`,
+    text: `${fromName} heeft je een bericht gestuurd.\nLees en beantwoord het hier:\n${await baseUrl()}/berichten/${threadId}`,
+  });
 }

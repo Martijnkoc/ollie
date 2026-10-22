@@ -1,44 +1,41 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
+import { Archivo, Inter_Tight } from "next/font/google";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { TAGLINE } from "@/lib/config";
+import { BRAND, HEADLINE, TAGLINE } from "@/lib/config";
+import { stripeMode } from "@/lib/payments-client";
 import "./globals.css";
 
+const display = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-display", display: "swap" });
+const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+
 export const metadata: Metadata = {
-  title: { default: `Cafe · ${TAGLINE}`, template: "%s · Cafe" },
-  description:
-    "Een korte, besloten videodate van twintig minuten voordat je afspreekt. Neem je match van een andere app mee, of leer mensen kennen in de Cafe-community.",
+  title: { default: `${BRAND} · ${HEADLINE}`, template: `%s · ${BRAND}` },
+  description: `Ontdek talent, vind een professional of verdien geld met wat jij kunt. Creators, fotografen, developers, schilders, coaches en meer. ${TAGLINE}`,
   // Personal pages carry ids in the URL; never send them to other sites.
   referrer: "same-origin",
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f1e8" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1019" },
-  ],
+  themeColor: "#101112",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nl">
+    <html lang="nl" className={`${display.variable} ${sans.variable}`}>
       <body>
         <a href="#inhoud" className="skip-link">
           Naar de inhoud
         </a>
+        {stripeMode() === "test" && (
+          <div className="test-banner">Testomgeving: betalingen lopen via Stripe-testmodus. Er wordt geen echt geld afgeschreven.</div>
+        )}
         <SiteHeader />
         <main id="inhoud" tabIndex={-1}>
           {children}
         </main>
-        <footer className="site-footer">
-          <div className="container">
-            <span>cafe. · {TAGLINE}</span>
-            <span className="row">
-              <Link href="/huisregels">Huisregels &amp; veiligheid</Link>
-              <Link href="/privacy">Privacy</Link>
-            </span>
-          </div>
-        </footer>
+        <SiteFooter />
       </body>
     </html>
   );

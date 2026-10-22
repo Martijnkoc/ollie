@@ -1,3 +1,4 @@
+import { BRAND } from "../config";
 import { type Db, one } from "../db";
 import { UserError } from "../errors";
 import { mailConfigured, sendMail } from "../mail";
@@ -54,7 +55,7 @@ export async function requestCode(db: Db, rawEmail: string, ip: string, now = ne
   await sendMail({
     to: email,
     subject: `Je inlogcode: ${code}`,
-    text: `Je inlogcode voor Cafe is ${code}.\nDe code is ${CODE_MINUTES} minuten geldig. Heb je niets aangevraagd? Dan kun je dit bericht negeren.`,
+    text: `Je inlogcode voor ${BRAND} is ${code}.\nDe code is ${CODE_MINUTES} minuten geldig. Heb je niets aangevraagd? Dan kun je dit bericht negeren.`,
   });
 }
 

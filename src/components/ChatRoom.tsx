@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  olderChannelMessages,
-  olderThreadMessages,
-  removeChannelMessage,
-  sendChannelMessage,
-  sendThreadMessage,
-} from "@/app/actions/community";
+import { markReadAction, olderMessages, sendMessage } from "@/app/actions/messages";
 import { Dialog } from "./Dialog";
-import { ReportForm } from "./forms/ReportForm";
+import { ReportForm } from "./forms/SafetyForms";
 
-export type Msg = { id: number; author_id: string; alias?: string; body: string; created_at: string | Date; mine: boolean };
+export type Msg = { id: number; author_id: string; body: string; created_at: string | Date; mine: boolean; order_ref: number | null };
 
 const time = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "2-digit", minute: "2-digit" });
 const day = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", weekday: "short", day: "numeric", month: "short" });
@@ -23,24 +17,27 @@ function stamp(d: string | Date) {
   return today ? time.format(date) : `${day.format(date)} ${time.format(date)}`;
 }
 
+/** Live conversation over Server-Sent Events; the server checks access on every (re)connection. */
 export function ChatRoom({
-  kind,
-  id,
-  title,
-  description,
+  threadId,
+  otherName,
+  otherUsername,
   initial,
   more,
-  otherName,
   disabled,
+  orderId,
+  orderRef,
+  embedded,
 }: {
-  kind: "channel" | "thread";
-  id: string;
-  title: string;
-  description?: string;
+  threadId: string;
+  otherName: string;
+  otherUsername: string | null;
   initial: Msg[];
   more: boolean;
-  otherName?: string;
   disabled?: string;
+  orderId?: string;
+  orderRef?: number;
+  embedded?: boolean;
 }) {
   const [messages, setMessages] = useState<Msg[]>(initial);
   const [hasMore, setHasMore] = useState(more);
@@ -50,6 +47,7 @@ export function ChatRoom({
   const [sending, setSending] = useState(false);
   const log = useRef<HTMLDivElement>(null);
   const lastId = useRef(initial.at(-1)?.id ?? 0);
+  const readId = useRef(0);
   const stick = useRef(true);
 
   const add = useCallback((incoming: Msg[]) => {
@@ -63,8 +61,7 @@ export function ChatRoom({
   }, []);
 
   useEffect(() => {
-    const url = `/api/stream/${kind === "channel" ? "kanaal" : "gesprek"}/${id}?after=${lastId.current}`;
-    const source = new EventSource(url);
+    const source = new EventSource(`/api/stream/gesprek/${threadId}?after=${lastId.current}`);
     source.addEventListener("message", (e) => {
       setStatus("live");
       add([JSON.parse((e as MessageEvent).data)]);
@@ -72,12 +69,17 @@ export function ChatRoom({
     source.onopen = () => setStatus("live");
     source.onerror = () => setStatus(source.readyState === EventSource.CLOSED ? "closed" : "reconnecting");
     return () => source.close();
-  }, [kind, id, add]);
+  }, [threadId, add]);
 
   useEffect(() => {
     const el = log.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+    const last = messages.at(-1)?.id ?? 0;
+    if (last > readId.current && document.visibilityState === "visible") {
+      readId.current = last;
+      void markReadAction(threadId, last);
+    }
+  }, [messages, threadId]);
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
@@ -85,7 +87,7 @@ export function ChatRoom({
     if (!body || sending) return;
     setSending(true);
     setError(undefined);
-    const res = kind === "channel" ? await sendChannelMessage(id, body) : await sendThreadMessage(id, body);
+    const res = await sendMessage(threadId, body, orderId);
     setSending(false);
     if (!res.ok) return setError(res.error);
     setDraft("");
@@ -96,31 +98,27 @@ export function ChatRoom({
   async function loadOlder() {
     const first = messages[0]?.id;
     if (!first) return;
-    const res = kind === "channel" ? await olderChannelMessages(id, first) : await olderThreadMessages(id, first);
+    const res = await olderMessages(threadId, first);
     if (!res.ok) return setError(res.error);
     stick.current = false;
     setMessages((prev) => [...res.data.messages, ...prev]);
     setHasMore(res.data.more);
   }
 
-  async function remove(messageId: number) {
-    const res = await removeChannelMessage(messageId);
-    if (!res.ok) return setError(res.error);
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
-  }
-
+  const titleId = `chat-${threadId}`;
   return (
-    <section className="chat" aria-labelledby="chat-title">
+    <section className={`chat${embedded ? " embedded" : ""}`} aria-labelledby={titleId}>
       <div className="chat-head row between">
-        <div>
-          <h1 id="chat-title">{title}</h1>
-          {description && (
-            <p className="muted small" style={{ margin: 0 }}>
-              {description}
-            </p>
-          )}
-        </div>
-        <span className={`badge ${status === "live" ? "good" : ""}`} role="status">
+        {!embedded && (
+          <Link href="/berichten" className="small hide-desktop">
+            ← Gesprekken
+          </Link>
+        )}
+        <h2 id={titleId}>
+          {embedded ? "Berichten met " : ""}
+          {otherUsername ? <Link href={`/@${otherUsername}`}>{otherName}</Link> : otherName}
+        </h2>
+        <span className={`badge ${status === "live" ? "lime" : ""}`} role="status">
           {status === "live" ? "Live" : status === "reconnecting" ? "Opnieuw verbinden…" : "Verbinding verbroken"}
         </span>
       </div>
@@ -129,7 +127,7 @@ export function ChatRoom({
         ref={log}
         role="log"
         aria-live="polite"
-        aria-label={`Berichten in ${title}`}
+        aria-label={`Berichten met ${otherName}`}
         tabIndex={0}
         onScroll={(e) => {
           const el = e.currentTarget;
@@ -143,75 +141,58 @@ export function ChatRoom({
         )}
         {messages.length === 0 && (
           <p className="muted" style={{ textAlign: "center", margin: "auto" }}>
-            {kind === "channel" ? "Nog geen berichten. Zeg jij als eerste hoi?" : `Nog geen berichten. Begin het gesprek met ${otherName}.`}
+            Nog geen berichten. Stel je vraag aan {otherName}.
           </p>
         )}
         {messages.map((m) => (
           <article
             key={m.id}
             className={`msg${m.mine ? " mine" : ""}`}
-            aria-label={`${m.mine ? "Jij" : (m.alias ?? otherName)} om ${stamp(m.created_at)}`}
+            aria-label={`${m.mine ? "Jij" : otherName} om ${stamp(m.created_at)}`}
           >
-            <div className="meta">
-              {m.mine ? (
-                <strong>Jij</strong>
-              ) : kind === "channel" ? (
-                <Link href={`/cafe/leden/${m.author_id}`}>{m.alias}</Link>
-              ) : (
-                <strong>{otherName}</strong>
-              )}
-              <time dateTime={new Date(m.created_at).toISOString()}>{stamp(m.created_at)}</time>
-              <span className="msg-actions">
-                {m.mine && kind === "channel" && (
-                  <button type="button" onClick={() => remove(m.id)}>
-                    Verwijderen
-                  </button>
-                )}
-                {!m.mine && (
-                  <Dialog trigger="Melden" triggerClassName="" title="Bericht melden">
-                    <ReportForm
-                      context={kind === "channel" ? "message" : "thread_message"}
-                      contextId={String(m.id)}
-                      name={m.alias ?? otherName}
-                    />
-                  </Dialog>
-                )}
-              </span>
-            </div>
             <div className="bubble">{m.body}</div>
+            <div className="meta">
+              <time dateTime={new Date(m.created_at).toISOString()}>{stamp(m.created_at)}</time>
+              {m.order_ref && <span>· over SY-{m.order_ref}</span>}
+              {!m.mine && (
+                <Dialog trigger="Melden" triggerClassName="" title="Bericht melden">
+                  <ReportForm context="message" contextId={String(m.id)} name={otherName} />
+                </Dialog>
+              )}
+            </div>
           </article>
         ))}
       </div>
       {disabled ? (
-        <p className="notice" style={{ margin: 16 }}>
+        <p className="notice" style={{ margin: 12 }}>
           {disabled}
         </p>
       ) : (
         <form className="composer" onSubmit={send}>
-          <label htmlFor="composer" className="visually-hidden">
-            Bericht
+          <label htmlFor={`composer-${threadId}`} className="visually-hidden">
+            Bericht aan {otherName}
           </label>
           <textarea
-            id="composer"
+            id={`composer-${threadId}`}
             value={draft}
-            maxLength={kind === "channel" ? 1000 : 2000}
-            placeholder={kind === "channel" ? "Schrijf iets aan tafel…" : `Bericht aan ${otherName}…`}
+            maxLength={4000}
+            placeholder={orderRef ? `Bericht over SY-${orderRef}…` : `Bericht aan ${otherName}…`}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) send(e);
             }}
-            aria-describedby="composer-hint"
+            aria-describedby={`hint-${threadId}`}
           />
           <button type="submit" className="btn" disabled={sending || !draft.trim()}>
             Verstuur
           </button>
         </form>
       )}
-      <p id="composer-hint" className="visually-hidden">
+      <p id={`hint-${threadId}`} className="visually-hidden">
         Enter verstuurt, Shift en Enter maakt een nieuwe regel.
       </p>
       {error && (
-        <p className="notice error" role="alert" style={{ margin: 16 }}>
+        <p className="notice error" role="alert" style={{ margin: 12 }}>
           {error}
         </p>
       )}
